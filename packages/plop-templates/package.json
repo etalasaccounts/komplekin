@@ -1,0 +1,14 @@
+{
+  "name": "@etalas/plop-templates",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "templates",
+    "generators",
+    "index.js"
+  ],
+  "dependencies": {
+    "plop": "^3.1.2"
+  }
+}

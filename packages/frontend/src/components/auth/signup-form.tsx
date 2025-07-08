@@ -1,0 +1,91 @@
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { signup } from "@/components/auth/actions";
+import { GoogleSignupButton } from '@/components/auth/googleSignupButton'
+
+export function SignupForm({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<"form">) {
+  return (
+    <form 
+      className={cn("flex flex-col gap-6", className)} 
+      {...props} 
+      action={signup}
+    >
+      <div className="flex flex-col items-center gap-2 text-center">
+        <h1 className="text-2xl font-bold">Create an account</h1>
+        <p className="text-balance text-sm text-muted-foreground">
+          Enter your details below to create your account
+        </p>
+      </div>
+      <div className="grid gap-6">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name</Label>
+          <Input 
+            id="name" 
+            name="name" 
+            type="text" 
+            placeholder="Your name" 
+            required 
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input 
+            id="email" 
+            name="email" 
+            type="email" 
+            placeholder="m@example.com" 
+            required 
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Input 
+            id="password" 
+            name="password" 
+            type="password" 
+            required 
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="terms" 
+            name="terms" 
+            required 
+          />
+          <label
+            htmlFor="terms"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            I agree to the <Link href="#" className="text-primary hover:underline">terms and conditions</Link>
+          </label>
+        </div>
+        <Button type="submit" className="w-full">
+          Create account
+        </Button>
+          <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+            <span className="relative z-10 bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+          <GoogleSignupButton />
+    
+      </div>
+      <div className="text-center text-sm">
+        Already have an account?{" "}
+        <Link 
+          href="/auth" 
+          className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+        >
+          Sign in
+        </Link>
+      </div>
+    </form>
+  );
+} 

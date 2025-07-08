@@ -1,0 +1,58 @@
+
+import { Separator } from "@/components/ui/separator"; import { Card,
+CardContent, CardDescription, CardHeader, CardTitle } from
+"@/components/ui/card"; export default function
+{{pascalCase name}}Page() { return (
+<div className="space-y-6 p-6">
+  <div>
+
+    <p className="text-sm text-muted-foreground">
+      Manage
+      {{name}}
+      settings and preferences.
+    </p>
+  </div>
+  <Separator />
+  <div className="grid gap-6 md:grid-cols-2">
+    <Card>
+      <CardHeader>
+        <CardTitle>Overview</CardTitle>
+        <CardDescription>Key information about this section</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="rounded-md bg-muted p-4">
+            Content goes here
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>Statistics</CardTitle>
+        <CardDescription>Recent activity and metrics</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="rounded-md bg-muted p-4 h-40">
+            Chart or statistics could go here
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+  <div className="grid gap-6 md:grid-cols-1">
+    <Card>
+      <CardHeader>
+        <CardTitle>Details</CardTitle>
+        <CardDescription>Additional information</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md bg-muted p-4 min-h-[200px]">
+          Detailed content goes here
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+</div>
+); }
