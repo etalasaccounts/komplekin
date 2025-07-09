@@ -27,20 +27,8 @@ npm install
 
 ### Step 2: Setup Supabase (Database)
 
-1. **Buat Project Supabase:**
-   - Kunjungi [supabase.com](https://supabase.com/)
-   - Klik "Start your project" 
-   - Login dengan GitHub/Google
-   - Klik "New Project"
-   - Pilih nama: `komplekin`
-   - Set password yang kuat
-   - Pilih region terdekat (Singapore)
-   - Klik "Create new project"
-
-2. **Ambil Credentials:**
-   - Tunggu project selesai dibuat (2-3 menit)
-   - Ke **Settings** → **API**
-   - Copy **Project URL** dan **anon public key**
+1. **Lihat di file .env.example**
+  
 
 ### Step 3: Setup Environment Variables
 
