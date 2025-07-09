@@ -1,0 +1,37 @@
+{
+  "name": "admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.323.0",
+    "next": "*",
+    "react": "*",
+    "react-dom": "*",
+    "supabase": "*",
+    "tailwind-merge": "^2.6.0",
+    "types": "*",
+    "ui": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "autoprefixer": "*",
+    "eslint": "*",
+    "eslint-config-next": "15.3.5",
+    "postcss": "*",
+    "tailwindcss": "*",
+    "tw-animate-css": "^1.3.5",
+    "typescript": "*"
+  }
+}
