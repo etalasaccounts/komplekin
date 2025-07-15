@@ -23,7 +23,7 @@ export function UserLayout({ children }: UserLayoutProps) {
     }
   };
   return (
-    <div className="min-h-screen bg-background">
+    <div className="max-w-md mx-auto min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card p-4">
         <div className="max-w-4xl mx-auto">
