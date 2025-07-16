@@ -23,11 +23,11 @@ const Index = () => {
   };
 
   const handleRegister = () => {
-    router.push("/user/register");
+    router.push("/user/auth/register");
   };
 
   const handleLogin = () => {
-    router.push("/user/login");
+    router.push("/user/auth");
   };
 
   return (
