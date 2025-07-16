@@ -1,4 +1,3 @@
-import { UserLayout } from "@/components/user/UserLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,6 @@ import { Megaphone } from "lucide-react";
 
 export default function DashboardPage() {
   return (
-    <UserLayout>
       <div className="space-y-6">
         {/* Unpaid Bill Alert */}
         <Card className="border-[#A8A8A8] p-0 overflow-hidden">
@@ -136,6 +134,5 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </UserLayout>
   );
 }

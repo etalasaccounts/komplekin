@@ -15,12 +15,12 @@ export function UserNavigation() {
     },
     {
       title: "Iuran Bulanan",
-      href: "/user/iuran-bulanan",
+      href: "/user/dashboard/iuran-bulanan",
       value: "iuran",
     },
     {
       title: "Pembayaran",
-      href: "/user/pembayaran",
+      href: "/user/dashboard/pembayaran",
       value: "pembayaran",
     },
   ];
