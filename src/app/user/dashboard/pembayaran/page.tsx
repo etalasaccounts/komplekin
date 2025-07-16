@@ -1,10 +1,8 @@
-import { UserLayout } from "@/components/user/UserLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function PembayaranPage() {
   return (
-    <UserLayout>
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -64,6 +62,5 @@ export default function PembayaranPage() {
           </CardContent>
         </Card>
       </div>
-    </UserLayout>
   );
 }

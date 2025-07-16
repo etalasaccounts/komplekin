@@ -1,30 +1,27 @@
 "use client";
-import { UserNavigation } from "./UserNavigation";
+
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-interface UserLayoutProps {
-  children: React.ReactNode;
-}
+import { UserNavigation } from "./UserNavigation";
 
-export function UserLayout({ children }: UserLayoutProps) {
+export function HeaderUser() {
   const pathname = usePathname();
 
-  // Function untuk mendapatkan title berdasarkan pathname
   const getPageTitle = () => {
     switch (pathname) {
       case "/user/dashboard":
         return "Dashboard";
-      case "/user/iuran-bulanan":
+      case "/user/dashboard/iuran-bulanan":
         return "Iuran Bulanan";
-      case "/user/pembayaran":
+      case "/user/dashboard/pembayaran":
         return "Pembayaran";
       default:
         return "Dashboard";
     }
   };
+
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-background">
-      {/* Header */}
+    <>
       <header className="bg-card p-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center space-x-2">
@@ -33,16 +30,10 @@ export function UserLayout({ children }: UserLayoutProps) {
           </div>
         </div>
       </header>
-
       <div className="max-w-4xl mx-auto p-4">
         <h2 className="text-xl font-semibold mb-6">{getPageTitle()}</h2>
-
-        {/* Navigation */}
         <UserNavigation />
-
-        {/* Content */}
-        <div className="mt-6">{children}</div>
       </div>
-    </div>
+    </>
   );
 }

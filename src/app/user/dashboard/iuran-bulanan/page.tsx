@@ -1,10 +1,9 @@
-import { UserLayout } from "@/components/user/UserLayout";
+import { UserLayout } from "@/app/user/dashboard/components/HeaderUser";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function IuranBulananPage() {
   return (
-    <UserLayout>
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -53,6 +52,5 @@ export default function IuranBulananPage() {
           </CardContent>
         </Card>
       </div>
-    </UserLayout>
   );
 }

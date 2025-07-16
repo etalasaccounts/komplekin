@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,7 +124,6 @@ export default function TransaksiWargaPage() {
   };
 
   return (
-    <AdminLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="space-y-2">
@@ -458,6 +456,5 @@ export default function TransaksiWargaPage() {
           <VerifikasiPembayaran searchTerm={searchTerm} />
         )}
       </div>
-    </AdminLayout>
   );
 }

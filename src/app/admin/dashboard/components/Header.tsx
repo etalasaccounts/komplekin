@@ -20,11 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-interface AdminLayoutProps {
-  children?: React.ReactNode;
-}
 
-const AdminLayout = ({ children }: AdminLayoutProps) => {
+const Header = () => {
   const pathname = usePathname();
 
   const navigationItems = [
@@ -35,17 +32,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     },
     {
       name: "Transaksi Warga",
-      path: "/admin/transaksi-warga",
+      path: "/admin/dashboard/transaksi-warga",
       icon: <WalletCards className="h-5 w-5" />,
     },
     {
       name: "Keuangan",
-      path: "/admin/keuangan",
+      path: "/admin/dashboard/keuangan",
       icon: <DollarSign className="h-5 w-5" />,
     },
     {
       name: "Manajemen Warga",
-      path: "/admin/manajemen-warga",
+      path: "/admin/dashboard/manajemen-warga",
       icon: <User className="h-5 w-5" />,
     },
   ];
@@ -53,10 +50,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card">
-        <div className="flex h-16 items-center justify-between px-6">
+    <header className="bg-card">
+      <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-2">
             {/* Logo */}
             <div className="flex items-center space-x-2 border-r border-[#E4E4E7] py-2 pr-4">
@@ -114,12 +109,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </DropdownMenu>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="p-6">{children}</main>
-    </div>
+    </header>
   );
 };
 
-export default AdminLayout;
+export default Header;

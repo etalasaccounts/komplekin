@@ -44,7 +44,7 @@ export function LoginForm({
             <div className="flex flex-col gap-6 w-full">
               <div className="flex flex-col items-center text-center gap-2">
                 <h1 className="text-2xl font-bold">Selamat Datang</h1>
-                <p className="text-muted-foreground text-balance text-xs ">
+                <p className="text-muted-foreground text-balance text-sm">
                   Masukkan nama pengguna Anda di bawah ini untuk masuk akun Anda
                 </p>
               </div>
