@@ -40,11 +40,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import StatusPembayaran from "./components/StatusPembayaran";
 import VerifikasiPembayaran from "./components/VerifikasiPembayaran";
-<<<<<<< HEAD
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
-=======
 import EmptyState from "../components/empty";
->>>>>>> a826636 (add empty statte)
 // Define the Transaction type
 
 // Define filter state type
