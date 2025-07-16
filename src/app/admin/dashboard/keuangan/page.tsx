@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import AdminLayout from "@/components/admin/AdminLayout";
+// import Header from "@/app/admin/dashboard/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ export default function KeuanganPage() {
   const [activeTab, setActiveTab] = useState("pemasukan");
 
   return (
-    <AdminLayout>
+    
       <div className="space-y-6">
         {/* Page Header */}
         <div className="space-y-2">
@@ -151,6 +151,6 @@ export default function KeuanganPage() {
 
         {activeTab === "rekening-rt" && <RekeningRT />}
       </div>
-    </AdminLayout>
+    
   );
 }

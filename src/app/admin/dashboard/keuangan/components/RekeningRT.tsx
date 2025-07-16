@@ -362,7 +362,7 @@ export default function RekeningRT() {
                         htmlFor="namaRekening"
                         className="text-sm font-medium"
                       >
-                        Nama Rekening <span className="text-red-500">*</span>
+                        Nama Rekening *
                       </Label>
                       <Input
                         id="namaRekening"
@@ -381,7 +381,7 @@ export default function RekeningRT() {
                     {/* Nama Bank Field */}
                     <div className="space-y-2">
                       <Label htmlFor="namaBank" className="text-sm font-medium">
-                        Nama Bank <span className="text-red-500">*</span>
+                        Nama Bank *
                       </Label>
                       <Select
                         value={rekeningForm.namaBank}
@@ -413,7 +413,7 @@ export default function RekeningRT() {
                         htmlFor="nomorRekening"
                         className="text-sm font-medium"
                       >
-                        Nomor Rekening <span className="text-red-500">*</span>
+                        Nomor Rekening *
                       </Label>
                       <Input
                         id="nomorRekening"
@@ -435,8 +435,7 @@ export default function RekeningRT() {
                         htmlFor="kegunaanRekening"
                         className="text-sm font-medium"
                       >
-                        Kegunaan Rekening{" "}
-                        <span className="text-red-500">*</span>
+                        Kegunaan Rekening *
                       </Label>
                       <Select
                         value={rekeningForm.kegunaanRekening}

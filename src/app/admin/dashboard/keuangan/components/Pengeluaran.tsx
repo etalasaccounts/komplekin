@@ -240,7 +240,10 @@ export default function Pengeluaran() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <CardTitle>Table Pengeluaran RT</CardTitle>
-              <Badge variant="outline" className="text-xs text-black rounded-full font-semibold">
+              <Badge
+                variant="outline"
+                className="text-xs text-black rounded-full font-semibold"
+              >
                 Bulan Juli 2025
               </Badge>
             </div>
@@ -402,7 +405,7 @@ export default function Pengeluaran() {
                     {/* Date Field */}
                     <div className="space-y-2">
                       <Label htmlFor="tanggal" className="text-sm font-medium">
-                        Tanggal <span className="text-red-500">*</span>
+                        Tanggal *
                       </Label>
 
                       <SingleDatePicker
@@ -421,7 +424,7 @@ export default function Pengeluaran() {
                     {/* Category Field */}
                     <div className="space-y-2">
                       <Label htmlFor="kategori" className="text-sm font-medium">
-                        Kategori <span className="text-red-500">*</span>
+                        Kategori *
                       </Label>
                       <Select
                         value={expenseForm.kategori}
@@ -452,7 +455,7 @@ export default function Pengeluaran() {
                         htmlFor="keterangan"
                         className="text-sm font-medium"
                       >
-                        Keterangan <span className="text-red-500">*</span>
+                        Keterangan *
                       </Label>
                       <Input
                         id="keterangan"
@@ -475,7 +478,7 @@ export default function Pengeluaran() {
                     {/* Amount Field */}
                     <div className="space-y-2">
                       <Label htmlFor="nominal" className="text-sm font-medium">
-                        Nominal <span className="text-red-500">*</span>
+                        Nominal *
                       </Label>
                       <Input
                         id="nominal"
@@ -497,7 +500,7 @@ export default function Pengeluaran() {
                         htmlFor="dibayarkanOleh"
                         className="text-sm font-medium"
                       >
-                        Dibayarkan Oleh <span className="text-red-500">*</span>
+                        Dibayarkan Oleh *
                       </Label>
                       <Input
                         id="dibayarkanOleh"
@@ -521,7 +524,7 @@ export default function Pengeluaran() {
                         htmlFor="metodeBayar"
                         className="text-sm font-medium"
                       >
-                        Metode Bayar <span className="text-red-500">*</span>
+                        Metode Bayar *
                       </Label>
                       <Select
                         value={expenseForm.metodeBayar}

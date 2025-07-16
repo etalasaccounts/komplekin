@@ -543,9 +543,7 @@ export default function VerifikasiPembayaran({
           <div className="space-y-6 px-4">
             {/* Nama Warga */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Nama Warga <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Nama Warga *</Label>
               <Select
                 value={manualPaymentForm.name}
                 onValueChange={(value) =>
@@ -574,9 +572,7 @@ export default function VerifikasiPembayaran({
 
             {/* Kontak */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Kontak <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Kontak *</Label>
               <Input
                 value={manualPaymentForm.contact}
                 onChange={(e) =>
@@ -588,9 +584,7 @@ export default function VerifikasiPembayaran({
 
             {/* Pembayaran */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Pembayaran <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Pembayaran *</Label>
               <Select
                 value={manualPaymentForm.payment}
                 onValueChange={(value) =>
@@ -614,7 +608,7 @@ export default function VerifikasiPembayaran({
             {/* Periode Bayar/Bulan */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Periode Bayar/Bulan <span className="text-red-500">*</span>
+                Periode Bayar/Bulan *
               </Label>
               <Input
                 value={manualPaymentForm.period}
@@ -627,9 +621,7 @@ export default function VerifikasiPembayaran({
 
             {/* Tanggal */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Tanggal <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Tanggal *</Label>
               <SingleDatePicker
                 value={manualPaymentForm.date}
                 onChange={(date) => updateManualPaymentForm("date", date)}
@@ -640,9 +632,7 @@ export default function VerifikasiPembayaran({
 
             {/* Total Tagihan */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Total Tagihan <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Total Tagihan *</Label>
               <Input
                 value={manualPaymentForm.totalAmount}
                 onChange={(e) =>
@@ -654,9 +644,7 @@ export default function VerifikasiPembayaran({
 
             {/* Jumlah Bayar */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Jumlah Bayar <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Jumlah Bayar *</Label>
               <Input
                 value={manualPaymentForm.paidAmount}
                 onChange={(e) =>
@@ -668,9 +656,7 @@ export default function VerifikasiPembayaran({
 
             {/* Metode Bayar */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Metode Bayar <span className="text-red-500">*</span>
-              </Label>
+              <Label className="text-sm font-medium">Metode Bayar *</Label>
               <Select
                 value={manualPaymentForm.paymentMethod}
                 onValueChange={(value) =>
@@ -794,9 +780,7 @@ export default function VerifikasiPembayaran({
 
               {/* Jumlah Bayar */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Jumlah Bayar <span className="text-red-500">*</span>
-                </Label>
+                <Label className="text-sm font-medium">Jumlah Bayar *</Label>
                 <div className="flex flex-col items-start">
                   <Input
                     value={verificationForm.jumlahBayar}
