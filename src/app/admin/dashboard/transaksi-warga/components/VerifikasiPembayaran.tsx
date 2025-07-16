@@ -43,8 +43,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Plus, X, Calendar, DollarSign } from "lucide-react";
+import { Check, Plus, X, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { SingleDatePicker } from "@/components/input/singleDatePicker";
+import { ChooseFile } from "@/components/input/chooseFile";
+import { PreviewImage } from "@/components/modal/previewImage";
 
 // Define verification data type
 type VerificationData = {
@@ -185,16 +188,25 @@ export default function VerifikasiPembayaran({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] =
     useState<VerificationData | null>(null);
+  // Update manual payment form state type
   const [manualPaymentForm, setManualPaymentForm] = useState({
     name: "",
-    houseNumber: "",
+    contact: "",
+    payment: "",
     period: "",
-    date: "",
+    date: undefined as Date | undefined,
     totalAmount: "",
+    paidAmount: "",
+    paymentMethod: "",
+    proofPayment: null as File | null,
   });
   const [rejectReason, setRejectReason] = useState("");
   const itemsPerPage = 8;
-  const [buktiBayar, setBuktiBayar] = useState<File | null>(null);
+  const [verificationForm, setVerificationForm] = useState({
+    tanggalBayar: undefined as Date | undefined,
+    jumlahBayar: "",
+    buktiPembayaran: null as File | null,
+  });
 
   // Filter data based on search term
   const filteredData = verificationData.filter(
@@ -257,6 +269,14 @@ export default function VerifikasiPembayaran({
 
   const handleVerificationClick = (payment: VerificationData) => {
     setSelectedPayment(payment);
+    // Reset verification form when opening
+    setVerificationForm({
+      tanggalBayar: new Date(
+        payment.paymentDate.split("/").reverse().join("-")
+      ),
+      jumlahBayar: "",
+      buktiPembayaran: null,
+    });
     setVerificationSheetOpen(true);
   };
 
@@ -297,15 +317,32 @@ export default function VerifikasiPembayaran({
     setManualPaymentSheetOpen(false);
     setManualPaymentForm({
       name: "",
-      houseNumber: "",
+      contact: "",
+      payment: "",
       period: "",
-      date: "",
+      date: undefined as Date | undefined,
       totalAmount: "",
+      paidAmount: "",
+      paymentMethod: "",
+      proofPayment: null,
     });
   };
 
-  const updateManualPaymentForm = (field: string, value: string) => {
+  const updateManualPaymentForm = (
+    field: string,
+    value: string | Date | File | null | undefined
+  ) => {
     setManualPaymentForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const updateVerificationForm = (
+    field: string,
+    value: string | Date | File | null | undefined
+  ) => {
+    setVerificationForm((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -316,9 +353,6 @@ export default function VerifikasiPembayaran({
       setSelectedPayment(payment);
       setTransferReceiptModalOpen(true);
     }
-  };
-  const handleFileUpload = (file: File) => {
-    setBuktiBayar(file);
   };
 
   return (
@@ -479,31 +513,18 @@ export default function VerifikasiPembayaran({
         </div>
       </div>
 
-      {/* Transfer Receipt Modal */}
-      <Dialog
+      {/* Preview Image Modal */}
+      <PreviewImage
         open={transferReceiptModalOpen}
         onOpenChange={setTransferReceiptModalOpen}
-      >
-        <DialogContent className="max-w-md p-0 gap-0 bg-white min-h-[80vh]">
-          <DialogHeader className="p-4 pb-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg font-semibold">
-                Bukti Transfer Bank
-              </DialogTitle>
-            </div>
-          </DialogHeader>
-
-          <div className="p-4">
-            <div>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 h-96 flex items-center justify-center bg-gray-50">
-                <p className="text-gray-400 text-sm">
-                  Bukti Transfer Bank Placeholder
-                </p>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        title="Bukti Transfer Bank"
+        imageSrc={
+          selectedPayment?.proofPayment === "Lihat Bukti Bayar"
+            ? "/images/bukti-pembayaran.png"
+            : undefined
+        }
+        imageAlt={`Bukti Transfer Bank - ${selectedPayment?.name || "Payment"}`}
+      />
 
       {/* Manual Payment Sheet */}
       <Sheet
@@ -514,15 +535,17 @@ export default function VerifikasiPembayaran({
           <SheetHeader className="pb-4">
             <SheetTitle>Pembayaran Manual</SheetTitle>
             <SheetDescription>
-              Edit informasi pembayaran iuran jika terjadi kesalahan input atau
-              perubahan data.
+              Isi detail pembayaran untuk mencatat transaksi kas masuk dari
+              pembayaran iuran warga RT.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-4 px-5">
+          <div className="space-y-6 px-4">
             {/* Nama Warga */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Nama Warga</Label>
+              <Label className="text-sm font-medium">
+                Nama Warga <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={manualPaymentForm.name}
                 onValueChange={(value) =>
@@ -549,18 +572,43 @@ export default function VerifikasiPembayaran({
               </Select>
             </div>
 
-            {/* Nomor Rumah */}
+            {/* Kontak */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Nomor Rumah</Label>
+              <Label className="text-sm font-medium">
+                Kontak <span className="text-red-500">*</span>
+              </Label>
               <Input
-                value={manualPaymentForm.houseNumber}
+                value={manualPaymentForm.contact}
                 onChange={(e) =>
-                  updateManualPaymentForm("houseNumber", e.target.value)
+                  updateManualPaymentForm("contact", e.target.value)
                 }
-                placeholder="No1 Blok A"
-                disabled
-                className="bg-gray-100"
+                placeholder="089534924330"
               />
+            </div>
+
+            {/* Pembayaran */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Pembayaran <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={manualPaymentForm.payment}
+                onValueChange={(value) =>
+                  updateManualPaymentForm("payment", value)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Iuran RT" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Iuran RT">Iuran RT</SelectItem>
+                  <SelectItem value="Iuran Keamanan">Iuran Keamanan</SelectItem>
+                  <SelectItem value="Iuran Kebersihan">
+                    Iuran Kebersihan
+                  </SelectItem>
+                  <SelectItem value="Lainnya">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Periode Bayar/Bulan */}
@@ -582,17 +630,12 @@ export default function VerifikasiPembayaran({
               <Label className="text-sm font-medium">
                 Tanggal <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={manualPaymentForm.date}
-                  onChange={(e) =>
-                    updateManualPaymentForm("date", e.target.value)
-                  }
-                  placeholder="06/07/2025"
-                  className="pr-10"
-                />
-              </div>
+              <SingleDatePicker
+                value={manualPaymentForm.date}
+                onChange={(date) => updateManualPaymentForm("date", date)}
+                placeholder="06/07/2025"
+                buttonClassName="w-full"
+              />
             </div>
 
             {/* Total Tagihan */}
@@ -600,23 +643,71 @@ export default function VerifikasiPembayaran({
               <Label className="text-sm font-medium">
                 Total Tagihan <span className="text-red-500">*</span>
               </Label>
-              <div className="relative">
-                <Input
-                  value={manualPaymentForm.totalAmount}
-                  onChange={(e) =>
-                    updateManualPaymentForm("totalAmount", e.target.value)
-                  }
-                  placeholder="Rp120.000"
-                  className="pr-10"
-                />
-                <DollarSign className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
+              <Input
+                value={manualPaymentForm.totalAmount}
+                onChange={(e) =>
+                  updateManualPaymentForm("totalAmount", e.target.value)
+                }
+                placeholder="Rp120.000"
+              />
+            </div>
+
+            {/* Jumlah Bayar */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Jumlah Bayar <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                value={manualPaymentForm.paidAmount}
+                onChange={(e) =>
+                  updateManualPaymentForm("paidAmount", e.target.value)
+                }
+                placeholder="Rp100.000"
+              />
+            </div>
+
+            {/* Metode Bayar */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Metode Bayar <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={manualPaymentForm.paymentMethod}
+                onValueChange={(value) =>
+                  updateManualPaymentForm("paymentMethod", value)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Cash" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="qris">Qris</SelectItem>
+                  <SelectItem value="e-wallet">E-Wallet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Bukti Bayar */}
+            <div className="space-y-2">
+              <ChooseFile
+                label="Bukti Bayar"
+                id="manualProofPayment"
+                accept="image/*,.pdf"
+                onChange={(file) =>
+                  updateManualPaymentForm("proofPayment", file)
+                }
+                value={manualPaymentForm.proofPayment}
+                placeholder="Choose file"
+                required
+              />
             </div>
 
             {/* Action Button */}
-            <div className="pt-6 flex justify-end">
+            <div className="flex py-6 justify-end">
               <Button
-                className="bg-black text-white hover:bg-black/90"
+                className="w-fit bg-black text-white hover:bg-black/90"
                 onClick={handleManualPaymentSubmit}
               >
                 <DollarSign className="h-4 w-4 mr-2" />
@@ -642,7 +733,7 @@ export default function VerifikasiPembayaran({
           </SheetHeader>
 
           {selectedPayment && (
-            <div className="space-y-4 px-4">
+            <div className="space-y-6 px-4">
               {/* Nama Warga */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Nama Warga</Label>
@@ -690,10 +781,14 @@ export default function VerifikasiPembayaran({
               {/* Tanggal Bayar */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Tanggal Bayar</Label>
-                <Input
-                  value={selectedPayment.paymentDate}
+                <SingleDatePicker
+                  value={verificationForm.tanggalBayar}
+                  onChange={(date) =>
+                    updateVerificationForm("tanggalBayar", date)
+                  }
+                  placeholder="06/07/2025"
+                  buttonClassName="w-full bg-gray-50"
                   disabled
-                  className="bg-gray-50"
                 />
               </div>
 
@@ -703,7 +798,14 @@ export default function VerifikasiPembayaran({
                   Jumlah Bayar <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex flex-col items-start">
-                  <Input value="" placeholder="Rp120.000" className="pr-20" />
+                  <Input
+                    value={verificationForm.jumlahBayar}
+                    onChange={(e) =>
+                      updateVerificationForm("jumlahBayar", e.target.value)
+                    }
+                    placeholder="Rp120.000"
+                    className="pr-20"
+                  />
                   <div className="">
                     <span className="text-sm text-red-500">
                       Kurang Rp20.000
@@ -730,27 +832,16 @@ export default function VerifikasiPembayaran({
 
               {/* Bukti Bayar */}
               <div className="space-y-2">
-                <Label htmlFor="buktiBayar" className="text-sm font-medium">
-                  Bukti Bayar
-                </Label>
-                <div className="relative">
-                  <input
-                    id="buktiBayar"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div className="flex items-center space-x-2 px-3 py-2 border border-input rounded-md">
-                    <span className="font-medium text-sm">Choose file</span>
-                    <span className="text-sm text-gray-500">
-                      {buktiBayar ? buktiBayar.name : "No file chosen"}
-                    </span>
-                  </div>
-                </div>
+                <ChooseFile
+                  label="Bukti Bayar"
+                  id="verificationProofPayment"
+                  accept="image/*,.pdf"
+                  onChange={(file) =>
+                    updateVerificationForm("buktiPembayaran", file)
+                  }
+                  value={verificationForm.buktiPembayaran}
+                  placeholder="No file chosen"
+                />
               </div>
 
               {/* Action Buttons */}

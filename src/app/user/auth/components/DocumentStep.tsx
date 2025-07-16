@@ -11,7 +11,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { FormData } from "@/app/user/auth/components/MultiStepForm";
-
+import { ChooseFile } from "@/components/input/chooseFile";
 interface DocumentStepProps {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
@@ -33,7 +33,7 @@ export function DocumentStep({
   };
 
   const handleFileUpload = (
-    file: File,
+    file: File | null,
     field: "idCardPhoto" | "familyCardPhoto"
   ) => {
     updateFormData({ [field]: file });
@@ -56,56 +56,24 @@ export function DocumentStep({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* ID Card Photo */}
         <div className="space-y-2">
-          <Label htmlFor="idCardPhoto" className="text-sm font-medium">
-            Foto KTP *
-          </Label>
-          <div className="relative">
-            <input
-              id="idCardPhoto"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file, "idCardPhoto");
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <div className="flex items-center space-x-2 px-3 py-2 border border-input rounded-md">
-              <span className="font-medium text-sm">Choose file</span>
-              <span className="text-sm text-gray-500">
-                {formData.idCardPhoto
-                  ? formData.idCardPhoto.name
-                  : "No file chosen"}
-              </span>
-            </div>
-          </div>
+          <ChooseFile
+            label="Foto KTP *"
+            id="idCardPhoto"
+            accept="image/*"
+            onChange={(file) => handleFileUpload(file, "idCardPhoto")}
+            value={formData.idCardPhoto}
+          />
         </div>
 
         {/* Family Card Photo */}
         <div className="space-y-2">
-          <Label htmlFor="familyCardPhoto" className="text-sm font-medium">
-            Foto Kartu Keluarga *
-          </Label>
-          <div className="relative">
-            <input
-              id="familyCardPhoto"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file, "familyCardPhoto");
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <div className="flex items-center space-x-2 px-3 py-2 border border-input rounded-md">
-              <span className="font-medium text-sm">Choose file</span>
-              <span className="text-sm text-gray-500">
-                {formData.familyCardPhoto
-                  ? formData.familyCardPhoto.name
-                  : "No file chosen"}
-              </span>
-            </div>
-          </div>
+          <ChooseFile
+            label="Foto Kartu Keluarga *"
+            id="familyCardPhoto"
+            accept="image/*"
+            onChange={(file) => handleFileUpload(file, "familyCardPhoto")}
+            value={formData.familyCardPhoto}
+          />
         </div>
 
         {/* Emergency Phone */}

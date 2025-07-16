@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import StatusPembayaran from "./components/StatusPembayaran";
 import VerifikasiPembayaran from "./components/VerifikasiPembayaran";
+import { SingleDatePicker } from "@/components/input/singleDatePicker";
 // Define the Transaction type
 
 // Define filter state type
@@ -54,7 +55,7 @@ type NewPaymentForm = {
   contact: string;
   houseNumber: string;
   houseType: string;
-  dueDate: string;
+  dueDate: Date | undefined;
   amount: string;
 };
 
@@ -73,7 +74,7 @@ export default function TransaksiWargaPage() {
     contact: "",
     houseNumber: "",
     houseType: "",
-    dueDate: "",
+    dueDate: undefined,
     amount: "",
   });
 
@@ -111,12 +112,15 @@ export default function TransaksiWargaPage() {
       contact: "",
       houseNumber: "",
       houseType: "",
-      dueDate: "",
+      dueDate: undefined,
       amount: "",
     });
   };
 
-  const updateNewPaymentForm = (field: keyof NewPaymentForm, value: string) => {
+  const updateNewPaymentForm = (
+    field: keyof NewPaymentForm,
+    value: string | Date | undefined
+  ) => {
     setNewPaymentForm((prev) => ({
       ...prev,
       [field]: value,
@@ -130,7 +134,7 @@ export default function TransaksiWargaPage() {
           <h1 className="text-3xl font-bold text-foreground">
             Transaksi Warga
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Data lengkap iuran warga berdasarkan bulan, nominal, dan status
             pembayaran
           </p>
@@ -408,16 +412,15 @@ export default function TransaksiWargaPage() {
                       Jatuh tempo *
                     </Label>
                     <div className="relative">
-                      <Input
+                      <SingleDatePicker
                         id="dueDate"
-                        placeholder="20/06/2025"
+                        placeholder="Select date"
                         value={newPaymentForm.dueDate}
-                        onChange={(e) =>
-                          updateNewPaymentForm("dueDate", e.target.value)
+                        onChange={(date) =>
+                          updateNewPaymentForm("dueDate", date)
                         }
-                        className="pr-10"
+                        buttonClassName="w-full"
                       />
-                      <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     </div>
                   </div>
 
