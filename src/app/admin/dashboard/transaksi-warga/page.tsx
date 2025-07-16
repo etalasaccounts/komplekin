@@ -13,6 +13,7 @@ import {
   Calendar,
   FileText,
   ClipboardList,
+  WalletCards,
 } from "lucide-react";
 import {
   Select,
@@ -39,7 +40,11 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import StatusPembayaran from "./components/StatusPembayaran";
 import VerifikasiPembayaran from "./components/VerifikasiPembayaran";
+<<<<<<< HEAD
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
+=======
+import EmptyState from "../components/empty";
+>>>>>>> a826636 (add empty statte)
 // Define the Transaction type
 
 // Define filter state type
@@ -78,6 +83,9 @@ export default function TransaksiWargaPage() {
     amount: "",
   });
 
+  // Mock data: Ganti ini dengan data asli Anda.
+  // Jika array transaksi kosong, EmptyState akan ditampilkan.
+  const transactions = [];
   const handleResetFilters = () => {
     setFilters({
       dateFrom: undefined,
@@ -454,9 +462,21 @@ export default function TransaksiWargaPage() {
             </Sheet>
           </div>
         </div>
-        {activeTab === "status" && <StatusPembayaran searchTerm={searchTerm} />}
-        {activeTab === "verifikasi" && (
-          <VerifikasiPembayaran searchTerm={searchTerm} />
+        {transactions.length > 0 ? (
+          <>
+            {activeTab === "status" && (
+              <StatusPembayaran searchTerm={searchTerm} />
+            )}
+            {activeTab === "verifikasi" && (
+              <VerifikasiPembayaran searchTerm={searchTerm} />
+            )}
+          </>
+        ) : (
+          <EmptyState
+            icon={<WalletCards className="w-8 h-8 text-muted-foreground" />}
+            title="Belum Ada Transaksi"
+            description="Data transaksi akan muncul di sini setelah ada pembayaran yang dilakukan oleh warga."
+          />
         )}
       </div>
   );
