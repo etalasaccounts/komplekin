@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Filter, Eye, X, ChevronDown, Search, Calendar } from "lucide-react";
+import { Eye, X, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -29,21 +29,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { format } from "date-fns";
 import { PreviewImage } from "@/components/modal/previewImage";
+import FilterComponent, {
+  FilterState,
+} from "@/components/filter/filterComponent";
 
 type PemasukanItem = {
   id: number;
@@ -72,11 +61,10 @@ export default function Pemasukan() {
   const [transferReceiptModalOpen, setTransferReceiptModalOpen] =
     useState(false);
   const [selectedUser, setSelectedUser] = useState<PemasukanItem | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "semua",
+    status: "",
   });
 
   // Sample data for Pemasukan (Income)
@@ -175,12 +163,6 @@ export default function Pemasukan() {
     });
   };
 
-  const handleApplyFilters = () => {
-    // Apply filters logic here
-    console.log("Applying filters:", filters);
-    setFilterOpen(false);
-  };
-
   return (
     <div className="space-y-6">
       {/* Table Section */}
@@ -206,115 +188,12 @@ export default function Pemasukan() {
                   className="pl-10 w-80"
                 />
               </div>
-              <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Filter
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96 p-0" align="end">
-                  <div className="p-4">
-                    {/* Filter Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Filter</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFilterOpen(false)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Date Range */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">
-                            Date Range
-                          </Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleResetFilters}
-                            className="h-auto p-0 text-sm text-muted-foreground hover:text-foreground"
-                          >
-                            Reset
-                          </Button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label className="text-sm">Dari</Label>
-                            <div className="relative">
-                              <Input
-                                placeholder="20/06/2025"
-                                value={
-                                  filters.dateFrom
-                                    ? format(filters.dateFrom, "dd/MM/yyyy")
-                                    : ""
-                                }
-                                readOnly
-                                className="pr-10"
-                              />
-                              <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm">Sampai</Label>
-                            <div className="relative">
-                              <Input
-                                placeholder="20/06/2025"
-                                value={
-                                  filters.dateTo
-                                    ? format(filters.dateTo, "dd/MM/yyyy")
-                                    : ""
-                                }
-                                readOnly
-                                className="pr-10"
-                              />
-                              <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Status Filter */}
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Status</Label>
-                        <Select
-                          value={filters.status}
-                          onValueChange={(value) =>
-                            setFilters({ ...filters, status: value })
-                          }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Belum Bayar" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="belum">Belum Bayar</SelectItem>
-                            <SelectItem value="sudah">Sudah Bayar</SelectItem>
-                            <SelectItem value="semua">Semua Status</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Apply Filter Button */}
-                    <div className="mt-6">
-                      <Button
-                        onClick={handleApplyFilters}
-                        className="w-full bg-black text-white hover:bg-black/90"
-                      >
-                        <Filter className="h-4 w-4 mr-2" />
-                        Terapkan Filter
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <FilterComponent
+                filters={filters}
+                setFilters={(filters) => setFilters(filters)}
+                handleApplyFilters={() => {}}
+                handleResetFilters={handleResetFilters}
+              />
             </div>
           </div>
         </CardHeader>
