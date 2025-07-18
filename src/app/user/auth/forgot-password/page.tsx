@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import { KeyRound } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -42,12 +43,20 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-md mx-auto">
         <Card className="border-0 shadow-none gap-10">
-          <CardHeader className="text-center mt-6">
-            <div className="flex items-center justify-center space-x-2 mb-4">
+          <CardHeader className="text-center mt-4">
+            <div className="flex items-center justify-center space-x-2 mb-8">
               <Image src="/images/logo.png" alt="Logo" width={18} height={18} />
               <h1 className="text-lg font-semibold">KomplekIn</h1>
             </div>
-            <CardTitle className="text-xl mt-25">Lupa Kata Sandi? </CardTitle>
+            <div className="flex items-center justify-center">
+              <Image
+                src="/images/illustration/reset-password.svg"
+                alt="Logo"
+                width={170}
+                height={200}
+              />
+            </div>
+            <CardTitle className="text-xl mt-10">Lupa Kata Sandi? </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
               Masukkan Email yang terdaftar di KomplekIn
             </CardDescription>
@@ -76,7 +85,8 @@ export default function ForgotPasswordPage() {
                   className="w-full bg-foreground text-background hover:bg-foreground/90"
                   disabled={loading}
                 >
-                  {loading ? "Memproses..." : "Ubah Kata Sandi"}
+                  <KeyRound className="w-4 h-4" />
+                  {loading ? "Memproses..." : "Reset Kata Sandi"}
                 </Button>
 
                 {/* <Button
