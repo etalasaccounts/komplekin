@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,7 +31,7 @@ export function SingleDatePicker({
   label,
   value,
   onChange,
-  placeholder = "Select date",
+  placeholder = "Pilih tanggal",
   className,
   buttonClassName,
   id,
@@ -46,9 +47,9 @@ export function SingleDatePicker({
   };
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn("flex flex-col gap-2", className)}>
       {label && (
-        <Label htmlFor={id} className="px-1">
+        <Label htmlFor={id}>
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </Label>
@@ -60,29 +61,27 @@ export function SingleDatePicker({
             id={id}
             disabled={disabled}
             className={cn(
-              "justify-start font-normal",
-              !buttonClassName && "w-48", // Default width only if no custom buttonClassName
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground",
               error && "border-red-500",
-              buttonClassName,
-              !value && "text-muted-foreground"
+              buttonClassName
             )}
           >
-            {" "}
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            {value ? value.toLocaleDateString() : placeholder}
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value ? format(value, "PPP") : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="single"
             selected={value}
-            captionLayout="dropdown"
             onSelect={handleDateChange}
             disabled={disabled}
+            initialFocus
           />
         </PopoverContent>
       </Popover>
-      {error && <span className="text-red-500 text-sm px-1">{error}</span>}
+      {error && <span className="text-red-500 text-sm">{error}</span>}
     </div>
   );
 }
