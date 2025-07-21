@@ -241,8 +241,8 @@ export default function Pembayaran({
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-bas">Total Bayar</span>
-                <span className="text-bas">{paymentForm.jumlahBayar}</span>
+                <span className="text-base">Total Bayar</span>
+                <span className="text-base">{paymentForm.jumlahBayar}</span>
               </div>
             </div>
 

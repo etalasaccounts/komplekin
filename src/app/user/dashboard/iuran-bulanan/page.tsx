@@ -17,19 +17,6 @@ import {
 import Image from "next/image";
 import Pembayaran from "./components/Pembayaran";
 
-export const badgeStatus = (status: string) => {
-  if (status.includes("Menunggu Verifikasi")) {
-    return "bg-[#FFEFCC] text-[#A78025]";
-  }
-  if (status.includes("Lunas")) {
-    return "bg-[#C2F5DA] text-[#1A7544]";
-  }
-  if (status.includes("Terlambat")) {
-    return "bg-[#FFD5D8] text-[#AD1F2B]";
-  }
-  return "bg-[#D02533]";
-};
-
 type IuranItem = {
   keterangan: string;
   jatuhTempo: string;
@@ -50,6 +37,19 @@ export default function IuranBulananPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedIuran, setSelectedIuran] = useState<IuranItem | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  const badgeStatus = (status: string) => {
+    if (status.includes("Menunggu Verifikasi")) {
+      return "bg-[#FFEFCC] text-[#A78025]";
+    }
+    if (status.includes("Lunas")) {
+      return "bg-[#C2F5DA] text-[#1A7544]";
+    }
+    if (status.includes("Terlambat")) {
+      return "bg-[#FFD5D8] text-[#AD1F2B]";
+    }
+    return "bg-[#D02533]";
+  };
 
   const handleViewDetail = (item: IuranItem) => {
     setSelectedIuran(item);

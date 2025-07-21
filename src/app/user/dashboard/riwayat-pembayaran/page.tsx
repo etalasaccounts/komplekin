@@ -15,19 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export const badgeStatus = (status: string) => {
-  if (status.includes("Menunggu Verifikasi")) {
-    return "bg-[#FFEFCC] text-[#A78025]";
-  }
-  if (status.includes("Lunas")) {
-    return "bg-[#C2F5DA] text-[#1A7544]";
-  }
-  if (status.includes("Terlambat")) {
-    return "bg-[#FFD5D8] text-[#AD1F2B]";
-  }
-  return "bg-[#D02533]";
-};
-
 type IuranItem = {
   keterangan: string;
   jatuhTempo: string;
@@ -38,7 +25,20 @@ type IuranItem = {
   buktiBayar: string;
 };
 
-export default function RiwayatPembayaran() {
+export default function RiwayatPembayaranPage() {
+  const badgeStatus = (status: string) => {
+    if (status.includes("Menunggu Verifikasi")) {
+      return "bg-[#FFEFCC] text-[#A78025]";
+    }
+    if (status.includes("Lunas")) {
+      return "bg-[#C2F5DA] text-[#1A7544]";
+    }
+    if (status.includes("Terlambat")) {
+      return "bg-[#FFD5D8] text-[#AD1F2B]";
+    }
+    return "bg-[#D02533]";
+  };
+
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
