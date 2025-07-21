@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,8 +132,7 @@ const pendaftaranData: (WargaData & { id: number })[] = [
   },
 ];
 
-
-export default function ManajemenWargaPage() {
+function ManajemenWarga() {
   const [activeTab, setActiveTab] = useState("pendaftaran");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -346,4 +345,12 @@ export default function ManajemenWargaPage() {
     )}
   </div>
   );
+}
+
+export default function ManajemenWargaPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ManajemenWarga />
+    </Suspense>
+  )
 }
