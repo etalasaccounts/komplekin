@@ -7,10 +7,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { FormData } from "@/app/user/auth/components/MultiStepForm";
+import { FormData } from "@/app/user/auth/components/PersonalInfoStep";
 import { ChooseFile } from "@/components/input/chooseFile";
 interface DocumentStepProps {
   formData: FormData;
@@ -45,7 +45,7 @@ export function DocumentStep({
       <div className="space-y-2">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xl font-semibold">Isi Data Diri Anda</h2>
-          <p className="text-sm font-medium text-black">Step 1 / 2</p>
+          <p className="text-sm font-medium text-black">Step 2 / 2</p>
         </div>
         <p className="text-sm font-normal text-muted-foreground">
           Kami membutuhkan informasi dasar untuk menghubungkan Anda dengan unit
@@ -57,7 +57,7 @@ export function DocumentStep({
         {/* ID Card Photo */}
         <div className="space-y-2">
           <ChooseFile
-            label="Foto KTP *"
+            label="Foto KTP"
             id="idCardPhoto"
             accept="image/*"
             onChange={(file) => handleFileUpload(file, "idCardPhoto")}
@@ -68,7 +68,7 @@ export function DocumentStep({
         {/* Family Card Photo */}
         <div className="space-y-2">
           <ChooseFile
-            label="Foto Kartu Keluarga *"
+            label="Foto Kartu Keluarga"
             id="familyCardPhoto"
             accept="image/*"
             onChange={(file) => handleFileUpload(file, "familyCardPhoto")}
@@ -79,7 +79,7 @@ export function DocumentStep({
         {/* Emergency Phone */}
         <div className="space-y-2">
           <Label htmlFor="emergencyPhone" className="text-sm font-medium">
-            Nomor HP Darurat *
+            Nomor HP Darurat
           </Label>
           <Input
             className="text-sm"
@@ -94,7 +94,7 @@ export function DocumentStep({
         {/* Head of Family */}
         <div className="space-y-2">
           <Label htmlFor="headOfFamily" className="text-sm font-medium">
-            Nama Kepala Keluarga *
+            Nama Kepala Keluarga
           </Label>
           <Input
             className="text-sm"
@@ -159,7 +159,9 @@ export function DocumentStep({
             type="submit"
             className="w-full bg-foreground text-background hover:bg-foreground/90 py-3 text-sm font-medium"
             size="lg"
+            onClick={handleSubmit}
           >
+            <UserPlus className="w-4 h-4" />
             Daftar Jadi Warga
           </Button>
           <p className="text-[10px] text-muted-foreground text-center mt-2">

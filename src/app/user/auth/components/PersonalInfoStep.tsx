@@ -9,8 +9,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FormData } from "./MultiStepForm";
+import { ArrowRight } from "lucide-react";
 
+export interface FormData {
+  fullName: string;
+  phoneNumber: string;
+  email: string;
+  address: string;
+  typeOfHouse: string;
+  ownershipStatus: string;
+  moveInDate: Date | undefined;
+  idCardPhoto: File | null;
+  familyCardPhoto: File | null;
+  emergencyPhone: string;
+  headOfFamily: string;
+  occupation: string;
+}
 interface PersonalInfoStepProps {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
@@ -108,6 +122,21 @@ export function PersonalInfoStep({
             rows={3}
           />
         </div>
+        {/* Tipe Rumah */}
+        <div className="space-y-2">
+          <Label htmlFor="tipeRumah" className="text-sm font-medium">
+            Tipe Rumah
+          </Label>
+          <Input
+            className="text-sm"
+            id="tipeRumah"
+            type="text"
+            placeholder="Tipe 24 B"
+            value={formData.typeOfHouse}
+            onChange={(e) => updateFormData({ typeOfHouse: e.target.value })}
+            // required
+          />
+        </div>
 
         {/* Ownership Status */}
         <div className="space-y-2">
@@ -138,7 +167,8 @@ export function PersonalInfoStep({
             className="w-full bg-foreground text-background hover:bg-foreground/90 py-3 text-sm font-medium"
             size="lg"
           >
-            Lanjut
+            Selanjutnya
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </form>
