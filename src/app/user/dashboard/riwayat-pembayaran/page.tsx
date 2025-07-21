@@ -7,15 +7,13 @@ import FilterComponent, {
 } from "@/components/filter/filterComponent";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, FileText, X } from "lucide-react";
+import { Calendar, Download, ReceiptText, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import Image from "next/image";
-import Pembayaran from "./components/Pembayaran";
 
 type IuranItem = {
   keterangan: string;
@@ -27,17 +25,7 @@ type IuranItem = {
   buktiBayar: string;
 };
 
-export default function IuranBulananPage() {
-  const [filters, setFilters] = useState<FilterState>({
-    dateFrom: undefined,
-    dateTo: undefined,
-    status: "",
-  });
-
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedIuran, setSelectedIuran] = useState<IuranItem | null>(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-
+export default function RiwayatPembayaranPage() {
   const badgeStatus = (status: string) => {
     if (status.includes("Menunggu Verifikasi")) {
       return "bg-[#FFEFCC] text-[#A78025]";
@@ -51,21 +39,25 @@ export default function IuranBulananPage() {
     return "bg-[#D02533]";
   };
 
+  const [filters, setFilters] = useState<FilterState>({
+    dateFrom: undefined,
+    dateTo: undefined,
+    status: "",
+  });
+
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedIuran, setSelectedIuran] = useState<IuranItem | null>(null);
+
   const handleViewDetail = (item: IuranItem) => {
     setSelectedIuran(item);
     setDetailModalOpen(true);
-  };
-
-  const handlePayment = (item: IuranItem) => {
-    setSelectedIuran(item);
-    setPaymentModalOpen(true);
   };
 
   const iuranBulanan = [
     {
       keterangan: "Iuran Juli 2025",
       jatuhTempo: "23 Juli 2025",
-      status: "Menunggu Verifikasi",
+      status: "Lunas",
       nominal: "Rp120.000",
       metode: "Transfer",
       tanggalBayar: "23 Juli 2025",
@@ -74,7 +66,7 @@ export default function IuranBulananPage() {
     {
       keterangan: "Iuran Juni 2025",
       jatuhTempo: "23 Juni 2025",
-      status: "Terlambat 30 Hari",
+      status: "Lunas",
       nominal: "Rp120.000",
       metode: "Transfer",
       tanggalBayar: "23 Juni 2025",
@@ -83,7 +75,7 @@ export default function IuranBulananPage() {
     {
       keterangan: "Iuran Mei 2025",
       jatuhTempo: "23 Mei 2025",
-      status: "Terlambat 30 Hari",
+      status: "Lunas",
       nominal: "Rp120.000",
       metode: "Transfer",
       tanggalBayar: "23 Mei 2025",
@@ -92,7 +84,7 @@ export default function IuranBulananPage() {
     {
       keterangan: "Iuran April 2025",
       jatuhTempo: "23 April 2025",
-      status: "Terlambat 30 Hari",
+      status: "Lunas",
       nominal: "Rp120.000",
       metode: "Transfer",
       tanggalBayar: "23 April 2025",
@@ -101,7 +93,7 @@ export default function IuranBulananPage() {
   ];
   return (
     <div className="space-y-6">
-      <p className="text-xl font-medium">Daftar Iuran Bulanan</p>
+      <p className="text-xl font-medium">Riwayat Pembayaran Iuran</p>
       <div className="flex justify-end">
         <FilterComponent
           filters={filters}
@@ -131,29 +123,18 @@ export default function IuranBulananPage() {
               <div className="flex items-center gap-1 mb-2">
                 <Calendar className="w-4 h-4" />
                 <p className="text-xs">
-                  Jatuh Tempo: <span>{item.jatuhTempo}</span>
+                  Dibayar: <span>{item.jatuhTempo}</span>
                 </p>
               </div>
               <p className="text-2xl font-semibold">{item.nominal}</p>
               <div className="flex items-center justify-end mt-4">
-                {item.status === "Menunggu Verifikasi" && (
-                  <Button
-                    className="text-sm font-medium rounded-lg"
-                    onClick={() => handleViewDetail(item)}
-                  >
-                    <FileText className="w-4 h-4" />
-                    Lihat Detail
-                  </Button>
-                )}
-                {item.status === "Terlambat 30 Hari" && (
-                  <Button
-                    className="text-sm font-medium rounded-lg"
-                    onClick={() => handlePayment(item)}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    Lunasi Sekarang
-                  </Button>
-                )}
+                <Button
+                  className="text-sm font-medium rounded-lg"
+                  onClick={() => handleViewDetail(item)}
+                >
+                  <ReceiptText className="w-4 h-4" />
+                  Lihat Bukti Bayar
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -165,7 +146,7 @@ export default function IuranBulananPage() {
         <DialogContent className="max-w-xs" showCloseButton={false}>
           <DialogHeader className="flex flex-row items-center justify-between p-0">
             <DialogTitle className="text-lg font-semibold">
-              Detail Iuran
+              Detail Bukti Pembayaran
             </DialogTitle>
             <Button
               variant="ghost"
@@ -179,12 +160,10 @@ export default function IuranBulananPage() {
 
           {selectedIuran && (
             <div className="space-y-4 pt-4">
-              {/* Status Pembayaran */}
+              {/* Nama Iuran */}
               <div>
-                <label className="text-sm text-gray-500">
-                  Status Pembayaran
-                </label>
-                <p className="text-sm text-black">{selectedIuran.status}</p>
+                <label className="text-sm text-gray-500">Nama Iuran</label>
+                <p className="text-sm text-black">{selectedIuran.keterangan}</p>
               </div>
 
               {/* Tota Pembayaran */}
@@ -203,37 +182,25 @@ export default function IuranBulananPage() {
 
               {/* Tanggal Bayar */}
               <div>
-                <label className="text-sm text-gray-500">Tanggal Bayar</label>
+                <label className="text-sm text-gray-500 ">Tanggal Bayar</label>
                 <p className="text-sm text-black">
                   {selectedIuran.tanggalBayar}
                 </p>
               </div>
 
-              {/* Bukti Bayar */}
-              <div>
-                <label className="text-sm text-gray-500">Bukti Bayar</label>
-                <div className="mt-2">
-                  <div className="w-full h-32 relative rounded-lg overflow-hidden bg-gray-50 border">
-                    <Image
-                      src={`/${selectedIuran.buktiBayar}`}
-                      alt="Bukti Pembayaran"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </div>
+              <div className="flex justify-end mt-10">
+                <Button
+                  className="w-fit px-2 bg-black text-white hover:bg-black/90"
+                  size="icon"
+                >
+                  <Download className="w-4 h-4" />
+                  Unduh Bukti Pembayaran
+                </Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Payment Modal */}
-      <Pembayaran
-        open={paymentModalOpen}
-        onOpenChange={setPaymentModalOpen}
-        selectedIuran={selectedIuran}
-      />
     </div>
   );
 }

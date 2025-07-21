@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { PersonalInfoStep } from "@/app/user/auth/components/PersonalInfoStep";
 import { DocumentStep } from "@/app/user/auth/components/DocumentStep";
-import { FormData } from "@/app/user/auth/components/MultiStepForm";
+import { FormData } from "@/app/user/auth/components/PersonalInfoStep";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function RegisterPage() {
     headOfFamily: "",
     occupation: "",
     moveInDate: undefined,
+    typeOfHouse: "",
   });
 
   const steps = [
@@ -51,7 +52,7 @@ export default function RegisterPage() {
   const handleSubmit = () => {
     console.log("Form submitted:", formData);
     // Navigate to dashboard after successful registration
-    router.push("/user/dashboard");
+    router.push("/user/auth/waiting-approval");
   };
 
   const CurrentStepComponent = steps[currentStep].component;
