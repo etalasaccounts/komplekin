@@ -1,15 +1,47 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Command } from "lucide-react";
+import { ArrowRight, Command, Loader2 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { signIn, loading } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      toast.error("Silakan isi semua field yang diperlukan.");
+      return;
+    }
+
+    const result = await signIn(email, password);
+    
+    if (result.success) {
+      toast.success("Login berhasil! Mengalihkan ke dashboard...");
+      setTimeout(() => {
+        router.push(result.redirectPath!);
+      }, 1000);
+    } else {
+      toast.error(result.error || "Login gagal. Periksa email dan password Anda.");
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
@@ -40,43 +72,59 @@ export function LoginForm({
               </div>
             </div>
           </div>
-          <form className="p-6 md:p-8 flex flex-col justify-center">
+          <form onSubmit={handleSubmit} className="p-6 md:p-8 flex flex-col justify-center">
             <div className="flex flex-col gap-6 w-full">
               <div className="flex flex-col items-center text-center gap-2">
                 <h1 className="text-2xl font-bold">Selamat Datang</h1>
                 <p className="text-muted-foreground text-balance text-sm">
-                  Masukkan nama pengguna Anda di bawah ini untuk masuk akun Anda
+                  Masukkan email dan password Anda di bawah ini untuk masuk akun Anda
                 </p>
               </div>
+              
               <div className="grid gap-3">
-                <Label htmlFor="username">Nama Pengguna</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Masukan nama pengguna"
+                  id="email"
+                  type="email"
+                  placeholder="Masukan email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
               <div className="grid gap-3">
                 <div className="flex items-center">
                   <Label htmlFor="password">Kata Sandi</Label>
-                  <a
-                    href="#"
+                  <Link
+                    href="/admin/auth/forgot-password"
                     className="ml-auto text-sm underline-offset-2 hover:underline"
                   >
                     Lupa kata sandi?
-                  </a>
+                  </Link>
                 </div>
                 <Input
                   id="password"
                   type="password"
                   placeholder="Masukan kata sandi"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
-              <Button type="submit" className="w-full flex justify-center items-center gap-2 ">
+              <Button type="submit" className="w-full flex justify-center items-center gap-2" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <p className="text-sm font-semibold">Masuk...</p>
+                  </>
+                ) : (
+                  <>
                 <p className="text-sm font-semibold">Masuk</p>
                 <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </Button>
             </div>
           </form>
