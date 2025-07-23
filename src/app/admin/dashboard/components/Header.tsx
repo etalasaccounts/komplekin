@@ -31,18 +31,6 @@ const Header = () => {
     window.location.href = '/admin/auth';
   };
 
-  const formatDisplayName = (name: string | null | undefined): string => {
-    if (!name) return 'Admin';
-    const words = name.split(' ');
-    if (words.length > 2) {
-      return words.slice(0, 2).join(' ');
-    }
-    return name;
-  };
-
-  const adminName = formatDisplayName(profile?.fullname);
-  const adminInitial = (profile?.fullname || 'A').charAt(0).toUpperCase();
-
   const navigationItems = [
     {
       name: "Dashboard",
@@ -109,9 +97,9 @@ const Header = () => {
                 <Button variant="outline" className="rounded-md border py-5">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="/placeholder.svg" alt="Admin" />
-                    <AvatarFallback>{adminInitial}</AvatarFallback>
+                    <AvatarFallback>{profile?.fullname?.charAt(0) || 'A'}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{adminName}</span>
+                  <span className="text-sm">{profile?.fullname || 'Admin'}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

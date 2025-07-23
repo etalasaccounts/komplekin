@@ -6,7 +6,7 @@ import { AuthUser } from '@/types/supabase'
 
 export const useAuth = () => {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [profile, setProfile] = useState<{ fullname: string, email: string } | null>(null);
+  const [profile, setProfile] = useState<{ id: string, fullname: string, email: string } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -15,7 +15,14 @@ export const useAuth = () => {
       const { user, role, profile } = await authService.getAuthenticatedUserProfile();
       setUser(user as AuthUser)
       setUserRole(role)
-      setProfile(profile)
+      
+      // Ensure profile is a single object, not array
+      if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+        setProfile(profile)
+      } else {
+        setProfile(null)
+      }
+      
       setLoading(false)
     }
 

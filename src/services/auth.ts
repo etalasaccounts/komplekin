@@ -48,7 +48,6 @@ export const authService = {
       .single()
 
     if (error) {
-      console.error('Error fetching user permissions:', error)
       return null
     }
 
@@ -56,7 +55,11 @@ export const authService = {
   },
 
   // Get user with profile and role from database
-  async getAuthenticatedUserProfile() {
+  async getAuthenticatedUserProfile(): Promise<{
+    user: User | null;
+    role: string | null;
+    profile: { id: string; fullname: string; email: string } | null;
+  }> {
     const supabase = this.getClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -64,33 +67,46 @@ export const authService = {
       return { user: null, role: null, profile: null }
     }
 
-    const { data, error } = await supabase
-      .from('user_permissions')
-      .select(`
-        role,
-        profiles (
-          id,
-          fullname,
-          email
-        )
-      `)
-      .eq('user_id', user.id)
-      .single()
+    try {
+      console.log('🔍 Fetching data for user:', user.id)
+      
+      const { data, error } = await supabase
+        .from('user_permissions')
+        .select(`
+          role,
+          user_status,
+          profiles:profile_id (
+            id,
+            fullname,
+            email
+          )
+        `)
+        .eq('user_id', user.id)
+        .single()
 
-    if (error || !data) {
-      console.error('Error fetching user profile and permissions:', error)
+      console.log('📊 Query result:', { data, error })
+
+      if (error || !data) {
+        console.log('❌ Error or no data found:', error)
+        return { user, role: null, profile: null }
+      }
+
+      console.log('✅ Success! Profile data:', data.profiles)
+
+      // Ensure profiles is a single object, not array
+      const profileData = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+
+      return {
+        user,
+        role: data.role,
+        profile: profileData || null
+      }
+
+    } catch (err) {
+      console.log('💥 Exception caught:', err)
       return { user, role: null, profile: null }
     }
-
-    const profileData = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
-
-    return {
-      user,
-      role: data.role,
-      profile: profileData,
-    }
   },
-
 
   // Get session
   async getSession() {

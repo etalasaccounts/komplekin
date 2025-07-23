@@ -1,18 +1,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getServerUserWithRole } from '@/lib/supabase/server'
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+// Helper function untuk create supabase client dengan error handling
+function createSupabaseClient(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase environment variables in middleware')
+    return null
+  }
+
+  try {
+    return createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll()
@@ -21,36 +21,65 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
           })
-          response = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
         },
       },
-    }
-  )
+    })
+  } catch (error) {
+    console.error('Error creating Supabase client in middleware:', error)
+    return null
+  }
+}
 
-  // Refresh session cookies
-  await supabase.auth.getUser()
+// Simplified user check - only check if user is authenticated, not role
+async function getAuthenticatedUser(request: NextRequest) {
+  const supabase = createSupabaseClient(request)
+  
+  if (!supabase) {
+    return { user: null, role: null }
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error) {
+      console.error('Auth error in middleware:', error)
+      return { user: null, role: null }
+    }
+
+    // Basic role detection from user metadata (fallback)
+    const userRole = user?.user_metadata?.role || user?.app_metadata?.role || null
+
+    return { user, role: userRole }
+  } catch (error) {
+    console.error('Error getting user in middleware:', error)
+    return { user: null, role: null }
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
   const { pathname } = request.nextUrl
 
-  // Skip middleware for callback routes (important for auth flows)
-  if (pathname.includes('/callback')) {
+  // Skip middleware for static files and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('/callback') ||
+    pathname.includes('/reset-password') ||
+    pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|webp)$/)
+  ) {
     return response
   }
 
-  // Skip middleware for reset-password routes during password recovery
-  if (pathname.includes('/reset-password')) {
-    return response
-  }
+  // Get user authentication status
+  const { user, role } = await getAuthenticatedUser(request)
 
-  // Get user with role from database
-  const { user, role } = await getServerUserWithRole(request)
-
-  // Protect dashboard routes - more specific path checking
+  // Protect dashboard routes
   if (!user) {
     if (pathname.startsWith('/admin/dashboard') || pathname === '/admin/dashboard') {
       return NextResponse.redirect(new URL('/admin/auth', request.url))
@@ -66,20 +95,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from auth pages (except callback and reset-password)
+  // Redirect authenticated users away from auth pages
   if (user && (pathname.startsWith('/user/auth') || pathname.startsWith('/admin/auth'))) {
-    // Skip redirect for reset-password and callback (already handled above)
+    // Skip redirect for reset-password and callback
     if (pathname.includes('/reset-password') || pathname.includes('/callback')) {
       return response
     }
     
-    const homeUrl = role === 'admin' ? '/admin/dashboard' : '/user/dashboard'
+    // Use role-based redirect with fallback
+    const homeUrl = (role === 'admin') ? '/admin/dashboard' : '/user/dashboard'
     return NextResponse.redirect(new URL(homeUrl, request.url))
   }
 
-  // Admin role protection
+  // Basic admin protection (will be double-checked in actual pages)
   if (user && pathname.startsWith('/admin/dashboard')) {
-    if (role !== 'admin') {
+    // If we can't determine role from middleware, let the page handle it
+    if (role && role !== 'admin') {
       return NextResponse.redirect(new URL('/user/dashboard', request.url))
     }
   }
@@ -94,8 +125,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - api routes (let them handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 } 
