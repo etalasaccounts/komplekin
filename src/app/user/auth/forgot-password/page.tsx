@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -12,12 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { KeyRound } from "lucide-react";
 import { authService } from "@/services/auth";
 import { toast } from "sonner";
 
-export default function ForgotPasswordPage() {
+function UserForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -118,5 +119,25 @@ export default function ForgotPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="p-6 text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Memuat...</h3>
+              <p className="text-sm text-muted-foreground">Menyiapkan halaman...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <UserForgotPasswordForm />
+    </Suspense>
   );
 }
