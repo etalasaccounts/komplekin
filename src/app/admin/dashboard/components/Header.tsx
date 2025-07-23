@@ -20,9 +20,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const pathname = usePathname();
+  const { profile, signOut, loading } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/admin/auth';
+  };
+
+  const formatDisplayName = (name: string | null | undefined): string => {
+    if (!name) return 'Admin';
+    const words = name.split(' ');
+    if (words.length > 2) {
+      return words.slice(0, 2).join(' ');
+    }
+    return name;
+  };
+
+  const adminName = formatDisplayName(profile?.fullname);
+  const adminInitial = (profile?.fullname || 'A').charAt(0).toUpperCase();
 
   const navigationItems = [
     {
@@ -90,9 +109,9 @@ const Header = () => {
                 <Button variant="outline" className="rounded-md border py-5">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src="/placeholder.svg" alt="Admin" />
-                    <AvatarFallback>MA</AvatarFallback>
+                    <AvatarFallback>{adminInitial}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">Mathew Alexander</span>
+                  <span className="text-sm">{adminName}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -101,9 +120,13 @@ const Header = () => {
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer text-black">
+                <DropdownMenuItem
+                  className="cursor-pointer text-black"
+                  onClick={handleLogout}
+                  disabled={loading}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
+                  <span>{loading ? 'Logging out...' : 'Logout'}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

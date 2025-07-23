@@ -2,51 +2,96 @@
 
 import { useState, useEffect } from 'react'
 import { authService } from '@/services/auth'
-import { AuthUser, AuthSession } from '@/types/supabase'
+import { AuthUser } from '@/types/supabase'
 
 export const useAuth = () => {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [session, setSession] = useState<AuthSession | null>(null)
+  const [profile, setProfile] = useState<{ fullname: string, email: string } | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await authService.getSession()
-      setSession(session as AuthSession)
-      setUser(session?.user as AuthUser || null)
+      const { user, role, profile } = await authService.getAuthenticatedUserProfile();
+      setUser(user as AuthUser)
+      setUserRole(role)
+      setProfile(profile)
       setLoading(false)
     }
 
     getInitialSession()
 
-    // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange(
-      async (event, session) => {
-        setSession(session as AuthSession)
-        setUser(session?.user as AuthUser || null)
-        setLoading(false)
+      (event) => {
+        if (event === 'SIGNED_IN') {
+          getInitialSession();
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          setUserRole(null);
+        }
       }
     )
 
     return () => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
     }
   }, [])
 
   const signOut = async () => {
+    setLoading(true);
+    try {
+      const { error } = await authService.signOut();
+      if (error) {
+        throw error;
+      }
+      // State cleanup is handled by onAuthStateChange
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
     setLoading(true)
-    await authService.signOut()
-    setUser(null)
-    setSession(null)
-    setLoading(false)
+    try {
+      const { data, error } = await authService.signIn(email, password)
+      
+      if (error) {
+        setLoading(false)
+        return { success: false, error: 'Email atau password salah' }
+      }
+
+      if (data.user) {
+        // Get role from database instead of user_metadata
+        const userPermissions = await authService.getUserPermissions(data.user.id)
+        
+        if (!userPermissions?.role) {
+          setLoading(false)
+          return { success: false, error: 'User tidak memiliki role yang valid' }
+        }
+        
+        const redirectPath = userPermissions.role === 'admin' ? '/admin/dashboard' : '/user/dashboard'
+        setLoading(false)
+        return { success: true, redirectPath }
+      }
+
+      setLoading(false)
+      return { success: false, error: 'Login gagal' }
+    } catch {
+      setLoading(false)
+      return { success: false, error: 'Terjadi kesalahan saat login' }
+    }
   }
 
   return {
     user,
-    session,
+    profile,
+    userRole,
     loading,
     signOut,
+    signIn,
     isAuthenticated: !!user,
   }
 } 

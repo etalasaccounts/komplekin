@@ -12,32 +12,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
 export default function LoginPage() {
   const router = useRouter();
+  const { signIn, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    // TODO: Implement actual login logic
-    console.log("Login attempt:", { email, password });
+    if (!email || !password) {
+      toast.error("Silakan isi semua field yang diperlukan.");
+      return;
+    }
 
-    // Simulate login process
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to dashboard after successful login
-      router.push("/user/auth/verification/success");
-    }, 1000);
+    const result = await signIn(email, password);
+    
+    if (result.success) {
+      toast.success("Login berhasil! Mengalihkan ke dashboard...");
+      setTimeout(() => {
+        router.push(result.redirectPath!);
+      }, 1000);
+    } else {
+      toast.error(result.error || 'Login gagal. Periksa email dan password Anda.');
+    }
   };
-
-  // const handleBack = () => {
-  //   router.push("/user");
-  // };
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,6 +82,8 @@ export default function LoginPage() {
                   placeholder="Masukkan email Anda"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
                 />
               </div>
 
@@ -91,31 +98,38 @@ export default function LoginPage() {
                   placeholder="Masukkan password Anda"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
                 />
                 <div className="flex justify-end">
                   <Link href="/user/auth/forgot-password">
-                    <p className="text-xs text-black ">Lupa password?</p>
+                    <p className="text-xs text-black">Lupa password?</p>
                   </Link>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 pt-2 text-sm font-medium">
+              <div className="flex flex-col gap-3 pt-4 text-sm font-medium">
                 <Button
                   type="submit"
                   className="w-full bg-foreground text-background hover:bg-foreground/90"
                   disabled={loading}
                 >
-                  {loading ? "Memproses..." : "Masuk"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    "Masuk"
+                  )}
                 </Button>
 
-                {/* <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleBack}
-                >
-                  Kembali
-                </Button> */}
+                <div className="text-center text-sm">
+                  Belum punya akun?{" "}
+                  <Link href="/user/auth/register" className="underline">
+                    Daftar di sini
+                  </Link>
+                </div>
               </div>
             </form>
           </CardContent>
