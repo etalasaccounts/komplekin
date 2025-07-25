@@ -4,7 +4,7 @@ export interface InvitationData {
   email: string
   fullname: string
   clusterId: string
-  role?: 'admin' | 'warga'
+  role?: 'admin' | 'user' // Sesuai dengan database role enum
   noTelp?: string
   address?: string
   houseType?: string
@@ -58,7 +58,7 @@ export const invitationService = {
           email: data.email,
           fullname: data.fullname,
           clusterId: data.clusterId,
-          role: data.role || 'warga',
+          role: data.role || 'user', // Frontend kirim 'user' langsung sesuai database
           noTelp: data.noTelp || '',
           address: data.address || '',
           houseType: data.houseType || '',

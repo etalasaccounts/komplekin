@@ -67,21 +67,25 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Siapkan metadata untuk user baru
+    // Role sudah sesuai dengan database enum, tidak perlu mapping
+    
     const userMetadata = {
-      cluster_id: clusterId,
+      clusterId: clusterId,
       fullname,
-      role,
-      no_telp: noTelp,
+      role, // Role sudah sesuai: 'user' atau 'admin'
+      noTelp: noTelp,
       address,
-      house_type: houseType,
-      house_number: houseNumber,
-      ownership_status: ownershipStatus,
-      head_of_family: headOfFamily,
-      emergency_job: emergencyJob,
-      moving_date: movingDate,
-      citizen_status: citizenStatus,
-      user_status: 'active'
+      houseType: houseType,
+      houseNumber: houseNumber,
+      ownershipStatus: ownershipStatus,
+      headOfFamily: headOfFamily,
+      emergencyJob: emergencyJob,
+      movingDate: movingDate,
+      citizenStatus: citizenStatus
     }
+
+    // 4. Log metadata untuk debugging
+    console.log('User Metadata yang akan dikirim:', JSON.stringify(userMetadata, null, 2));
 
     // 4. Kirim undangan menggunakan Admin API
     const { data: inviteResult, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(

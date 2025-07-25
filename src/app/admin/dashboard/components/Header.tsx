@@ -99,7 +99,12 @@ const Header = () => {
                     <AvatarImage src="/placeholder.svg" alt="Admin" />
                     <AvatarFallback>{profile?.fullname?.charAt(0) || 'A'}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{profile?.fullname || 'Admin'}</span>
+                  <span className="text-sm">
+                    {profile?.fullname 
+                      ? profile.fullname.split(' ').slice(0, 2).join(' ')
+                      : 'Admin'
+                    }
+                  </span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

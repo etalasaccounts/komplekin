@@ -1,6 +1,20 @@
 import { createClient } from '@/lib/supabase/client'
 import { AuthResponse, User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 
+// Simple cache for user profile to avoid repeated fetches
+const profileCache: {
+  userId: string | null
+  data: { user: User | null; role: string | null; profile: { id: string; fullname: string; email: string } | null; cluster: { id: string; cluster_name: string } | null } | null
+  timestamp: number
+} = {
+  userId: null,
+  data: null,
+  timestamp: 0
+}
+
+// Cache expiry: 5 minutes
+const CACHE_EXPIRY = 5 * 60 * 1000
+
 export const authService = {
   // Get supabase client
   getClient() {
@@ -28,6 +42,10 @@ export const authService = {
   // Sign out
   async signOut(): Promise<{ error: Error | null }> {
     const supabase = this.getClient()
+    // Clear cache on sign out
+    profileCache.userId = null
+    profileCache.data = null
+    profileCache.timestamp = 0
     return await supabase.auth.signOut()
   },
 
@@ -59,52 +77,79 @@ export const authService = {
     user: User | null;
     role: string | null;
     profile: { id: string; fullname: string; email: string } | null;
+    cluster: { id: string; cluster_name: string } | null;
   }> {
     const supabase = this.getClient()
+    
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      return { user: null, role: null, profile: null }
+      return { user: null, role: null, profile: null, cluster: null }
+    }
+
+    // Check if we have valid cached data (extended cache time for better performance)
+    if (
+      profileCache.userId === user.id && 
+      profileCache.data && 
+      (Date.now() - profileCache.timestamp) < CACHE_EXPIRY
+    ) {
+      console.log('✅ Using cached data for user:', user.id, 'Age:', Math.floor((Date.now() - profileCache.timestamp) / 1000), 'seconds')
+      return profileCache.data
     }
 
     try {
-      console.log('🔍 Fetching data for user:', user.id)
+      console.log('🔄 Fetching fresh data for user:', user.id)
       
-      const { data, error } = await supabase
+      // Get user permissions dengan profiles dan clusters sekaligus dalam satu query
+      const { data: permissionsData, error: permissionsError } = await supabase
         .from('user_permissions')
         .select(`
           role,
-          user_status,
-          profiles:profile_id (
+          profiles (
             id,
             fullname,
             email
+          ),
+          clusters (
+            id,
+            cluster_name
           )
         `)
         .eq('user_id', user.id)
         .single()
 
-      console.log('📊 Query result:', { data, error })
-
-      if (error || !data) {
-        console.log('❌ Error or no data found:', error)
-        return { user, role: null, profile: null }
+      if (permissionsError) {
+        console.log('❌ Error fetching permissions:', permissionsError)
+        return { user, role: null, profile: null, cluster: null }
       }
 
-      console.log('✅ Success! Profile data:', data.profiles)
+      // Extract profile dari nested select (handle array result)
+      const userProfile = Array.isArray(permissionsData?.profiles) 
+        ? permissionsData.profiles[0] || null 
+        : permissionsData?.profiles || null;
 
-      // Ensure profiles is a single object, not array
-      const profileData = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+      const clusterData = Array.isArray(permissionsData?.clusters)
+        ? permissionsData.clusters[0] || null
+        : permissionsData?.clusters || null;
 
-      return {
+      const result = {
         user,
-        role: data.role,
-        profile: profileData || null
+        role: permissionsData.role,
+        profile: userProfile,
+        cluster: clusterData
       }
 
+      // Cache the result
+      profileCache.userId = user.id
+      profileCache.data = result
+      profileCache.timestamp = Date.now()
+      
+      console.log('💾 Cached fresh data for user:', user.id)
+
+      return result
     } catch (err) {
-      console.log('💥 Exception caught:', err)
-      return { user, role: null, profile: null }
+      console.log('Exception caught:', err)
+      return { user, role: null, profile: null, cluster: null }
     }
   },
 
@@ -132,7 +177,19 @@ export const authService = {
   // Update user
   async updateUser(attributes: { email?: string; password?: string; data?: Record<string, unknown> }) {
     const supabase = this.getClient()
-    return await supabase.auth.updateUser(attributes)
+    const result = await supabase.auth.updateUser(attributes)
+    // Clear cache when user data is updated
+    profileCache.userId = null
+    profileCache.data = null
+    profileCache.timestamp = 0
+    return result
+  },
+
+  // Clear profile cache manually
+  clearCache() {
+    profileCache.userId = null
+    profileCache.data = null
+    profileCache.timestamp = 0
   },
 
   // Login with redirect helper

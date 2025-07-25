@@ -12,28 +12,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ArrowRight, ArrowLeft, Send, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, ArrowRight, ArrowLeft, Send, Loader2 } from "lucide-react";
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
-import { invitationService, InvitationData } from "@/services/invitation";
-import { useAdminCluster } from "@/hooks/useAdminCluster";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export default function AddWargaDrawer() {
   const [step, setStep] = useState(1);
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   // Get cluster info from admin
-  const { clusterId, clusterName, loading: clusterLoading, error: clusterError } = useAdminCluster();
+  const { clusterId, clusterName, loading: clusterLoading } = useAuth();
 
   // Form data state
-  const [formData, setFormData] = useState<Partial<InvitationData>>({
+  const [formData, setFormData] = useState<Partial<CreateWargaMagicData>>({
     email: '',
     fullname: '',
-    role: 'warga',
+    role: 'user', // Default value sesuai database
     noTelp: '',
     address: '',
     houseType: '',
@@ -42,7 +40,7 @@ export default function AddWargaDrawer() {
     headOfFamily: '',
     emergencyJob: '',
     movingDate: '',
-    citizenStatus: 'new_citizen'
+    citizenStatus: 'Warga baru'
   });
 
   // Reset form and state when drawer opens/closes
@@ -51,12 +49,10 @@ export default function AddWargaDrawer() {
     if (!open) {
       // Reset form when closed
       setStep(1);
-      setError(null);
-      setSuccess(false);
       setFormData({
         email: '',
         fullname: '',
-        role: 'warga',
+        role: 'user', // Default value sesuai database
         noTelp: '',
         address: '',
         houseType: '',
@@ -65,7 +61,7 @@ export default function AddWargaDrawer() {
         headOfFamily: '',
         emergencyJob: '',
         movingDate: '',
-        citizenStatus: 'new_citizen'
+        citizenStatus: 'Warga baru'
       });
       setTanggalTinggal(undefined);
     }
@@ -74,22 +70,22 @@ export default function AddWargaDrawer() {
   // Handle form submission
   const handleSubmit = async () => {
     if (!clusterId) {
-      setError('Cluster ID tidak ditemukan. Pastikan Anda memiliki akses cluster.');
+      toast.error('Cluster ID tidak ditemukan. Pastikan Anda memiliki akses cluster.');
       return;
     }
 
     // Validation
     if (!formData.email || !formData.fullname) {
-      setError('Email dan nama lengkap wajib diisi');
+      toast.error('Email dan nama lengkap wajib diisi');
       return;
     }
 
-    // Client-side validation terlebih dahulu
-    const invitationData: InvitationData = {
+    // Siapkan data untuk create warga dengan magic link
+    const wargaData: CreateWargaMagicData = {
       email: formData.email!,
       fullname: formData.fullname!,
       clusterId: clusterId,
-      role: formData.role || 'warga',
+      role: formData.role || 'user',
       noTelp: formData.noTelp || '',
       address: formData.address || '',
       houseType: formData.houseType || '',
@@ -98,33 +94,39 @@ export default function AddWargaDrawer() {
       headOfFamily: formData.headOfFamily || '',
       emergencyJob: formData.emergencyJob || '',
       movingDate: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : undefined,
-      citizenStatus: formData.citizenStatus || 'new_citizen'
+              citizenStatus: formData.citizenStatus || 'Warga baru'
     };
 
-    const validation = invitationService.validateInvitationData(invitationData);
+    const validation = wargaMagicService.validateWargaData(wargaData);
     if (!validation.success) {
-      setError(validation.error || 'Validasi gagal');
+      toast.error(validation.error || 'Validasi gagal');
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     try {
-      const result = await invitationService.sendInvitation(invitationData);
+      const result = await wargaMagicService.createWargaWithMagicLink(wargaData);
 
       if (result.success) {
-        setSuccess(true);
+        toast.success(`Warga ${formData.fullname} berhasil dibuat dan magic link dikirim!`);
+        
+        // Optional: Show magic link to admin for manual sharing
+        if (result.data?.magicLink) {
+          console.log('Magic Link untuk user:', result.data.magicLink);
+          // Bisa ditampilkan dalam modal atau copied to clipboard
+        }
+        
         // Auto close after 2 seconds
         setTimeout(() => {
           handleOpenChange(false);
         }, 2000);
       } else {
-        setError(result.error || 'Gagal mengirim undangan');
+        toast.error(result.error || 'Gagal membuat warga');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan tidak terduga';
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -141,22 +143,9 @@ export default function AddWargaDrawer() {
     <div className="grid gap-4 pt-4">
       {/* Cluster Info Display */}
       {clusterId && clusterName && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Warga akan ditambahkan ke cluster: <strong>{clusterName}</strong>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Cluster Error */}
-      {clusterError && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-red-600">
-            {clusterError}
-          </AlertDescription>
-        </Alert>
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+          Warga akan ditambahkan ke cluster: <strong>{clusterName}</strong>
+        </div>
       )}
 
       <div className="grid gap-2">
@@ -224,7 +213,7 @@ export default function AddWargaDrawer() {
         <Label htmlFor="status-kepemilikan">Status Kepemilikan</Label>
         <Select 
           value={formData.ownershipStatus} 
-          onValueChange={(value) => setFormData({...formData, ownershipStatus: value as InvitationData['ownershipStatus']})}
+          onValueChange={(value) => setFormData({...formData, ownershipStatus: value as CreateWargaMagicData['ownershipStatus']})}
           disabled={isLoading}
         >
           <SelectTrigger className="w-full">
@@ -277,43 +266,26 @@ export default function AddWargaDrawer() {
         <Label htmlFor="role">Role</Label>
         <Select 
           value={formData.role} 
-          onValueChange={(value: 'admin' | 'warga') => setFormData({...formData, role: value})}
+          onValueChange={(value: 'admin' | 'user') => setFormData({...formData, role: value})}
           disabled={isLoading}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Pilih role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="warga">Warga</SelectItem>
+            <SelectItem value="user">Warga</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-600">
-            ✅ Undangan berhasil dikirim! Drawer akan tertutup otomatis.
-          </AlertDescription>
-        </Alert>
-      )}
 
-      {error && (
-        <Alert>
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-600">
-            ❌ {error}
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 
   const footerContent = (
     <div className="flex justify-between">
-      {step === 2 && !success && (
+      {step === 2 && (
         <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Sebelumnya
@@ -329,7 +301,7 @@ export default function AddWargaDrawer() {
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       )}
-      {step === 2 && !success && (
+      {step === 2 && (
         <Button onClick={handleSubmit} disabled={isLoading || !clusterId}>
           {isLoading ? (
             <>
@@ -350,12 +322,9 @@ export default function AddWargaDrawer() {
   return (
     <Drawer
       trigger={triggerButton}
-      title={success ? "Undangan Berhasil Dikirim!" : "Form Pendaftaran Warga Baru"}
-      description={success 
-        ? `Undangan telah dikirim ke ${formData.email}. Mereka akan menerima email untuk bergabung.`
-        : "Isi data warga baru untuk mengirim undangan bergabung ke sistem."
-      }
-      steps={success ? "" : `Step ${step}/2`}
+      title="Form Pendaftaran Warga Baru"
+      description="Isi data warga baru untuk mengirim undangan bergabung ke sistem."
+      steps={`Step ${step}/2`}
       footer={footerContent}
       open={isOpen}
       onOpenChange={handleOpenChange}
