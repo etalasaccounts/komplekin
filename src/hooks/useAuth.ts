@@ -1,46 +1,90 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { authService } from '@/services/auth'
 import { AuthUser } from '@/types/supabase'
 
 export const useAuth = () => {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [profile, setProfile] = useState<{ fullname: string, email: string } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [profile, setProfile] = useState<{ id: string; fullname: string; email: string } | null>(null)
+  const [clusterId, setClusterId] = useState<string | null>(null)
+  const [clusterName, setClusterName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
+
+  const getAuthDataWithCluster = useCallback(async () => {
+    try {
+      const { user, role, profile, cluster } = await authService.getAuthenticatedUserProfile();
+    setUser(user as AuthUser)
+    setUserRole(role)
+    
+    // Ensure profile is a single object, not array
+    if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+      setProfile(profile)
+    } else {
+      setProfile(null)
+    }
+    
+      // Set cluster data untuk admin
+      if (user && role === 'admin' && cluster) {
+        setClusterId(cluster.id)
+        setClusterName(cluster.cluster_name)
+        } else {
+        setClusterId(null)
+        setClusterName(null)
+      }
+      
+    } catch (error) {
+      console.error('Error in getAuthDataWithCluster:', error)
+    }
+  }, [])
 
   useEffect(() => {
+    let isMounted = true;
+
     const getInitialSession = async () => {
-      const { user, role, profile } = await authService.getAuthenticatedUserProfile();
-      setUser(user as AuthUser)
-      setUserRole(role)
-      setProfile(profile)
+      if (isMounted) {
+      await getAuthDataWithCluster()
+        if (isMounted) {
       setLoading(false)
+          setInitialized(true)
+        }
+      }
     }
 
     getInitialSession()
 
     const { data: { subscription } } = authService.onAuthStateChange(
       (event) => {
+        if (!isMounted) return;
+        
         if (event === 'SIGNED_IN') {
-          getInitialSession();
+          getAuthDataWithCluster();
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          setProfile(null);
           setUserRole(null);
+          setProfile(null);
+          setClusterId(null);
+          setClusterName(null);
+          setLoading(false);
+          setInitialized(false);
         }
       }
     )
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe()
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Intentionally empty to prevent infinite loops
 
   const signOut = async () => {
     setLoading(true);
     try {
+      // Clear cache before signing out
+      authService.clearCache();
       const { error } = await authService.signOut();
       if (error) {
         throw error;
@@ -87,11 +131,16 @@ export const useAuth = () => {
 
   return {
     user,
-    profile,
     userRole,
+    profile,
+    clusterId,
+    clusterName,
     loading,
+    initialized,
     signOut,
     signIn,
+    refetch: getAuthDataWithCluster,
     isAuthenticated: !!user,
+    isAdmin: userRole === 'admin',
   }
 } 
