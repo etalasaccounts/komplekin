@@ -74,10 +74,10 @@ export function ChooseFile({
   const getDisplayContent = () => {
     if (value) {
       return (
-        <div className="flex items-center justify-between w-full">
+        <div className="flex items-center justify-between w-full overflow-hidden">
           <div className="flex items-center space-x-2">
             {getFileIcon(value)}
-            <span className="truncate">{value.name}</span>
+            <span className="truncate max-w-[220px]">{value.name}</span>
           </div>
           <button
             type="button"
