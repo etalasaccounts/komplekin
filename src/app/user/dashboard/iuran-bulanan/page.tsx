@@ -16,16 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import Pembayaran from "./components/Pembayaran";
-
-type IuranItem = {
-  keterangan: string;
-  jatuhTempo: string;
-  status: string;
-  nominal: string;
-  metode: string;
-  tanggalBayar: string;
-  buktiBayar: string;
-};
+import {
+  useDetailedInvoices,
+  DetailedInvoice,
+} from "@/hooks/useDetailedInvoices";
+import { toast } from "sonner";
 
 export default function IuranBulananPage() {
   const [filters, setFilters] = useState<FilterState>({
@@ -35,8 +30,17 @@ export default function IuranBulananPage() {
   });
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedIuran, setSelectedIuran] = useState<IuranItem | null>(null);
+  const [selectedIuran, setSelectedIuran] = useState<DetailedInvoice | null>(
+    null
+  );
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  const {
+    invoices: iuranBulanan,
+    loading,
+    error,
+    refetch,
+  } = useDetailedInvoices();
 
   const badgeStatus = (status: string) => {
     if (status.includes("Menunggu Verifikasi")) {
@@ -51,54 +55,97 @@ export default function IuranBulananPage() {
     return "bg-[#D02533]";
   };
 
-  const handleViewDetail = (item: IuranItem) => {
+  const handleViewDetail = (item: DetailedInvoice) => {
     setSelectedIuran(item);
     setDetailModalOpen(true);
   };
 
-  const handlePayment = (item: IuranItem) => {
+  const handlePayment = (item: DetailedInvoice) => {
     setSelectedIuran(item);
     setPaymentModalOpen(true);
   };
 
-  const iuranBulanan = [
-    {
-      keterangan: "Iuran Juli 2025",
-      jatuhTempo: "23 Juli 2025",
-      status: "Menunggu Verifikasi",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Juli 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran Juni 2025",
-      jatuhTempo: "23 Juni 2025",
-      status: "Terlambat 30 Hari",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Juni 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran Mei 2025",
-      jatuhTempo: "23 Mei 2025",
-      status: "Terlambat 30 Hari",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Mei 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran April 2025",
-      jatuhTempo: "23 April 2025",
-      status: "Terlambat 30 Hari",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 April 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-  ];
+  const handlePaymentSuccess = () => {
+    toast.success("Pembayaran Berhasil", {
+      description: "Data pembayaran telah diperbarui",
+    });
+    refetch(); // Refresh the invoices list
+  };
+
+  // Apply filters to invoices
+  const filteredInvoices = iuranBulanan
+    // First filter to show only unpaid invoices (opposite of payment history)
+    .filter((item) => item.status !== "Lunas")
+    // Then apply user-selected filters
+    .filter((item) => {
+      let matchesFilter = true;
+
+      // Status filter
+      if (
+        filters.status &&
+        !item.status.toLowerCase().includes(filters.status.toLowerCase())
+      ) {
+        matchesFilter = false;
+      }
+
+      // Date filters
+      if (filters.dateFrom || filters.dateTo) {
+        const itemDate = new Date(item.originalData.due_date);
+
+        if (filters.dateFrom && itemDate < filters.dateFrom) {
+          matchesFilter = false;
+        }
+
+        if (filters.dateTo && itemDate > filters.dateTo) {
+          matchesFilter = false;
+        }
+      }
+
+      return matchesFilter;
+    });
+
+  const handleApplyFilters = () => {
+    toast.success("Filter Diterapkan", {
+      description: `Menampilkan ${filteredInvoices.length} hasil`,
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      dateFrom: undefined,
+      dateTo: undefined,
+      status: "",
+    });
+    toast.success("Filter Direset", {
+      description: "Semua filter telah dihapus",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <p className="text-xl font-medium">Daftar Iuran Bulanan</p>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <p className="text-xl font-medium">Daftar Iuran Bulanan</p>
+        <div className="text-center py-8">
+          <p className="text-red-500">Error: {error}</p>
+          <Button onClick={refetch} className="mt-4">
+            Coba Lagi
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-xl font-medium">Daftar Iuran Bulanan</p>
@@ -106,59 +153,77 @@ export default function IuranBulananPage() {
         <FilterComponent
           filters={filters}
           setFilters={(filters) => setFilters(filters)}
-          handleApplyFilters={() => {}}
-          handleResetFilters={() => {}}
+          handleApplyFilters={handleApplyFilters}
+          handleResetFilters={handleResetFilters}
         />
       </div>
-      {iuranBulanan.map((item) => (
-        <Card key={item.jatuhTempo} className="p-4 space-y-0 gap-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-xl font-semibold">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{item.keterangan}</span>
-                <Badge
-                  className={`text-xs font-semibold rounded-full ${badgeStatus(
-                    item.status
-                  )}`}
-                >
-                  {item.status}
-                </Badge>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 p-0">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1 mb-2">
-                <Calendar className="w-4 h-4" />
-                <p className="text-xs">
-                  Jatuh Tempo: <span>{item.jatuhTempo}</span>
-                </p>
-              </div>
-              <p className="text-2xl font-semibold">{item.nominal}</p>
-              <div className="flex items-center justify-end mt-4">
-                {item.status === "Menunggu Verifikasi" && (
-                  <Button
-                    className="text-sm font-medium rounded-lg"
-                    onClick={() => handleViewDetail(item)}
+
+      {filteredInvoices.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Tidak ada tagihan ditemukan</p>
+        </div>
+      ) : (
+        filteredInvoices.map((item) => (
+          <Card key={item.id} className="p-4 space-y-0 gap-3">
+            <CardHeader className="p-0">
+              <CardTitle className="text-xl font-semibold">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{item.keterangan}</span>
+                  <Badge
+                    className={`text-xs font-semibold rounded-full ${badgeStatus(
+                      item.status
+                    )}`}
                   >
-                    <FileText className="w-4 h-4" />
-                    Lihat Detail
-                  </Button>
-                )}
-                {item.status === "Terlambat 30 Hari" && (
-                  <Button
-                    className="text-sm font-medium rounded-lg"
-                    onClick={() => handlePayment(item)}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    Lunasi Sekarang
-                  </Button>
-                )}
+                    {item.status}
+                  </Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-0">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1 mb-2">
+                  <Calendar className="w-4 h-4" />
+                  <p className="text-xs">
+                    Jatuh Tempo: <span>{item.jatuhTempo}</span>
+                  </p>
+                </div>
+                <p className="text-2xl font-semibold">{item.nominal}</p>
+                <div className="flex items-center justify-end mt-4">
+                  {item.status === "Menunggu Verifikasi" && (
+                    <Button
+                      className="text-sm font-medium rounded-lg"
+                      onClick={() => handleViewDetail(item)}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Lihat Detail
+                    </Button>
+                  )}
+                  {(item.status.includes("Terlambat") ||
+                    item.status === "Belum Bayar") && (
+                    <Button
+                      className="text-sm font-medium rounded-lg"
+                      onClick={() => handlePayment(item)}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      Lunasi Sekarang
+                    </Button>
+                  )}
+                  {item.status === "Lunas" && (
+                    <Button
+                      variant="outline"
+                      className="text-sm font-medium rounded-lg"
+                      onClick={() => handleViewDetail(item)}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Lihat Detail
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))
+      )}
 
       {/* Detail Modal */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
@@ -187,9 +252,11 @@ export default function IuranBulananPage() {
                 <p className="text-sm text-black">{selectedIuran.status}</p>
               </div>
 
-              {/* Tota Pembayaran */}
+              {/* Total Pembayaran */}
               <div>
-                <label className="text-sm text-gray-500">Tota Pembayaran</label>
+                <label className="text-sm text-gray-500">
+                  Total Pembayaran
+                </label>
                 <p className="text-sm text-black">{selectedIuran.nominal}</p>
               </div>
 
@@ -198,31 +265,36 @@ export default function IuranBulananPage() {
                 <label className="text-sm text-gray-500">
                   Metode Pembayaran
                 </label>
-                <p className="text-sm text-black">Transfer Bank BCA</p>
+                <p className="text-sm text-black">
+                  {selectedIuran.originalData.payment_method ||
+                    "Transfer Bank BCA"}
+                </p>
               </div>
 
               {/* Tanggal Bayar */}
               <div>
                 <label className="text-sm text-gray-500">Tanggal Bayar</label>
                 <p className="text-sm text-black">
-                  {selectedIuran.tanggalBayar}
+                  {selectedIuran.tanggalBayar || "Belum dibayar"}
                 </p>
               </div>
 
               {/* Bukti Bayar */}
-              <div>
-                <label className="text-sm text-gray-500">Bukti Bayar</label>
-                <div className="mt-2">
-                  <div className="w-full h-32 relative rounded-lg overflow-hidden bg-gray-50 border">
-                    <Image
-                      src={`/${selectedIuran.buktiBayar}`}
-                      alt="Bukti Pembayaran"
-                      fill
-                      className="object-cover"
-                    />
+              {selectedIuran.buktiBayar && (
+                <div>
+                  <label className="text-sm text-gray-500">Bukti Bayar</label>
+                  <div className="mt-2">
+                    <div className="w-full h-32 relative rounded-lg overflow-hidden bg-gray-50 border">
+                      <Image
+                        src={selectedIuran.buktiBayar}
+                        alt="Bukti Pembayaran"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -233,6 +305,7 @@ export default function IuranBulananPage() {
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
         selectedIuran={selectedIuran}
+        onPaymentSuccess={handlePaymentSuccess}
       />
     </div>
   );

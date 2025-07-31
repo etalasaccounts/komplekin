@@ -61,7 +61,7 @@ export function SingleDatePicker({
             id={id}
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "w-full z-200 justify-start text-left font-normal",
               !value && "text-muted-foreground",
               error && "border-red-500",
               buttonClassName

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { DollarSign, X, Copy, ArrowRight } from "lucide-react";
+import { DollarSign, X, Copy, ArrowRight, ArrowLeft } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,74 +18,211 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SingleDatePicker } from "@/components/input/singleDatePicker";
 import { ChooseFile } from "@/components/input/chooseFile";
 import StatusPembayaran from "./StatusPembayaran";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-
-type IuranItem = {
-  keterangan: string;
-  jatuhTempo: string;
-  status: string;
-  nominal: string;
-  metode: string;
-  tanggalBayar: string;
-  buktiBayar: string;
-};
+import { toast } from "sonner";
+import { DetailedInvoice } from "@/hooks/useDetailedInvoices";
 
 type PembayaranProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedIuran: IuranItem | null;
+  selectedIuran: DetailedInvoice | null;
+  onPaymentSuccess: () => void;
 };
 
 export default function Pembayaran({
   open,
   onOpenChange,
   selectedIuran,
+  onPaymentSuccess,
 }: PembayaranProps) {
   const [paymentStep, setPaymentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState({
+    transferBank: "",
+    totalBayar: "",
+    tanggalBayar: "",
+  });
+
   const [paymentForm, setPaymentForm] = useState({
-    pembayaran: "Iuran RT",
-    periode: "Juli 2025",
-    tanggalBayar: undefined as Date | undefined,
-    totalTagihan: "Rp100.000",
-    jumlahBayar: "Rp100.000",
-    metodeBayar: "Transfer",
-    rekening: "BCA-Mathew Alexander",
+    pembayaran: "",
+    periode: "",
+    tanggalBayar: new Date(),
+    totalTagihan: "",
+    jumlahBayar: "",
+    metodeBayar: "",
+    rekening: "",
     buktiPembayaran: null as File | null,
   });
 
-  // Reset form and step when modal opens
-  const handleModalOpen = (isOpen: boolean) => {
-    if (isOpen && selectedIuran) {
+  // Populate form data when selectedIuran changes and modal is open
+  useEffect(() => {
+    if (open && selectedIuran) {
+      // Use due date from originalData to create period (month and year)
+      const dueDate = new Date(selectedIuran.originalData.due_date);
+      const periode = dueDate.toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      });
+
       setPaymentForm({
-        pembayaran: "Iuran RT",
-        periode: selectedIuran.keterangan.replace("Iuran ", ""),
+        pembayaran: "Iuran Bulanan", // Hardcoded as requested
+        periode: periode, // Use due date month and year
         tanggalBayar: new Date(),
-        totalTagihan: selectedIuran.nominal,
-        jumlahBayar: "",
+        totalTagihan: selectedIuran.nominal, // Keep formatted version for display
+        jumlahBayar: selectedIuran.nominal, // Keep formatted version for display
         metodeBayar: "",
         rekening: "",
         buktiPembayaran: null,
       });
       setPaymentStep(1);
     }
+  }, [open, selectedIuran]);
+
+  // Debug step changes
+  useEffect(() => {
+    console.log("Payment step changed to:", paymentStep);
+    if (paymentStep === 3) {
+      console.log("Step 3 - paymentDetails:", paymentDetails);
+    }
+  }, [paymentStep, paymentDetails]);
+
+  // Reset form and step when modal opens
+  const handleModalOpen = (isOpen: boolean) => {
     onOpenChange(isOpen);
   };
 
   const handleNextStep = () => {
-    setPaymentStep(2);
+    if (paymentStep === 1) {
+      // Remove metodeBayar validation from step 1 since it's selected in step 2
+      setPaymentStep(2);
+    } else if (paymentStep === 2) {
+      handlePaymentSubmit();
+    }
   };
 
   const handlePrevStep = () => {
     setPaymentStep(1);
   };
 
-  const handlePaymentSubmit = () => {
-    // Handle payment submission here
-    console.log("Payment submitted:", paymentForm);
-    setPaymentStep(3);
+  const handlePaymentSubmit = async () => {
+    if (!selectedIuran) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Validate required fields
+      if (
+        !paymentForm.metodeBayar ||
+        !paymentForm.jumlahBayar ||
+        !paymentForm.buktiPembayaran
+      ) {
+        toast.error("Data Tidak Lengkap", {
+          description: "Harap lengkapi semua data pembayaran",
+        });
+        return;
+      }
+
+      // Debug: Log the data being sent
+      console.log("Submitting payment with data:", {
+        invoiceId: selectedIuran.id,
+        paymentMethod: paymentForm.metodeBayar,
+        paymentAmount: paymentForm.jumlahBayar
+          .replace("Rp", "")
+          .replace(/\./g, ""),
+        selectedIuran: selectedIuran,
+      });
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("invoiceId", selectedIuran.id); // Add the missing invoiceId
+      formData.append("paymentMethod", paymentForm.metodeBayar);
+      formData.append(
+        "paymentAmount",
+        paymentForm.jumlahBayar.replace("Rp", "").replace(/\./g, "")
+      );
+
+      if (paymentForm.buktiPembayaran) {
+        formData.append("receipt", paymentForm.buktiPembayaran);
+      }
+
+      // Call payment API
+      const response = await fetch("/api/user/invoices/pay", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log("API Response:", result);
+
+      if (!response.ok) {
+        throw new Error(result.error || "Payment failed");
+      }
+
+      if (result.success) {
+        // Save payment details for step 3 before resetting form
+        const savedPaymentDetails = {
+          transferBank:
+            paymentForm.rekening === "bca-mathew" ||
+            paymentForm.rekening === "bca-john"
+              ? "BCA"
+              : paymentForm.rekening === "mandiri-admin"
+              ? "Mandiri"
+              : "Bank",
+          totalBayar: paymentForm.jumlahBayar,
+          tanggalBayar: paymentForm.tanggalBayar.toLocaleDateString("id-ID"),
+        };
+        setPaymentDetails(savedPaymentDetails);
+
+        console.log(
+          "Payment successful, setting step to 3. Payment details:",
+          savedPaymentDetails
+        );
+        handleModalOpen(false);
+
+        toast.success("Pembayaran Berhasil", {
+          description: "Pembayaran telah dikirim dan menunggu verifikasi admin",
+        });
+
+        setPaymentStep(3); // Go to success step first
+        console.log("Payment step set to 3");
+        onPaymentSuccess(); // Refresh parent data
+
+        // Auto close modal after 3 seconds and reset form
+        setTimeout(() => {
+          setPaymentForm({
+            pembayaran: "",
+            periode: "",
+            tanggalBayar: new Date(),
+            totalTagihan: "",
+            jumlahBayar: "",
+            metodeBayar: "",
+            rekening: "",
+            buktiPembayaran: null,
+          });
+          setPaymentDetails({
+            transferBank: "",
+            totalBayar: "",
+            tanggalBayar: "",
+          });
+          onOpenChange(false);
+          setPaymentStep(1); // Reset to first step
+        }, 3000); // Increased to 3 seconds
+      } else {
+        throw new Error(result.error || "Payment failed");
+      }
+    } catch (error) {
+      console.error("Payment error:", error);
+      toast.error("Pembayaran Gagal", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat memproses pembayaran",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,23 +271,11 @@ export default function Pembayaran({
             {/* Pembayaran */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Pembayaran *</Label>
-              <Select
+              <Input
                 value={paymentForm.pembayaran}
-                onValueChange={(value) =>
-                  setPaymentForm({ ...paymentForm, pembayaran: value })
-                }
-              >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Iuran RT">Iuran RT</SelectItem>
-                  <SelectItem value="Iuran Keamanan">Iuran Keamanan</SelectItem>
-                  <SelectItem value="Iuran Kebersihan">
-                    Iuran Kebersihan
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                className="bg-gray-50 text-sm"
+                readOnly
+              />
             </div>
 
             {/* Periode Bayar/Bulan */}
@@ -169,13 +294,10 @@ export default function Pembayaran({
             {/* Tanggal Bayar */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Tanggal Bayar *</Label>
-              <SingleDatePicker
-                value={paymentForm.tanggalBayar}
-                onChange={(date) =>
-                  setPaymentForm({ ...paymentForm, tanggalBayar: date })
-                }
-                placeholder="06/07/2025"
-                buttonClassName="w-full text-sm"
+              <Input
+                value={paymentForm.tanggalBayar.toLocaleDateString("id-ID")}
+                className="bg-gray-50 text-sm"
+                readOnly
               />
             </div>
 
@@ -275,7 +397,7 @@ export default function Pembayaran({
                   setPaymentForm({ ...paymentForm, rekening: value })
                 }
               >
-                <SelectTrigger className="w-full text-sm    ">
+                <SelectTrigger className="w-full text-sm">
                   <SelectValue placeholder="BCA-Mathew Alexander" />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,15 +416,40 @@ export default function Pembayaran({
             <div className="space-y-2 flex items-start justify-between bg-gray-50 rounded-lg border border-gray-300 p-4">
               <div className="flex flex-col items-start gap-2">
                 <p className="text-base text-gray-400">Nomor Rekening</p>
-                <p className="text-base">0831417463</p>
+                <p className="text-base">
+                  {paymentForm.rekening === "bca-mathew"
+                    ? "0831417463"
+                    : paymentForm.rekening === "bca-john"
+                    ? "1234567890"
+                    : paymentForm.rekening === "mandiri-admin"
+                    ? "9876543210"
+                    : "Pilih rekening terlebih dahulu"}
+                </p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
                 onClick={() => {
-                  navigator.clipboard.writeText("0831417463");
+                  const accountNumber =
+                    paymentForm.rekening === "bca-mathew"
+                      ? "0831417463"
+                      : paymentForm.rekening === "bca-john"
+                      ? "1234567890"
+                      : paymentForm.rekening === "mandiri-admin"
+                      ? "9876543210"
+                      : "";
+
+                  if (accountNumber) {
+                    navigator.clipboard.writeText(accountNumber);
+                    toast.success("Berhasil disalin", {
+                      description: "Nomor rekening telah disalin ke clipboard",
+                    });
+                  } else {
+                    toast.error("Pilih rekening terlebih dahulu");
+                  }
                 }}
+                disabled={!paymentForm.rekening}
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -312,12 +459,16 @@ export default function Pembayaran({
             <div className="space-y-2">
               <Label className="text-sm font-medium">Bukti Bayar *</Label>
               <ChooseFile
+                value={paymentForm.buktiPembayaran}
                 onChange={(file) => {
                   setPaymentForm({
                     ...paymentForm,
                     buktiPembayaran: file,
                   });
                 }}
+                accept="image/*"
+                placeholder="Pilih file bukti pembayaran"
+                maxSizeInMB={2}
               />
               <p className="text-xs text-gray-500">
                 Format file .jpg, .png max 2MB
@@ -330,16 +481,18 @@ export default function Pembayaran({
                 variant="outline"
                 className="flex-1"
                 onClick={handlePrevStep}
+                disabled={isSubmitting}
               >
-                <X className="w-4 h-4" />
-                Batal
+                <ArrowLeft className="w-4 h-4" />
+                Kembali
               </Button>
               <Button
                 className="flex-1 bg-black text-white hover:bg-black/90"
-                onClick={handlePaymentSubmit}
+                onClick={handleNextStep}
+                disabled={isSubmitting}
               >
                 <DollarSign className="w-4 h-4" />
-                Bayar Iuran
+                {isSubmitting ? "Memproses..." : "Bayar Iuran"}
               </Button>
             </div>
           </div>
@@ -349,11 +502,7 @@ export default function Pembayaran({
           <StatusPembayaran
             status="pending"
             embedded={true}
-            paymentDetails={{
-              transferBank: "BCA",
-              totalBayar: "Rp100.000",
-              tanggalBayar: "16 Juli 2025",
-            }}
+            paymentDetails={paymentDetails}
             onClose={() => {
               onOpenChange(false);
               setPaymentStep(1);
