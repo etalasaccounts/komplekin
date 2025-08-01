@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     const unpaidInvoices = invoices.filter(
       (invoice) =>
-        invoice.invoice_status === "Belum Bayar" ||
+        invoice.invoice_status === "Belum bayar" ||
         invoice.invoice_status === "Kurang bayar"
     );
 

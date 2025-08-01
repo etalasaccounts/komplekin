@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import FilterComponent, {
   FilterState,
+  StatusOption,
 } from "@/components/filter/filterComponent";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ export default function IuranBulananPage() {
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "",
+    status: "all",
   });
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -34,6 +35,14 @@ export default function IuranBulananPage() {
     null
   );
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  // Custom status options for monthly dues page
+  const monthlyDuesStatusOptions: StatusOption[] = [
+    { value: "all", label: "Semua Status" },
+    { value: "belum bayar", label: "Belum Bayar" },
+    { value: "kurang bayar", label: "Kurang Bayar" },
+    { value: "menunggu verifikasi", label: "Menunggu Verifikasi" },
+  ];
 
   const {
     invoices: iuranBulanan,
@@ -81,11 +90,25 @@ export default function IuranBulananPage() {
       let matchesFilter = true;
 
       // Status filter
-      if (
-        filters.status &&
-        !item.status.toLowerCase().includes(filters.status.toLowerCase())
-      ) {
-        matchesFilter = false;
+      if (filters.status && filters.status !== "all") {
+        switch (filters.status) {
+          case "belum bayar":
+            matchesFilter = item.status === "Belum Bayar";
+            break;
+          case "kurang bayar":
+            matchesFilter = item.status === "Kurang bayar";
+            break;
+          case "menunggu verifikasi":
+            // Check if invoice_status = "Lunas" AND verification_status = "Belum dicek"
+            matchesFilter =
+              item.originalData.invoice_status === "Lunas" &&
+              item.originalData.verification_status === "Belum dicek";
+            break;
+          default:
+            // For any other value, show all
+            matchesFilter = true;
+            break;
+        }
       }
 
       // Date filters
@@ -104,9 +127,51 @@ export default function IuranBulananPage() {
       return matchesFilter;
     });
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (newFilters: FilterState) => {
+    // Calculate the count with the new filters being applied
+    const currentFilteredCount = iuranBulanan
+      .filter((item) => item.status !== "Lunas")
+      .filter((item) => {
+        let matchesFilter = true;
+
+        // Status filter
+        if (newFilters.status && newFilters.status !== "all") {
+          switch (newFilters.status) {
+            case "belum bayar":
+              matchesFilter = item.status === "Belum Bayar";
+              break;
+            case "kurang bayar":
+              matchesFilter = item.status === "Kurang bayar";
+              break;
+            case "menunggu verifikasi":
+              matchesFilter =
+                item.originalData.invoice_status === "Lunas" &&
+                item.originalData.verification_status === "Belum dicek";
+              break;
+            default:
+              matchesFilter = true;
+              break;
+          }
+        }
+
+        // Date filters
+        if (newFilters.dateFrom || newFilters.dateTo) {
+          const itemDate = new Date(item.originalData.due_date);
+
+          if (newFilters.dateFrom && itemDate < newFilters.dateFrom) {
+            matchesFilter = false;
+          }
+
+          if (newFilters.dateTo && itemDate > newFilters.dateTo) {
+            matchesFilter = false;
+          }
+        }
+
+        return matchesFilter;
+      }).length;
+
     toast.success("Filter Diterapkan", {
-      description: `Menampilkan ${filteredInvoices.length} hasil`,
+      description: `Menampilkan ${currentFilteredCount} hasil`,
     });
   };
 
@@ -114,7 +179,7 @@ export default function IuranBulananPage() {
     setFilters({
       dateFrom: undefined,
       dateTo: undefined,
-      status: "",
+      status: "all",
     });
     toast.success("Filter Direset", {
       description: "Semua filter telah dihapus",
@@ -155,6 +220,7 @@ export default function IuranBulananPage() {
           setFilters={(filters) => setFilters(filters)}
           handleApplyFilters={handleApplyFilters}
           handleResetFilters={handleResetFilters}
+          statusOptions={monthlyDuesStatusOptions}
         />
       </div>
 

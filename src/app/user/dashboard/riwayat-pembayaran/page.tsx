@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import FilterComponent, {
   FilterState,
+  StatusOption,
 } from "@/components/filter/filterComponent";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,15 @@ import {
 import { toast } from "sonner";
 
 export default function RiwayatPembayaranPage() {
+  const formatDateCompact = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   const badgeStatus = (status: string) => {
     if (status.includes("Menunggu Verifikasi")) {
       return "bg-[#FFEFCC] text-[#A78025]";
@@ -37,7 +47,7 @@ export default function RiwayatPembayaranPage() {
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "",
+    status: "all",
   });
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -152,6 +162,12 @@ export default function RiwayatPembayaranPage() {
     }
   };
 
+  // Custom status options for payment history page
+  const paymentHistoryStatusOptions: StatusOption[] = [
+    { value: "all", label: "Semua Status" },
+    { value: "lunas", label: "Lunas" },
+  ];
+
   // Filter to show only fully paid and verified invoices
   const paidInvoices = allInvoices.filter(
     (invoice) =>
@@ -164,11 +180,10 @@ export default function RiwayatPembayaranPage() {
     let matchesFilter = true;
 
     // Status filter
-    if (
-      filters.status &&
-      !item.status.toLowerCase().includes(filters.status.toLowerCase())
-    ) {
-      matchesFilter = false;
+    if (filters.status && filters.status !== "all") {
+      if (!item.status.toLowerCase().includes(filters.status.toLowerCase())) {
+        matchesFilter = false;
+      }
     }
 
     // Date filters - use payment date for payment history
@@ -189,9 +204,40 @@ export default function RiwayatPembayaranPage() {
     return matchesFilter;
   });
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (newFilters: FilterState) => {
+    // Calculate the count with the new filters being applied
+    const currentFilteredCount = paidInvoices.filter((item) => {
+      let matchesFilter = true;
+
+      // Status filter
+      if (newFilters.status && newFilters.status !== "all") {
+        if (
+          !item.status.toLowerCase().includes(newFilters.status.toLowerCase())
+        ) {
+          matchesFilter = false;
+        }
+      }
+
+      // Date filters - use payment date for payment history
+      if (newFilters.dateFrom || newFilters.dateTo) {
+        const itemDate = item.tanggalBayar
+          ? new Date(item.originalData.payment_date!)
+          : new Date(item.originalData.due_date);
+
+        if (newFilters.dateFrom && itemDate < newFilters.dateFrom) {
+          matchesFilter = false;
+        }
+
+        if (newFilters.dateTo && itemDate > newFilters.dateTo) {
+          matchesFilter = false;
+        }
+      }
+
+      return matchesFilter;
+    }).length;
+
     toast.success("Filter Diterapkan", {
-      description: `Menampilkan ${filteredInvoices.length} hasil`,
+      description: `Menampilkan ${currentFilteredCount} hasil`,
     });
   };
 
@@ -199,7 +245,7 @@ export default function RiwayatPembayaranPage() {
     setFilters({
       dateFrom: undefined,
       dateTo: undefined,
-      status: "",
+      status: "all",
     });
     toast.success("Filter Direset", {
       description: "Semua filter telah dihapus",
@@ -240,6 +286,7 @@ export default function RiwayatPembayaranPage() {
           setFilters={(filters) => setFilters(filters)}
           handleApplyFilters={handleApplyFilters}
           handleResetFilters={handleResetFilters}
+          statusOptions={paymentHistoryStatusOptions}
         />
       </div>
 
@@ -271,7 +318,12 @@ export default function RiwayatPembayaranPage() {
                 <div className="flex items-center gap-1 mb-2">
                   <Calendar className="w-4 h-4" />
                   <p className="text-xs">
-                    Dibayar: <span>{item.tanggalBayar || item.jatuhTempo}</span>
+                    Dibayar:{" "}
+                    <span>
+                      {item.originalData.payment_date
+                        ? formatDateCompact(item.originalData.payment_date)
+                        : formatDateCompact(item.originalData.due_date)}
+                    </span>
                   </p>
                 </div>
                 <p className="text-2xl font-semibold">{item.nominal}</p>
@@ -335,7 +387,9 @@ export default function RiwayatPembayaranPage() {
               <div>
                 <label className="text-sm text-gray-500">Tanggal Bayar</label>
                 <p className="text-sm text-black">
-                  {selectedIuran.tanggalBayar || "Belum dibayar"}
+                  {selectedIuran.originalData.payment_date
+                    ? formatDateCompact(selectedIuran.originalData.payment_date)
+                    : "Belum dibayar"}
                 </p>
               </div>
 
