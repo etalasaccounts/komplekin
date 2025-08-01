@@ -23,6 +23,7 @@ import StatusPembayaran from "./StatusPembayaran";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
 import { DetailedInvoice } from "@/hooks/useDetailedInvoices";
+import { useClusterBankAccounts } from "@/hooks/useClusterBankAccounts";
 
 type PembayaranProps = {
   open: boolean;
@@ -45,6 +46,9 @@ export default function Pembayaran({
     tanggalBayar: "",
   });
 
+  // Fetch bank accounts
+  const { bankAccounts } = useClusterBankAccounts();
+
   const [paymentForm, setPaymentForm] = useState({
     pembayaran: "",
     periode: "",
@@ -55,6 +59,16 @@ export default function Pembayaran({
     rekening: "",
     buktiPembayaran: null as File | null,
   });
+
+  // Auto-select bank account if only one exists
+  useEffect(() => {
+    if (bankAccounts.length === 1 && !paymentForm.rekening) {
+      setPaymentForm((prev) => ({
+        ...prev,
+        rekening: bankAccounts[0].id,
+      }));
+    }
+  }, [bankAccounts, paymentForm.rekening]);
 
   // Populate form data when selectedIuran changes and modal is open
   useEffect(() => {
@@ -74,12 +88,12 @@ export default function Pembayaran({
         totalTagihan: selectedIuran.nominal, // Keep formatted version for display
         jumlahBayar: selectedIuran.nominal, // Keep formatted version for display
         metodeBayar: "",
-        rekening: "",
+        rekening: bankAccounts.length === 1 ? bankAccounts[0].id : "",
         buktiPembayaran: null,
       });
       setPaymentStep(1);
     }
-  }, [open, selectedIuran]);
+  }, [open, selectedIuran, bankAccounts]);
 
   // Debug step changes
   useEffect(() => {
@@ -163,14 +177,12 @@ export default function Pembayaran({
 
       if (result.success) {
         // Save payment details for step 3 before resetting form
+        const selectedAccount = bankAccounts.find(
+          (account) => account.id === paymentForm.rekening
+        );
+
         const savedPaymentDetails = {
-          transferBank:
-            paymentForm.rekening === "bca-mathew" ||
-            paymentForm.rekening === "bca-john"
-              ? "BCA"
-              : paymentForm.rekening === "mandiri-admin"
-              ? "Mandiri"
-              : "Bank",
+          transferBank: selectedAccount?.bank_name || "Bank",
           totalBayar: paymentForm.jumlahBayar,
           tanggalBayar: paymentForm.tanggalBayar.toLocaleDateString("id-ID"),
         };
@@ -389,72 +401,79 @@ export default function Pembayaran({
               </Select>
             </div>
 
-            {/* Pilih Rekening */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Pilih Rekening</Label>
-              <Select
-                value={paymentForm.rekening}
-                onValueChange={(value) =>
-                  setPaymentForm({ ...paymentForm, rekening: value })
-                }
-              >
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="BCA-Mathew Alexander" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bca-mathew">
-                    BCA-Mathew Alexander
-                  </SelectItem>
-                  <SelectItem value="bca-john">BCA-John Doe</SelectItem>
-                  <SelectItem value="mandiri-admin">
-                    Mandiri-Admin RT
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {paymentForm.metodeBayar === "transfer" && (
+              <>
+                {/* Pilih Rekening */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Pilih Rekening</Label>
+                  <Select
+                    value={paymentForm.rekening}
+                    onValueChange={(value) =>
+                      setPaymentForm({ ...paymentForm, rekening: value })
+                    }
+                    disabled={bankAccounts.length === 1}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Pilih rekening bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.bank_name} - {account.account_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {bankAccounts.length === 1 && (
+                    <p className="text-xs text-gray-500">
+                      Rekening bank telah dipilih secara otomatis
+                    </p>
+                  )}
+                </div>
 
-            {/* Nomor Rekening */}
-            <div className="space-y-2 flex items-start justify-between bg-gray-50 rounded-lg border border-gray-300 p-4">
-              <div className="flex flex-col items-start gap-2">
-                <p className="text-base text-gray-400">Nomor Rekening</p>
-                <p className="text-base">
-                  {paymentForm.rekening === "bca-mathew"
-                    ? "0831417463"
-                    : paymentForm.rekening === "bca-john"
-                    ? "1234567890"
-                    : paymentForm.rekening === "mandiri-admin"
-                    ? "9876543210"
-                    : "Pilih rekening terlebih dahulu"}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => {
-                  const accountNumber =
-                    paymentForm.rekening === "bca-mathew"
-                      ? "0831417463"
-                      : paymentForm.rekening === "bca-john"
-                      ? "1234567890"
-                      : paymentForm.rekening === "mandiri-admin"
-                      ? "9876543210"
-                      : "";
+                {/* Nomor Rekening */}
+                <div className="space-y-2 flex items-start justify-between bg-gray-50 rounded-lg border border-gray-300 p-4">
+                  <div className="flex flex-col items-start gap-2">
+                    <p className="text-base text-gray-400">Nomor Rekening</p>
+                    <p className="text-base">
+                      {(() => {
+                        const selectedAccount = bankAccounts.find(
+                          (account) => account.id === paymentForm.rekening
+                        );
+                        return selectedAccount
+                          ? selectedAccount.account_number
+                          : "Pilih rekening terlebih dahulu";
+                      })()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      const selectedAccount = bankAccounts.find(
+                        (account) => account.id === paymentForm.rekening
+                      );
+                      const accountNumber =
+                        selectedAccount?.account_number || "";
 
-                  if (accountNumber) {
-                    navigator.clipboard.writeText(accountNumber);
-                    toast.success("Berhasil disalin", {
-                      description: "Nomor rekening telah disalin ke clipboard",
-                    });
-                  } else {
-                    toast.error("Pilih rekening terlebih dahulu");
-                  }
-                }}
-                disabled={!paymentForm.rekening}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
+                      if (accountNumber) {
+                        navigator.clipboard.writeText(accountNumber);
+                        toast.success("Berhasil disalin", {
+                          description:
+                            "Nomor rekening telah disalin ke clipboard",
+                        });
+                      } else {
+                        toast.error("Pilih rekening terlebih dahulu");
+                      }
+                    }}
+                    disabled={!paymentForm.rekening}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
 
             {/* Bukti Bayar */}
             <div className="space-y-2">
