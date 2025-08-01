@@ -265,7 +265,7 @@ export default function IuranBulananPage() {
                     </Button>
                   )}
                   {(item.status.includes("Terlambat") ||
-                    item.status === "Belum Bayar") && (
+                    item.status === "Belum bayar") && (
                     <Button
                       className="text-sm font-medium rounded-lg"
                       onClick={() => handlePayment(item)}

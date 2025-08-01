@@ -67,7 +67,8 @@ export default function Pembayaran({
       });
 
       setPaymentForm({
-        pembayaran: "Iuran Bulanan", // Hardcoded as requested
+        pembayaran:
+          selectedIuran.originalData.payment_purpose || "Iuran Bulanan",
         periode: periode, // Use due date month and year
         tanggalBayar: new Date(),
         totalTagihan: selectedIuran.nominal, // Keep formatted version for display

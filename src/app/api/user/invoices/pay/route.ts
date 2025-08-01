@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const { data: userPermissions, error: permissionsError } =
       await supabaseAdmin
         .from("user_permissions")
-        .select("user_id")
+        .select("user_id,id")
         .eq("user_id", user.id)
         .single();
 
@@ -74,12 +74,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify invoice belongs to user using user_id from user_permissions
+    // Verify invoice belongs to user using the correct foreign key
     const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from("invoices")
       .select("*")
       .eq("id", invoiceId)
-      .eq("user_id", userPermissions.user_id)
+      .eq("user_id", userPermissions.id)
       .single();
 
     if (invoiceError || !invoice) {
