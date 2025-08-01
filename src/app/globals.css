@@ -125,3 +125,12 @@
     display: none;
   }
 }
+
+/* Ensure filter popup is always on top */
+.filter-popup {
+  z-index: 99999 !important;
+}
+
+.filter-popup * {
+  z-index: 99999 !important;
+}
