@@ -32,17 +32,29 @@ export default function ResetPasswordPage() {
     let retryCount = 0;
     const maxRetries = 10;
 
+    // Check if user came from forgot password flow
+    const resetEmail = localStorage.getItem("reset_password_email");
+    if (resetEmail) {
+      toast.info("Email reset password telah dikirim", {
+        description: `Silakan periksa email ${resetEmail} dan klik link untuk melanjutkan reset password.`,
+      });
+      // Clear the stored email after showing the message
+      localStorage.removeItem("reset_password_email");
+    }
+
     // Check if there's already an existing session for password recovery
     const checkExistingSession = async () => {
       try {
-        const { data: { session } } = await authService.getClient().auth.getSession();
+        const {
+          data: { session },
+        } = await authService.getClient().auth.getSession();
         if (session && mounted) {
           setSession(session);
           return true;
         }
         return false;
       } catch (error) {
-        console.error('Error checking session:', error);
+        console.error("Error checking session:", error);
         return false;
       }
     };
@@ -50,7 +62,7 @@ export default function ResetPasswordPage() {
     // Retry logic for session detection
     const retrySessionCheck = async () => {
       const sessionFound = await checkExistingSession();
-      
+
       if (!sessionFound && retryCount < maxRetries && mounted) {
         retryCount++;
         setTimeout(retrySessionCheck, 500); // Wait 500ms before retry
@@ -63,10 +75,15 @@ export default function ResetPasswordPage() {
     // Initial check
     retrySessionCheck();
 
-    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = authService.onAuthStateChange((event, session) => {
       if (mounted) {
         // This listener is crucial for catching the PASSWORD_RECOVERY event
-        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        if (
+          event === "PASSWORD_RECOVERY" ||
+          (event === "SIGNED_IN" && session)
+        ) {
           setSession(session);
           setSessionLoading(false);
         }
@@ -88,7 +105,9 @@ export default function ResetPasswordPage() {
             <Loader2 className="h-8 w-8 animate-spin mx-auto" />
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Memuat...</h3>
-              <p className="text-sm text-muted-foreground">Memeriksa sesi reset password...</p>
+              <p className="text-sm text-muted-foreground">
+                Memeriksa sesi reset password...
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -98,7 +117,7 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast.error("Kata sandi tidak cocok.");
       return;
@@ -113,29 +132,34 @@ export default function ResetPasswordPage() {
 
     try {
       const { error } = await authService.getClient().auth.updateUser({
-        password: password
+        password: password,
       });
 
       if (error) {
         toast.error("Gagal mengubah kata sandi. Silakan coba lagi.");
       } else {
         // Clear password recovery mode flags
-        localStorage.removeItem('password_recovery_mode');
-        localStorage.removeItem('password_recovery_timestamp');
-        
-        toast.success("Kata sandi berhasil diubah! Mengalihkan ke dashboard...");
-        
+        localStorage.removeItem("password_recovery_mode");
+        localStorage.removeItem("password_recovery_timestamp");
+
+        toast.success(
+          "Kata sandi berhasil diubah! Mengalihkan ke dashboard..."
+        );
+
         setRedirecting(true);
-        
+
         // Get user role to determine redirect destination
         setTimeout(async () => {
           try {
-            const { role } = await authService.getUserPermissions(session?.user?.id || "");
-            const redirectUrl = role === 'admin' ? '/admin/dashboard' : '/user/dashboard';
+            const { role } = await authService.getUserPermissions(
+              session?.user?.id || ""
+            );
+            const redirectUrl =
+              role === "admin" ? "/admin/dashboard" : "/user/dashboard";
             router.push(redirectUrl);
           } catch {
             // Fallback redirect
-            router.push('/user/dashboard');
+            router.push("/user/dashboard");
           }
         }, 1500);
       }
@@ -152,7 +176,9 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Mengalihkan ke dashboard...</p>
+          <p className="text-sm text-muted-foreground">
+            Mengalihkan ke dashboard...
+          </p>
         </div>
       </div>
     );
@@ -168,17 +194,33 @@ export default function ResetPasswordPage() {
               <KeyRound className="w-8 h-8 text-muted-foreground" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Sesi Tidak Valid</h3>
+              <h3 className="text-lg font-semibold">
+                Menunggu Link Reset Password
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Silakan klik link reset password dari email Anda untuk melanjutkan.
+                Silakan periksa email Anda dan klik link reset password untuk
+                melanjutkan. Link tersebut akan membawa Anda kembali ke halaman
+                ini dengan akses untuk mengubah kata sandi.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Tidak menerima email? Periksa folder spam atau coba kirim ulang.
               </p>
             </div>
-            <Button 
-              onClick={() => router.push('/user/auth/forgot-password')}
-              className="w-full"
-            >
-              Kembali ke Lupa Password
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={() => router.push("/user/auth/forgot-password")}
+                className="w-full"
+              >
+                Kirim Ulang Email Reset
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/user/auth/login")}
+                className="w-full"
+              >
+                Kembali ke Login
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -202,13 +244,18 @@ export default function ResetPasswordPage() {
                 height={200}
               />
             </div>
-            <CardTitle className="text-xl mt-10">Buat Kata Sandi Baru</CardTitle>
+            <CardTitle className="text-xl mt-10">
+              Buat Kata Sandi Baru
+            </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
               Masukkan kata sandi baru Anda
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4">
-            <form onSubmit={handleSubmit} className="space-y-4 text-sm font-medium">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 text-sm font-medium"
+            >
               <div className="space-y-2">
                 <Label htmlFor="password">Kata Sandi Baru</Label>
                 <Input
@@ -262,4 +309,4 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   );
-} 
+}

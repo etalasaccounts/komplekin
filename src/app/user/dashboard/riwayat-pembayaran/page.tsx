@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import FilterComponent, {
   FilterState,
+  StatusOption,
 } from "@/components/filter/filterComponent";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,18 +15,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-type IuranItem = {
-  keterangan: string;
-  jatuhTempo: string;
-  status: string;
-  nominal: string;
-  metode: string;
-  tanggalBayar: string;
-  buktiBayar: string;
-};
+import {
+  useDetailedInvoices,
+  DetailedInvoice,
+} from "@/hooks/useDetailedInvoices";
+import { toast } from "sonner";
 
 export default function RiwayatPembayaranPage() {
+  const formatDateCompact = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   const badgeStatus = (status: string) => {
     if (status.includes("Menunggu Verifikasi")) {
       return "bg-[#FFEFCC] text-[#A78025]";
@@ -42,55 +47,236 @@ export default function RiwayatPembayaranPage() {
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "",
+    status: "all",
   });
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedIuran, setSelectedIuran] = useState<IuranItem | null>(null);
+  const [selectedIuran, setSelectedIuran] = useState<DetailedInvoice | null>(
+    null
+  );
 
-  const handleViewDetail = (item: IuranItem) => {
+  const {
+    invoices: allInvoices,
+    loading,
+    error,
+    refetch,
+  } = useDetailedInvoices();
+
+  const handleViewDetail = (item: DetailedInvoice) => {
     setSelectedIuran(item);
     setDetailModalOpen(true);
   };
 
-  const iuranBulanan = [
-    {
-      keterangan: "Iuran Juli 2025",
-      jatuhTempo: "23 Juli 2025",
-      status: "Lunas",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Juli 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran Juni 2025",
-      jatuhTempo: "23 Juni 2025",
-      status: "Lunas",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Juni 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran Mei 2025",
-      jatuhTempo: "23 Mei 2025",
-      status: "Lunas",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 Mei 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
-    {
-      keterangan: "Iuran April 2025",
-      jatuhTempo: "23 April 2025",
-      status: "Lunas",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      tanggalBayar: "23 April 2025",
-      buktiBayar: "images/bukti-pembayaran.png",
-    },
+  const handleDownloadReceipt = async (item: DetailedInvoice) => {
+    try {
+      if (!item.buktiBayar) {
+        toast.error("Bukti Pembayaran Tidak Tersedia", {
+          description: "File bukti pembayaran tidak ditemukan",
+        });
+        return;
+      }
+
+      // Show loading toast
+      const loadingToast = toast.loading("Mengunduh bukti pembayaran...");
+
+      try {
+        // Fetch the file to check if it exists and get the correct file extension
+        const response = await fetch(item.buktiBayar);
+
+        if (!response.ok) {
+          throw new Error("File tidak dapat diakses");
+        }
+
+        // Get file extension from content type or URL
+        const contentType = response.headers.get("content-type");
+        let fileExtension = "jpg"; // default
+
+        if (contentType) {
+          if (contentType.includes("png")) fileExtension = "png";
+          else if (contentType.includes("pdf")) fileExtension = "pdf";
+          else if (contentType.includes("jpeg")) fileExtension = "jpg";
+        } else {
+          // Try to get extension from URL
+          const urlParts = item.buktiBayar.split(".");
+          if (urlParts.length > 1) {
+            fileExtension = urlParts[urlParts.length - 1];
+          }
+        }
+
+        // Create blob from response
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        // Create download link
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Bukti-Pembayaran-${item.keterangan.replace(
+          /\s+/g,
+          "-"
+        )}.${fileExtension}`;
+
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(url);
+
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToast);
+        toast.success("Bukti Pembayaran Berhasil Diunduh", {
+          description: `File ${item.keterangan} telah diunduh`,
+        });
+      } catch (fetchError) {
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+
+        console.warn(
+          "Failed to fetch file, using fallback download:",
+          fetchError
+        );
+
+        // Fallback to direct link if fetch fails
+        const link = document.createElement("a");
+        link.href = item.buktiBayar;
+        link.download = `Bukti-Pembayaran-${item.keterangan.replace(
+          /\s+/g,
+          "-"
+        )}.jpg`;
+        link.target = "_blank";
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.success("Bukti Pembayaran Berhasil Diunduh", {
+          description: `File ${item.keterangan} telah diunduh`,
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Gagal Mengunduh", {
+        description: "Terjadi kesalahan saat mengunduh bukti pembayaran",
+      });
+    }
+  };
+
+  // Custom status options for payment history page
+  const paymentHistoryStatusOptions: StatusOption[] = [
+    { value: "all", label: "Semua Status" },
+    { value: "lunas", label: "Lunas" },
   ];
+
+  // Filter to show only fully paid and verified invoices
+  const paidInvoices = allInvoices.filter(
+    (invoice) =>
+      invoice.status === "Lunas" &&
+      invoice.originalData.verification_status === "Terverifikasi"
+  );
+
+  // Apply additional filters to paid invoices
+  const filteredInvoices = paidInvoices.filter((item) => {
+    let matchesFilter = true;
+
+    // Status filter
+    if (filters.status && filters.status !== "all") {
+      if (!item.status.toLowerCase().includes(filters.status.toLowerCase())) {
+        matchesFilter = false;
+      }
+    }
+
+    // Date filters - use payment date for payment history
+    if (filters.dateFrom || filters.dateTo) {
+      const itemDate = item.tanggalBayar
+        ? new Date(item.originalData.payment_date!)
+        : new Date(item.originalData.due_date);
+
+      if (filters.dateFrom && itemDate < filters.dateFrom) {
+        matchesFilter = false;
+      }
+
+      if (filters.dateTo && itemDate > filters.dateTo) {
+        matchesFilter = false;
+      }
+    }
+
+    return matchesFilter;
+  });
+
+  const handleApplyFilters = (newFilters: FilterState) => {
+    // Calculate the count with the new filters being applied
+    const currentFilteredCount = paidInvoices.filter((item) => {
+      let matchesFilter = true;
+
+      // Status filter
+      if (newFilters.status && newFilters.status !== "all") {
+        if (
+          !item.status.toLowerCase().includes(newFilters.status.toLowerCase())
+        ) {
+          matchesFilter = false;
+        }
+      }
+
+      // Date filters - use payment date for payment history
+      if (newFilters.dateFrom || newFilters.dateTo) {
+        const itemDate = item.tanggalBayar
+          ? new Date(item.originalData.payment_date!)
+          : new Date(item.originalData.due_date);
+
+        if (newFilters.dateFrom && itemDate < newFilters.dateFrom) {
+          matchesFilter = false;
+        }
+
+        if (newFilters.dateTo && itemDate > newFilters.dateTo) {
+          matchesFilter = false;
+        }
+      }
+
+      return matchesFilter;
+    }).length;
+
+    toast.success("Filter Diterapkan", {
+      description: `Menampilkan ${currentFilteredCount} hasil`,
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      dateFrom: undefined,
+      dateTo: undefined,
+      status: "all",
+    });
+    toast.success("Filter Direset", {
+      description: "Semua filter telah dihapus",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <p className="text-xl font-medium">Riwayat Pembayaran Iuran</p>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <p className="text-xl font-medium">Riwayat Pembayaran Iuran</p>
+        <div className="text-center py-8">
+          <p className="text-red-500">Error: {error}</p>
+          <Button onClick={refetch} className="mt-4">
+            Coba Lagi
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-xl font-medium">Riwayat Pembayaran Iuran</p>
@@ -98,48 +284,63 @@ export default function RiwayatPembayaranPage() {
         <FilterComponent
           filters={filters}
           setFilters={(filters) => setFilters(filters)}
-          handleApplyFilters={() => {}}
-          handleResetFilters={() => {}}
+          handleApplyFilters={handleApplyFilters}
+          handleResetFilters={handleResetFilters}
+          statusOptions={paymentHistoryStatusOptions}
         />
       </div>
-      {iuranBulanan.map((item) => (
-        <Card key={item.jatuhTempo} className="p-4 space-y-0 gap-3">
-          <CardHeader className="p-0">
-            <CardTitle className="text-xl font-semibold">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{item.keterangan}</span>
-                <Badge
-                  className={`text-xs font-semibold rounded-full ${badgeStatus(
-                    item.status
-                  )}`}
-                >
-                  {item.status}
-                </Badge>
+
+      {filteredInvoices.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            Tidak ada riwayat pembayaran ditemukan
+          </p>
+        </div>
+      ) : (
+        filteredInvoices.map((item) => (
+          <Card key={item.id} className="p-4 space-y-0 gap-3">
+            <CardHeader className="p-0">
+              <CardTitle className="text-xl font-semibold">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{item.keterangan}</span>
+                  <Badge
+                    className={`text-xs font-semibold rounded-full ${badgeStatus(
+                      item.status
+                    )}`}
+                  >
+                    {item.status}
+                  </Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-0">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1 mb-2">
+                  <Calendar className="w-4 h-4" />
+                  <p className="text-xs">
+                    Dibayar:{" "}
+                    <span>
+                      {item.originalData.payment_date
+                        ? formatDateCompact(item.originalData.payment_date)
+                        : formatDateCompact(item.originalData.due_date)}
+                    </span>
+                  </p>
+                </div>
+                <p className="text-2xl font-semibold">{item.nominal}</p>
+                <div className="flex items-center justify-end mt-4">
+                  <Button
+                    className="text-sm font-medium rounded-lg"
+                    onClick={() => handleViewDetail(item)}
+                  >
+                    <ReceiptText className="w-4 h-4" />
+                    Lihat Bukti Bayar
+                  </Button>
+                </div>
               </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 p-0">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1 mb-2">
-                <Calendar className="w-4 h-4" />
-                <p className="text-xs">
-                  Dibayar: <span>{item.jatuhTempo}</span>
-                </p>
-              </div>
-              <p className="text-2xl font-semibold">{item.nominal}</p>
-              <div className="flex items-center justify-end mt-4">
-                <Button
-                  className="text-sm font-medium rounded-lg"
-                  onClick={() => handleViewDetail(item)}
-                >
-                  <ReceiptText className="w-4 h-4" />
-                  Lihat Bukti Bayar
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))
+      )}
 
       {/* Detail Modal */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
@@ -166,9 +367,11 @@ export default function RiwayatPembayaranPage() {
                 <p className="text-sm text-black">{selectedIuran.keterangan}</p>
               </div>
 
-              {/* Tota Pembayaran */}
+              {/* Total Pembayaran */}
               <div>
-                <label className="text-sm text-gray-500">Tota Pembayaran</label>
+                <label className="text-sm text-gray-500">
+                  Total Pembayaran
+                </label>
                 <p className="text-sm text-black">{selectedIuran.nominal}</p>
               </div>
 
@@ -177,14 +380,16 @@ export default function RiwayatPembayaranPage() {
                 <label className="text-sm text-gray-500">
                   Metode Pembayaran
                 </label>
-                <p className="text-sm text-black">Transfer Bank BCA</p>
+                <p className="text-sm text-black">{selectedIuran.metode}</p>
               </div>
 
               {/* Tanggal Bayar */}
               <div>
-                <label className="text-sm text-gray-500 ">Tanggal Bayar</label>
+                <label className="text-sm text-gray-500">Tanggal Bayar</label>
                 <p className="text-sm text-black">
-                  {selectedIuran.tanggalBayar}
+                  {selectedIuran.originalData.payment_date
+                    ? formatDateCompact(selectedIuran.originalData.payment_date)
+                    : "Belum dibayar"}
                 </p>
               </div>
 
@@ -192,6 +397,9 @@ export default function RiwayatPembayaranPage() {
                 <Button
                   className="w-fit px-2 bg-black text-white hover:bg-black/90"
                   size="icon"
+                  onClick={() =>
+                    selectedIuran && handleDownloadReceipt(selectedIuran)
+                  }
                 >
                   <Download className="w-4 h-4" />
                   Unduh Bukti Pembayaran
