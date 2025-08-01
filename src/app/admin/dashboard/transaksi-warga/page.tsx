@@ -1,43 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Search, Plus, FileText, ClipboardList } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import StatusPembayaran from "./components/StatusPembayaran";
-import VerifikasiPembayaran from "./components/VerifikasiPembayaran";
-import { SingleDatePicker } from "@/components/input/singleDatePicker";
+import StatusPembayaran from "./components/StatusPembayaranContainer";
 import FilterComponent, {
   FilterState,
 } from "@/components/filter/filterComponent";
-
-// Define form state type for new payment
-type NewPaymentForm = {
-  name: string;
-  contact: string;
-  houseNumber: string;
-  houseType: string;
-  dueDate: Date | undefined;
-  amount: string;
-};
+import CreateTransaksiWargaDrawer from "./components/CreateTransaksiWargaDrawer";
+import { ClipboardList, FileText, Search } from "lucide-react";
+import { useInvoices } from "@/hooks/useInvoices";
+import VerifikasiPembayaranContainer from "./components/VerifikasiPembayaranContainer";
+import { InvoiceStatus, VerificationStatus } from "@/types/invoice";
+import { toast } from "sonner";
 
 export default function TransaksiWargaPage() {
   const [activeTab, setActiveTab] = useState("status");
@@ -47,58 +23,133 @@ export default function TransaksiWargaPage() {
     dateFrom: undefined,
     dateTo: undefined,
     status: "",
-  });
-  const [newPaymentForm, setNewPaymentForm] = useState<NewPaymentForm>({
-    name: "",
-    contact: "",
-    houseNumber: "",
-    houseType: "",
-    dueDate: undefined,
-    amount: "",
+    verificationStatus: "",
   });
 
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+    dateFrom: undefined,
+    dateTo: undefined,
+    status: "",
+    verificationStatus: "",
+  });
+
+  // Pindahkan hook ke parent component
+  const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
+
   const handleResetFilters = () => {
-    setFilters({
+    const resetFilters = {
       dateFrom: undefined,
       dateTo: undefined,
       status: "",
-    });
-  };
-
-  const handleCreatePayment = () => {
-    // Create payment logic here
-    console.log("Creating new payment:", newPaymentForm);
-    setCreateSheetOpen(false);
-
-    // Show success toast
-    toast.success("Iuran Berhasil Ditambahkan", {
-      description:
-        "Iuran berhasil diatur untuk warga baru. Mereka akan segera menerima notifikasinya.",
+      verificationStatus: "",
+    };
+    setFilters(resetFilters);
+    setAppliedFilters(resetFilters);
+    
+    toast.success("Filter berhasil direset", {
+      description: "Semua filter telah dihapus",
       duration: 3000,
-      dismissible: true,
-      closeButton: true,
-    });
-
-    // Reset form
-    setNewPaymentForm({
-      name: "",
-      contact: "",
-      houseNumber: "",
-      houseType: "",
-      dueDate: undefined,
-      amount: "",
     });
   };
 
-  const updateNewPaymentForm = (
-    field: keyof NewPaymentForm,
-    value: string | Date | undefined
-  ) => {
-    setNewPaymentForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  // Filter logic for invoices
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      // Date range filter
+      if (appliedFilters.dateFrom && invoice.payment_date) {
+        const paymentDate = new Date(invoice.payment_date);
+        if (paymentDate < appliedFilters.dateFrom) return false;
+      }
+      if (appliedFilters.dateTo && invoice.payment_date) {
+        const paymentDate = new Date(invoice.payment_date);
+        if (paymentDate > appliedFilters.dateTo) return false;
+      }
+
+      // Status filter
+      if (appliedFilters.status) {
+        if (appliedFilters.status === "sudah" && invoice.invoice_status !== InvoiceStatus.PAID) {
+          return false;
+        }
+        if (appliedFilters.status === "belum" && invoice.invoice_status !== InvoiceStatus.UNPAID) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [invoices, appliedFilters]);
+
+  // Filter logic for paid invoices (verification)
+  const filteredPaidInvoices = useMemo(() => {
+    return paidInvoices.filter((invoice) => {
+      // Date range filter
+      if (appliedFilters.dateFrom && invoice.payment_date) {
+        const paymentDate = new Date(invoice.payment_date);
+        if (paymentDate < appliedFilters.dateFrom) return false;
+      }
+      if (appliedFilters.dateTo && invoice.payment_date) {
+        const paymentDate = new Date(invoice.payment_date);
+        if (paymentDate > appliedFilters.dateTo) return false;
+      }
+
+      // Status filter for verification
+      if (appliedFilters.status) {
+        if (appliedFilters.status === "sudah" && invoice.invoice_status !== InvoiceStatus.PAID) {
+          return false;
+        }
+        if (appliedFilters.status === "belum" && invoice.invoice_status !== InvoiceStatus.UNPAID) {
+          return false;
+        }
+      }
+
+      // Verification status filter
+      if (appliedFilters.verificationStatus && appliedFilters.verificationStatus !== "semua") {
+        if (appliedFilters.verificationStatus === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
+          return false;
+        }
+        if (appliedFilters.verificationStatus === "unverified" && invoice.verification_status !== VerificationStatus.UNVERIFIED) {
+          return false;
+        }
+        if (appliedFilters.verificationStatus === "not_checked" && invoice.verification_status !== VerificationStatus.NOT_YET_CHECKED) {
+          return false;
+        }
+        if (appliedFilters.verificationStatus === "pending" && invoice.verification_status !== "PENDING") {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [paidInvoices, appliedFilters]);
+
+  const handleApplyFilters = () => {
+    // Apply the current filters to the applied filters state
+    setAppliedFilters(filters);
+    
+    // Show success toast
+    const activeFilters = [];
+    if (filters.dateFrom || filters.dateTo) activeFilters.push("Tanggal");
+    if (filters.status) activeFilters.push("Status Pembayaran");
+    if (filters.verificationStatus) activeFilters.push("Status Verifikasi");
+    
+    if (activeFilters.length > 0) {
+      toast.success("Filter berhasil diterapkan", {
+        description: `Filter aktif: ${activeFilters.join(", ")}`,
+        duration: 3000,
+      });
+    } else {
+      toast.success("Filter berhasil direset", {
+        description: "Semua filter telah dihapus",
+        duration: 3000,
+      });
+    }
+    
+    console.log("Filters applied:", filters);
   };
+
+  // Check if there are unapplied filter changes
+  const hasUnappliedChanges = JSON.stringify(filters) !== JSON.stringify(appliedFilters);
+
 
   return (
     <div className="space-y-6">
@@ -155,169 +206,36 @@ export default function TransaksiWargaPage() {
           <FilterComponent
             filters={filters}
             setFilters={(filters) => setFilters(filters)}
-            handleApplyFilters={() => {}}
+            handleApplyFilters={handleApplyFilters}
             handleResetFilters={handleResetFilters}
+            showVerificationFilter={activeTab === "verifikasi"}
+            hasUnappliedChanges={hasUnappliedChanges}
           />
-
-          {/* Create New Payment Sheet */}
-          <Sheet open={createSheetOpen} onOpenChange={setCreateSheetOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="sm"
-                className="bg-black text-white hover:bg-black/90"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Buat Iuran Baru
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-[400px] sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle>Buat Iuran Warga</SheetTitle>
-                <SheetDescription>
-                  Isi detail iuran warga untuk menambahkan tagihan baru ke
-                  sistem.
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="grid gap-4 py-4 px-4 ">
-                {/* Nama Warga */}
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">
-                    Nama Warga *
-                  </Label>
-
-                  <Select
-                    value={newPaymentForm.name}
-                    onValueChange={(value) =>
-                      updateNewPaymentForm("name", value)
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Mathew Alexander" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Mathew Alexander">
-                        Mathew Alexander
-                      </SelectItem>
-                      <SelectItem value="Susi Pujianti">
-                        Susi Pujianti
-                      </SelectItem>
-                      <SelectItem value="Isabella Nguyen">
-                        Isabella Nguyen
-                      </SelectItem>
-                      <SelectItem value="Olivia Martin">
-                        Olivia Martin
-                      </SelectItem>
-                      <SelectItem value="Jackson Lee">Jackson Lee</SelectItem>
-                      <SelectItem value="Marthin Luther">
-                        Marthin Luther
-                      </SelectItem>
-                      <SelectItem value="Cania Martin">Cania Martin</SelectItem>
-                      <SelectItem value="William Kim">William Kim</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Kontak */}
-                <div className="space-y-2">
-                  <Label htmlFor="contact" className="text-sm font-medium">
-                    Kontak *
-                  </Label>
-                  <Input
-                    id="contact"
-                    placeholder="089534924330"
-                    value={newPaymentForm.contact}
-                    onChange={(e) =>
-                      updateNewPaymentForm("contact", e.target.value)
-                    }
-                    disabled
-                    className="bg-[#E0E0E0]"
-                  />
-                </div>
-
-                {/* Nomor Rumah */}
-                <div className="space-y-2">
-                  <Label htmlFor="houseNumber" className="text-sm font-medium">
-                    Nomor Rumah *
-                  </Label>
-                  <Input
-                    id="houseNumber"
-                    placeholder="No1 Blok A"
-                    value={newPaymentForm.houseNumber}
-                    onChange={(e) =>
-                      updateNewPaymentForm("houseNumber", e.target.value)
-                    }
-                    disabled
-                    className="bg-[#E0E0E0]"
-                  />
-                </div>
-
-                {/* Tipe Rumah */}
-                <div className="space-y-2">
-                  <Label htmlFor="houseType" className="text-sm font-medium">
-                    Tipe Rumah *
-                  </Label>
-                  <Input
-                    id="houseType"
-                    placeholder="42 A"
-                    value={newPaymentForm.houseType}
-                    onChange={(e) =>
-                      updateNewPaymentForm("houseType", e.target.value)
-                    }
-                    disabled
-                    className="bg-[#E0E0E0]"
-                  />
-                </div>
-
-                {/* Jatuh Tempo */}
-                <div className="space-y-2">
-                  <Label htmlFor="dueDate" className="text-sm font-medium">
-                    Jatuh tempo *
-                  </Label>
-                  <div className="relative">
-                    <SingleDatePicker
-                      id="dueDate"
-                      placeholder="Select date"
-                      value={newPaymentForm.dueDate}
-                      onChange={(date) => updateNewPaymentForm("dueDate", date)}
-                      buttonClassName="w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Jumlah Iuran */}
-                <div className="space-y-2">
-                  <Label htmlFor="amount" className="text-sm font-medium">
-                    Jumlah Iuran *
-                  </Label>
-                  <Input
-                    id="amount"
-                    placeholder="Rp120.000"
-                    value={newPaymentForm.amount}
-                    onChange={(e) =>
-                      updateNewPaymentForm("amount", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end mt-6 px-4">
-                <Button
-                  onClick={handleCreatePayment}
-                  className="bg-black text-white hover:bg-black/90"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Buat Iuran
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <CreateTransaksiWargaDrawer
+            createSheetOpen={createSheetOpen}
+            setCreateSheetOpen={setCreateSheetOpen}
+            createInvoice={createInvoice}
+          />
         </div>
       </div>
-      {activeTab === "status" && <StatusPembayaran searchTerm={searchTerm} />}
+      {activeTab === "status" && (
+        <StatusPembayaran 
+          searchTerm={searchTerm} 
+          invoices={filteredInvoices}
+          loading={loading}
+          handleDownload={handleDownload}
+        />
+      )}
       {activeTab === "verifikasi" && (
-        <VerifikasiPembayaran searchTerm={searchTerm} />
+        <VerifikasiPembayaranContainer
+          searchTerm={searchTerm} 
+          paidInvoices={filteredPaidInvoices}
+          loading={loading}
+          updateInvoice={updateInvoice}
+          getInvoicesByUserId={getInvoicesByUserId}
+          invoiceByUserId={invoiceByUserId}
+          createManualPayment={createManualPayment}
+        />
       )}
     </div>
   );

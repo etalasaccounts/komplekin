@@ -21,6 +21,7 @@ export type FilterState = {
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
   status: string;
+  verificationStatus?: string;
 };
 
 type FilterComponentProps = {
@@ -28,6 +29,8 @@ type FilterComponentProps = {
   setFilters: (filters: FilterState) => void;
   handleApplyFilters: () => void;
   handleResetFilters: () => void;
+  showVerificationFilter?: boolean;
+  hasUnappliedChanges?: boolean;
 };
 
 export default function FilterComponent({
@@ -35,19 +38,28 @@ export default function FilterComponent({
   setFilters,
   handleApplyFilters,
   handleResetFilters,
+  showVerificationFilter = false,
+  hasUnappliedChanges = false,
 }: FilterComponentProps) {
   const [filterOpen, setFilterOpen] = useState(false);
 
   return (
     <Popover open={filterOpen} onOpenChange={setFilterOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className={hasUnappliedChanges ? "border-orange-500 text-orange-600" : ""}
+        >
           Filter
+          {hasUnappliedChanges && (
+            <div className="w-2 h-2 bg-orange-500 rounded-full ml-2" />
+          )}
           <ChevronDown className="h-4 w-4 ml-2" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-95 p-0 bg-white border z-100 border-gray-200 rounded-lg mt-2"
+        className="w-95 p-0 bg-white border border-gray-200 rounded-lg mt-2 z-[99999] filter-popup"
         align="end"
         side="bottom"
       >
@@ -60,7 +72,6 @@ export default function FilterComponent({
               size="sm"
               onClick={() => {
                 setFilterOpen(false);
-                handleResetFilters();
               }}
               className="h-8 w-8 p-0"
             >
@@ -111,7 +122,7 @@ export default function FilterComponent({
 
             {/* Status Filter */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Status</Label>
+              <Label className="text-sm font-medium">Status Pembayaran</Label>
               <Select
                 value={filters.status}
                 onValueChange={(value) =>
@@ -121,23 +132,51 @@ export default function FilterComponent({
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Pilih Status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[99999]">
                   <SelectItem value="belum">Belum Bayar</SelectItem>
                   <SelectItem value="sudah">Sudah Bayar</SelectItem>
                   <SelectItem value="semua">Semua Status</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Verification Status Filter */}
+            {showVerificationFilter && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Status Verifikasi</Label>
+                <Select
+                  value={filters.verificationStatus || ""}
+                  onValueChange={(value) =>
+                    setFilters({ ...filters, verificationStatus: value })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Pilih Status Verifikasi" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[99999]">
+                    <SelectItem value="verified">Terverifikasi</SelectItem>
+                    <SelectItem value="unverified">Ditolak</SelectItem>
+                    <SelectItem value="not_checked">Belum Dicek</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="semua">Semua Status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {/* Apply Filter Button */}
           <div className="mt-6">
             <Button
               onClick={handleApplyFilters}
-              className="w-full bg-black text-white hover:bg-black/90"
+              className={`w-full text-white hover:bg-black/90 ${
+                hasUnappliedChanges 
+                  ? "bg-orange-600 hover:bg-orange-700" 
+                  : "bg-black"
+              }`}
             >
               <Filter className="h-4 w-4 mr-2" />
-              Terapkan Filter
+              {hasUnappliedChanges ? "Terapkan Filter" : "Filter Aktif"}
             </Button>
           </div>
         </div>
