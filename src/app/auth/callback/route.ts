@@ -7,11 +7,16 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next')
   const type = requestUrl.searchParams.get('type')
+  const setup = requestUrl.searchParams.get('setup') // New setup parameter for magic link flow
   const magic = requestUrl.searchParams.get('magic') // New magic flag
+  const verifyTemp = requestUrl.searchParams.get('verify_temp') // New temp password verification flag
 
-  // Handle magic link with recovery type
-  if (type === 'recovery' && magic === 'true') {
-    console.log('Processing magic link via recovery flow')
+  console.log('Auth callback params:', { code: !!code, next, type, setup, magic, verifyTemp })
+
+  // MAGIC LINK FLOW - Handle all magic link scenarios (most robust detection)
+  // For magic link from admin creation, we expect setup=true
+  if (setup === 'true' || type === 'magiclink' || magic === 'true') {
+    console.log('Processing magic link callback', { type, setup, next })
     
     if (code) {
       try {
@@ -19,36 +24,75 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         
         if (error) {
-          console.error('Magic link recovery error:', error)
+          console.error('Magic link auth error:', error)
           const errorRedirect = next === 'admin' 
-            ? '/admin/auth/reset-password?error=magic_link_failed'
-            : '/user/auth/reset-password?error=magic_link_failed'
+            ? '/admin/auth/reset-password?error=magic_link_failed&new_user=true'
+            : '/user/auth/reset-password?error=magic_link_failed&new_user=true'
           return NextResponse.redirect(`${requestUrl.origin}${errorRedirect}`)
         }
 
         if (data.user) {
           console.log('Magic link authentication successful for user:', data.user.email)
-          console.log('User session established:', !!data.session)
+          console.log('User metadata:', data.user.user_metadata)
+          console.log('Setup required:', setup === 'true')
+          console.log('Verify temp required:', verifyTemp === 'true')
           
-          const redirectUrl = next === 'admin' 
-            ? '/admin/auth/reset-password'
-            : '/user/auth/reset-password'
+          let redirectUrl: string
+          
+          // Check if this is a new user that needs temporary password verification
+          if (verifyTemp === 'true' && setup === 'true') {
+            // New user from admin creation - needs to verify temporary password first
+            redirectUrl = next === 'admin' 
+              ? '/admin/auth/verify?new_user=true&magic_link=true'
+              : '/user/auth/verify-temp-password?new_user=true&magic_link=true'
+          } else if (setup === 'true') {
+            // Legacy flow - direct to reset password
+            redirectUrl = next === 'admin' 
+              ? '/admin/auth/reset-password?new_user=true&magic_link=true'
+              : '/user/auth/reset-password?new_user=true&magic_link=true'
+          } else {
+            // Fallback - go to dashboard (shouldn't happen for magic link)
+            try {
+              const { data: permissions } = await supabase
+                .from('user_permissions')
+                .select('role')
+                .eq('user_id', data.user.id)
+                .single()
+
+              const role = permissions?.role || next
+              
+              redirectUrl = role === 'admin' 
+                ? '/admin/dashboard'
+                : '/user/dashboard'
+            } catch {
+              // Fallback if permissions query fails
+              redirectUrl = next === 'admin' 
+                ? '/admin/dashboard'
+                : '/user/dashboard'
+            }
+          }
+
+          console.log('Redirecting to:', redirectUrl)
 
           // Return HTML that handles client-side redirect with authenticated session
           const html = `
             <!DOCTYPE html>
             <html>
               <head>
-                <title>Magic Link Success</title>
+                <title>Magic Link Authentication</title>
                 <script>
-                  // Set flag for magic link mode (authenticated)
+                  // Set appropriate flags
+                  localStorage.setItem('magic_link_setup_mode', 'true');
+                  localStorage.setItem('new_user_setup', 'true');
                   localStorage.setItem('magic_link_authenticated', 'true');
                   localStorage.setItem('magic_link_timestamp', Date.now().toString());
+                  
+                  console.log('Magic link authenticated, redirecting to:', '${redirectUrl}');
                   
                   // Wait a bit for session to settle, then redirect
                   setTimeout(() => {
                     window.location.href = '${redirectUrl}';
-                  }, 500);
+                  }, 1000);
                 </script>
               </head>
               <body>
@@ -70,7 +114,14 @@ export async function GET(request: NextRequest) {
                       animation: spin 1s linear infinite; 
                       margin: 0 auto 16px;
                     "></div>
-                    <p style="color: #666; margin: 0;">Magic link authenticated! Setting up your account...</p>
+                    <p style="color: #666; margin: 0;">
+                      Magic Link berhasil! Menyiapkan akun Anda...
+                    </p>
+                    <p style="color: #999; margin: 8px 0 0; font-size: 14px;">
+                      ${verifyTemp === 'true' 
+                        ? 'Anda akan diminta verifikasi password sementara' 
+                        : 'Anda akan diarahkan untuk membuat password'}
+                    </p>
                   </div>
                 </div>
                 <style>
@@ -90,22 +141,35 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         console.error('Magic link processing error:', err)
         const errorRedirect = next === 'admin' 
-          ? '/admin/auth/reset-password?error=magic_link_error'
-          : '/user/auth/reset-password?error=magic_link_error'
+          ? '/admin/auth/reset-password?error=magic_link_error&new_user=true'
+          : '/user/auth/reset-password?error=magic_link_error&new_user=true'
         return NextResponse.redirect(`${requestUrl.origin}${errorRedirect}`)
       }
+    } else {
+      // No code but setup=true - this might be hash fragment authentication
+      // Redirect to appropriate page where client-side can handle hash fragment
+      console.log('Magic link callback without code - redirecting to handle hash fragment')
+      let redirectUrl: string
+      
+      if (verifyTemp === 'true') {
+        // Redirect to temp password verification page
+        redirectUrl = next === 'admin' 
+          ? '/admin/auth/verify?new_user=true&magic_link=true&check_hash=true'
+          : '/user/auth/verify-temp-password?new_user=true&magic_link=true&check_hash=true'
+      } else {
+        // Legacy flow - redirect to reset password
+        redirectUrl = next === 'admin' 
+          ? '/admin/auth/reset-password?new_user=true&magic_link=true&check_hash=true'
+          : '/user/auth/reset-password?new_user=true&magic_link=true&check_hash=true'
+      }
+      
+      return NextResponse.redirect(`${requestUrl.origin}${redirectUrl}`)
     }
-    
-    // No code for magic link - redirect with error
-    const errorRedirect = next === 'admin' 
-      ? '/admin/auth/reset-password?error=magic_link_invalid'
-      : '/user/auth/reset-password?error=magic_link_invalid'
-    return NextResponse.redirect(`${requestUrl.origin}${errorRedirect}`)
   }
 
-  // Handle magic link differently - need to authenticate first
+  // Legacy: Handle magic link differently - need to authenticate first
   if (type === 'magic') {
-    console.log('Processing magic link callback')
+    console.log('Processing legacy magic link callback')
     
     // For magic link, we need to handle the code properly
     if (code) {
