@@ -60,15 +60,25 @@ export default function Pembayaran({
     buktiPembayaran: null as File | null,
   });
 
-  // Auto-select bank account if only one exists
+  // Auto-select bank account if only one exists and transfer method is selected
   useEffect(() => {
-    if (bankAccounts.length === 1 && !paymentForm.rekening) {
+    if (
+      bankAccounts.length === 1 &&
+      paymentForm.metodeBayar === "transfer" &&
+      !paymentForm.rekening
+    ) {
       setPaymentForm((prev) => ({
         ...prev,
         rekening: bankAccounts[0].id,
       }));
+    } else if (paymentForm.metodeBayar !== "transfer") {
+      // Clear bank account selection if not using transfer
+      setPaymentForm((prev) => ({
+        ...prev,
+        rekening: "",
+      }));
     }
-  }, [bankAccounts, paymentForm.rekening]);
+  }, [bankAccounts, paymentForm.metodeBayar, paymentForm.rekening]);
 
   // Populate form data when selectedIuran changes and modal is open
   useEffect(() => {
@@ -88,7 +98,7 @@ export default function Pembayaran({
         totalTagihan: selectedIuran.nominal, // Keep formatted version for display
         jumlahBayar: selectedIuran.nominal, // Keep formatted version for display
         metodeBayar: "",
-        rekening: bankAccounts.length === 1 ? bankAccounts[0].id : "",
+        rekening: "",
         buktiPembayaran: null,
       });
       setPaymentStep(1);
@@ -391,7 +401,7 @@ export default function Pembayaran({
                 }
               >
                 <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Transfer" />
+                  <SelectValue placeholder="Pilih Metode Bayar" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="transfer">Transfer</SelectItem>

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 // Create admin client with service role key
 const supabaseAdmin = createClient(
@@ -13,7 +13,7 @@ const supabaseAdmin = createClient(
   }
 );
 
-export async function POST(request: NextRequest) {
+export async function GET() {
   try {
     console.log("🔧 Fixing invoice structure...");
 

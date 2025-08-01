@@ -45,22 +45,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user permissions to find cluster_id
-    const { data: userPermissions, error: permissionsError } =
-      await supabaseAdmin
-        .from("user_permissions")
-        .select("cluster_id")
-        .eq("user_id", user.id)
-        .single();
-
-    if (permissionsError || !userPermissions?.cluster_id) {
-      return NextResponse.json(
-        { success: false, error: "User cluster not found" },
-        { status: 404 }
-      );
-    }
-
-    // Fetch cluster bank accounts
+    // Fetch all cluster bank accounts
     const { data: bankAccounts, error: bankAccountsError } = await supabaseAdmin
       .from("cluster_bank_account")
       .select("*")
