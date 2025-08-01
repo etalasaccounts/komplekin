@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 
 export const useUserPermission = () => {
     const [userPermissions, setUserPermissions] = useState<UserPermissions[]>([]);
-    const [loading, setLoading] = useState(false);
 
     const getUserPermission = async () => {
         const userPermissions = await userPermissionService.getUserPermissions();
@@ -21,5 +20,5 @@ export const useUserPermission = () => {
         getUserPermission();
     }, []);
 
-    return { userPermissions, loading, getUserPermissionByProfileId };
+    return { userPermissions, getUserPermissionByProfileId };
 }

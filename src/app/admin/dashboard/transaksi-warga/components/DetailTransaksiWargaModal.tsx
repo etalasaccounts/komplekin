@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { ClipboardList, FileText } from "lucide-react";
 import { useState } from "react";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
+import Image from "next/image";
 
 type DetailTransaksiWargaModalProps = {
   detailModalOpen: boolean;
@@ -119,9 +120,11 @@ export default function DetailTransaksiWargaModal({
                             <p className="text-sm text-gray-500 mb-2">Foto KTP</p>
                             {selectedInvoice.user_permission?.profile?.file_ktp ? (
                                 <div className="border-2 border-gray-300 rounded-lg p-2 h-32 bg-gray-50">
-                                    <img 
+                                    <Image 
                                         src={selectedInvoice.user_permission.profile.file_ktp} 
                                         alt="Foto KTP" 
+                                        width={200}
+                                        height={128}
                                         className="w-full h-full object-cover rounded"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
@@ -142,9 +145,11 @@ export default function DetailTransaksiWargaModal({
                             <p className="text-sm text-gray-500 mb-2">Foto KK</p>
                             {selectedInvoice.user_permission?.profile?.file_kk ? (
                                 <div className="border-2 border-gray-300 rounded-lg p-2 h-32 bg-gray-50">
-                                    <img 
+                                    <Image 
                                         src={selectedInvoice.user_permission.profile.file_kk} 
                                         alt="Foto KK" 
+                                        width={200}
+                                        height={128}
                                         className="w-full h-full object-cover rounded"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';

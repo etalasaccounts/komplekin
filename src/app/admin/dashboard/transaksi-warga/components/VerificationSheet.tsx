@@ -18,7 +18,7 @@ type VerificationSheetProps = {
   onOpenChange: (open: boolean) => void;
   selectedInvoice: Invoice | null;
   form: VerificationForm;
-  updateForm: (field: keyof VerificationForm, value: any) => void;
+  updateForm: (field: keyof VerificationForm, value: string | Date | File | null | undefined) => void;
   onApprove: () => void;
   onReject: () => void;
 };

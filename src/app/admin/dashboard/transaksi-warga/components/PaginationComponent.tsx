@@ -23,7 +23,6 @@ export default function PaginationComponent({
   currentPage,
   totalPages,
   totalItems,
-  itemsPerPage,
   startIndex,
   endIndex,
   onPageChange,

@@ -27,7 +27,7 @@ type ManualPaymentSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   form: ManualPaymentForm;
-  updateForm: (field: keyof ManualPaymentForm, value: any) => void; 
+  updateForm: (field: keyof ManualPaymentForm, value: string | Date | File | null | undefined | number) => void; 
   getInvoicesByUserId: (userId: string) => void;
   invoiceByUserId: Invoice[];
   createManualPayment: (invoice: Invoice, uploadedReceipt: File) => Promise<Invoice | null>;
@@ -42,7 +42,7 @@ export default function ManualPaymentSheet({
   invoiceByUserId,
   createManualPayment,
 }: ManualPaymentSheetProps) {
-  const { profiles, loading } = useProfiles();
+  const { profiles } = useProfiles();
   const { getUserPermissionByProfileId } = useUserPermission();
   
   const handleSubmit = async () => {
