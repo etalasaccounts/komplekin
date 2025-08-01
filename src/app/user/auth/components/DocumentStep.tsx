@@ -7,11 +7,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, UserPlus } from "lucide-react";
+import { CalendarIcon, UserPlus, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { FormData } from "@/app/user/auth/components/PersonalInfoStep";
 import { ChooseFile } from "@/components/input/chooseFile";
+
 interface DocumentStepProps {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
@@ -26,6 +27,7 @@ export function DocumentStep({
   formData,
   updateFormData,
   onSubmit,
+  onBack,
 }: DocumentStepProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +36,25 @@ export function DocumentStep({
 
   const handleFileUpload = (
     file: File | null,
-    field: "idCardPhoto" | "familyCardPhoto"
+    field: "file_ktp" | "file_kk"
   ) => {
     updateFormData({ [field]: file });
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      // Format date as YYYY-MM-DD
+      const formattedDate = format(date, "yyyy-MM-dd");
+      updateFormData({ moving_date: formattedDate });
+    }
+  };
+
+  // Parse the moving_date string back to Date for calendar component
+  const parseMovingDate = () => {
+    if (formData.moving_date) {
+      return new Date(formData.moving_date);
+    }
+    return undefined;
   };
 
   return (
@@ -58,10 +76,10 @@ export function DocumentStep({
         <div className="space-y-2">
           <ChooseFile
             label="Foto KTP"
-            id="idCardPhoto"
+            id="file_ktp"
             accept="image/*"
-            onChange={(file) => handleFileUpload(file, "idCardPhoto")}
-            value={formData.idCardPhoto}
+            onChange={(file) => handleFileUpload(file, "file_ktp")}
+            value={formData.file_ktp}
           />
         </div>
 
@@ -69,60 +87,58 @@ export function DocumentStep({
         <div className="space-y-2">
           <ChooseFile
             label="Foto Kartu Keluarga"
-            id="familyCardPhoto"
+            id="file_kk"
             accept="image/*"
-            onChange={(file) => handleFileUpload(file, "familyCardPhoto")}
-            value={formData.familyCardPhoto}
+            onChange={(file) => handleFileUpload(file, "file_kk")}
+            value={formData.file_kk}
           />
         </div>
 
         {/* Emergency Phone */}
         <div className="space-y-2">
-          <Label htmlFor="emergencyPhone" className="text-sm font-medium">
+          <Label htmlFor="emergency_telp" className="text-sm font-medium">
             Nomor HP Darurat
           </Label>
           <Input
             className="text-sm"
-            id="emergencyPhone"
+            id="emergency_telp"
             placeholder="085157429811"
-            value={formData.emergencyPhone}
-            onChange={(e) => updateFormData({ emergencyPhone: e.target.value })}
-            // required
+            value={formData.emergency_telp}
+            onChange={(e) => updateFormData({ emergency_telp: e.target.value })}
           />
         </div>
 
         {/* Head of Family */}
         <div className="space-y-2">
-          <Label htmlFor="headOfFamily" className="text-sm font-medium">
+          <Label htmlFor="head_of_family" className="text-sm font-medium">
             Nama Kepala Keluarga
           </Label>
           <Input
             className="text-sm"
-            id="headOfFamily"
+            id="head_of_family"
             placeholder="Mathew Alexander"
-            value={formData.headOfFamily}
-            onChange={(e) => updateFormData({ headOfFamily: e.target.value })}
-            // required
+            value={formData.head_of_family}
+            onChange={(e) => updateFormData({ head_of_family: e.target.value })}
           />
         </div>
 
-        {/* Occupation */}
+        {/* Work */}
         <div className="space-y-2">
-          <Label htmlFor="occupation" className="text-sm font-medium">
+          <Label htmlFor="work" className="text-sm font-medium">
             Pekerjaan
           </Label>
           <Input
             className="text-sm"
-            id="occupation"
+            id="work"
             placeholder="CEO Figma"
-            value={formData.occupation}
-            onChange={(e) => updateFormData({ occupation: e.target.value })}
+            value={formData.work}
+            onChange={(e) => updateFormData({ work: e.target.value })}
           />
         </div>
 
         {/* Move-in Date */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium" htmlFor="moveInDate">
+          <Label className="text-sm font-medium" htmlFor="moving_date">
             Tanggal Pindah
           </Label>
           <Popover>
@@ -131,22 +147,22 @@ export function DocumentStep({
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !formData.moveInDate && "text-muted-foreground"
+                  !formData.moving_date && "text-muted-foreground"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {formData.moveInDate ? (
-                  format(formData.moveInDate, "dd/MM/yyyy")
+                {formData.moving_date ? (
+                  format(parseMovingDate()!, "dd/MM/yyyy")
                 ) : (
-                  <span>20/06/2025</span>
+                  <span>Pilih tanggal pindah</span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 text-sm" align="start">
               <Calendar
                 mode="single"
-                selected={formData.moveInDate}
-                onSelect={(date) => updateFormData({ moveInDate: date })}
+                selected={parseMovingDate()}
+                onSelect={handleDateChange}
                 className="p-3 pointer-events-auto"
               />
             </PopoverContent>
@@ -163,6 +179,16 @@ export function DocumentStep({
           >
             <UserPlus className="w-4 h-4" />
             Daftar Jadi Warga
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full py-3 text-sm font-medium"
+            size="lg"
+            onClick={onBack}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Kembali
           </Button>
           <p className="text-[10px] text-muted-foreground text-center mt-2">
             Semua informasi yang Anda isi hanya digunakan untuk keperluan

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,19 +21,38 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, RefreshCw, X, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
+
 export default function ProfilePage() {
   const router = useRouter();
+  const { profile, loading, error, updateProfile, updating } = useProfile();
+
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
-    namaLengkap: "Mathew Alexander",
-    nomorHP: "089534924330",
-    email: "mathewa@gmail.com",
-    alamatRumah: "Komplek Mahata Margonda No12 Blok A",
-    tipeRumah: "Tipe 24 B",
-    statusKepemilikan: "Sewa",
+    namaLengkap: "",
+    nomorHP: "",
+    email: "",
+    alamatRumah: "",
+    tipeRumah: "",
+    statusKepemilikan: "",
   });
+
+  // Update profileData when profile is loaded
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        namaLengkap: profile.fullname || "",
+        nomorHP: profile.no_telp || "",
+        email: profile.email || "",
+        alamatRumah: profile.address || "",
+        tipeRumah: profile.house_type || "",
+        statusKepemilikan: profile.ownership_status || "",
+      });
+    }
+  }, [profile]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData((prev) => ({
@@ -52,16 +71,39 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (selectedFile) {
-      console.log("Uploading file:", selectedFile);
-      // Handle file upload logic here
-      setUploadModalOpen(false);
-      setSelectedFile(null);
-      // Clean up preview URL
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
+      try {
+        const formData = new FormData();
+        formData.append("photo", selectedFile);
+
+        // Add current profile data to maintain other fields
+        formData.append("fullname", profileData.namaLengkap);
+        formData.append("no_telp", profileData.nomorHP);
+        formData.append("email", profileData.email);
+        formData.append("address", profileData.alamatRumah);
+        formData.append("house_type", profileData.tipeRumah);
+        formData.append("ownership_status", profileData.statusKepemilikan);
+
+        const success = await updateProfile(formData);
+
+        if (success) {
+          toast.success("Foto Profil Berhasil Diupload", {
+            description: "Foto profil Anda telah diperbarui",
+          });
+          setUploadModalOpen(false);
+          setSelectedFile(null);
+          // Clean up preview URL
+          if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+          }
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error("Gagal Upload Foto", {
+          description: "Terjadi kesalahan saat mengupload foto",
+        });
       }
     }
   };
@@ -74,6 +116,71 @@ export default function ProfilePage() {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("fullname", profileData.namaLengkap);
+      formData.append("no_telp", profileData.nomorHP);
+      formData.append("email", profileData.email);
+      formData.append("address", profileData.alamatRumah);
+      formData.append("house_type", profileData.tipeRumah);
+      formData.append("ownership_status", profileData.statusKepemilikan);
+
+      const success = await updateProfile(formData);
+
+      if (success) {
+        toast.success("Profil Berhasil Diperbarui", {
+          description: "Data profil Anda telah disimpan",
+        });
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Gagal Menyimpan", {
+        description: "Terjadi kesalahan saat menyimpan profil",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+          <p className="text-muted-foreground">Loading profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-md mx-auto bg-white min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">Error: {error}</p>
+            <Button onClick={() => window.location.reload()}>Coba Lagi</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getRegistrationDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+      month: "long",
+      year: "numeric",
+    });
   };
 
   return (
@@ -98,9 +205,20 @@ export default function ProfilePage() {
         {/* Profile Avatar Section */}
         <div className="py-4">
           <div className="flex items-center space-y-4 space-x-4">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-xl font-semibold text-gray-600">
-              MA
-            </div>
+            {profile?.photo ? (
+              <div className="w-16 h-16 relative rounded-full overflow-hidden">
+                <Image
+                  src={profile.photo}
+                  alt="Profile"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-xl font-semibold text-gray-600">
+                {profile ? getInitials(profile.fullname) : "MA"}
+              </div>
+            )}
 
             <Button
               variant="secondary"
@@ -114,14 +232,17 @@ export default function ProfilePage() {
           <div className="flex-1">
             <div className="flex flex-col">
               <div className="flex items-center space-x-2 mt-1">
-                <h3 className="text-base">Mathew Alexander</h3>
+                <h3 className="text-base">
+                  {profile?.fullname || "Loading..."}
+                </h3>
 
                 <Badge className="text-[8px] text-[#1F7EAD] bg-[#D5F1FF] rounded-full">
-                  Warga Baru
+                  {profile?.citizen_status || "Warga Baru"}
                 </Badge>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Terdaftar Sejak Juni 2025
+                Terdaftar Sejak{" "}
+                {profile ? getRegistrationDate(profile.created_at) : "..."}
               </p>
             </div>
           </div>
@@ -226,12 +347,13 @@ export default function ProfilePage() {
           <div className="pt-6">
             <Button
               className="w-full bg-black text-white hover:bg-black/90 flex items-center justify-center space-x-2"
-              onClick={() => {
-                console.log("Saving profile changes:", profileData);
-              }}
+              onClick={handleSaveProfile}
+              disabled={updating}
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Simpan Perubahan</span>
+              <RefreshCw
+                className={`w-4 h-4 ${updating ? "animate-spin" : ""}`}
+              />
+              <span>{updating ? "Menyimpan..." : "Simpan Perubahan"}</span>
             </Button>
           </div>
         </div>
@@ -242,7 +364,7 @@ export default function ProfilePage() {
         <DialogContent className="max-w-xs" showCloseButton={false}>
           <DialogHeader className="flex flex-row items-center justify-between p-0">
             <DialogTitle className="text-lg font-semibold">
-              Unggah Dokumen
+              Unggah Foto Profil
             </DialogTitle>
             <Button
               variant="ghost"
@@ -277,7 +399,7 @@ export default function ProfilePage() {
                   <>
                     <Upload className="w-8 h-8 text-gray-400 mx-auto mb-4" />
                     <p className="text-xs text-gray-600 mb-2">
-                      Jelajahi dan pilih file yang ingin Anda unggah dari
+                      Jelajahi dan pilih foto yang ingin Anda unggah dari
                       komputer Anda
                     </p>
                   </>
@@ -307,8 +429,9 @@ export default function ProfilePage() {
               <Button
                 className="w-full bg-black text-white hover:bg-black/90"
                 onClick={handleUpload}
+                disabled={updating}
               >
-                Upload File
+                {updating ? "Uploading..." : "Upload File"}
               </Button>
             )}
           </div>

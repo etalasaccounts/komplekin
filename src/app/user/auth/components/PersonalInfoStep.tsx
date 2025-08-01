@@ -12,19 +12,22 @@ import {
 import { ArrowRight } from "lucide-react";
 
 export interface FormData {
-  fullName: string;
-  phoneNumber: string;
   email: string;
+  fullname: string;
+  no_telp: string;
   address: string;
-  typeOfHouse: string;
-  ownershipStatus: string;
-  moveInDate: Date | undefined;
-  idCardPhoto: File | null;
-  familyCardPhoto: File | null;
-  emergencyPhone: string;
-  headOfFamily: string;
-  occupation: string;
+  house_type: string;
+  house_number: string;
+  ownership_status: string;
+  file_ktp: File | null;
+  file_kk: File | null;
+  emergency_telp: string;
+  head_of_family: string;
+  work: string;
+  moving_date: string;
+  citizen_status?: string;
 }
+
 interface PersonalInfoStepProps {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
@@ -64,31 +67,16 @@ export function PersonalInfoStep({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Full Name */}
         <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-sm font-medium">
+          <Label htmlFor="fullname" className="text-sm font-medium">
             Nama Lengkap *
           </Label>
           <Input
             className="text-sm"
-            id="fullName"
+            id="fullname"
             placeholder="Mathew Alexander"
-            value={formData.fullName}
-            onChange={(e) => updateFormData({ fullName: e.target.value })}
-            // required
-          />
-        </div>
-
-        {/* Phone Number */}
-        <div className="space-y-2">
-          <Label htmlFor="phoneNumber" className="text-sm font-medium">
-            Nomor HP Aktif *
-          </Label>
-          <Input
-            className="text-sm"
-            id="phoneNumber"
-            placeholder="089534924330"
-            value={formData.phoneNumber}
-            onChange={(e) => updateFormData({ phoneNumber: e.target.value })}
-            // required
+            value={formData.fullname}
+            onChange={(e) => updateFormData({ fullname: e.target.value })}
+            required
           />
         </div>
 
@@ -104,14 +92,29 @@ export function PersonalInfoStep({
             placeholder="mathewa@gmail.com"
             value={formData.email}
             onChange={(e) => updateFormData({ email: e.target.value })}
-            // required
+            required
+          />
+        </div>
+
+        {/* Phone Number */}
+        <div className="space-y-2">
+          <Label htmlFor="no_telp" className="text-sm font-medium">
+            Nomor HP Aktif *
+          </Label>
+          <Input
+            className="text-sm"
+            id="no_telp"
+            placeholder="089534924330"
+            value={formData.no_telp}
+            onChange={(e) => updateFormData({ no_telp: e.target.value })}
+            required
           />
         </div>
 
         {/* Address */}
         <div className="space-y-2">
           <Label htmlFor="address" className="text-sm font-medium">
-            Alamat Rumah
+            Alamat Rumah *
           </Label>
           <Textarea
             className="text-sm"
@@ -120,41 +123,59 @@ export function PersonalInfoStep({
             value={formData.address}
             onChange={(e) => updateFormData({ address: e.target.value })}
             rows={3}
+            required
           />
         </div>
-        {/* Tipe Rumah */}
+
+        {/* House Type */}
         <div className="space-y-2">
-          <Label htmlFor="tipeRumah" className="text-sm font-medium">
-            Tipe Rumah
+          <Label htmlFor="house_type" className="text-sm font-medium">
+            Tipe Rumah *
           </Label>
           <Input
             className="text-sm"
-            id="tipeRumah"
+            id="house_type"
             type="text"
             placeholder="Tipe 24 B"
-            value={formData.typeOfHouse}
-            onChange={(e) => updateFormData({ typeOfHouse: e.target.value })}
-            // required
+            value={formData.house_type}
+            onChange={(e) => updateFormData({ house_type: e.target.value })}
+            required
+          />
+        </div>
+
+        {/* House Number */}
+        <div className="space-y-2">
+          <Label htmlFor="house_number" className="text-sm font-medium">
+            Nomor Rumah *
+          </Label>
+          <Input
+            className="text-sm"
+            id="house_number"
+            placeholder="No 12"
+            value={formData.house_number}
+            onChange={(e) => updateFormData({ house_number: e.target.value })}
+            required
           />
         </div>
 
         {/* Ownership Status */}
         <div className="space-y-2">
-          <Label htmlFor="ownershipStatus" className="text-sm font-medium">
-            Status Kepemilikan
+          <Label htmlFor="ownership_status" className="text-sm font-medium">
+            Status Kepemilikan *
           </Label>
           <Select
-            value={formData.ownershipStatus}
+            value={formData.ownership_status}
             onValueChange={(value) =>
-              updateFormData({ ownershipStatus: value })
+              updateFormData({ ownership_status: value })
             }
           >
             <SelectTrigger className="w-full text-sm">
-              <SelectValue placeholder="Sewa" />
+              <SelectValue placeholder="Pilih status kepemilikan" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="sewa">Sewa</SelectItem>
-              <SelectItem value="milik">Milik</SelectItem>
+              <SelectItem value="milik-sendiri">Milik Sendiri</SelectItem>
+              <SelectItem value="milik-orang-tua">Milik Orang Tua</SelectItem>
               <SelectItem value="kontrak">Kontrak</SelectItem>
             </SelectContent>
           </Select>

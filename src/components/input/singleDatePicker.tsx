@@ -68,10 +68,10 @@ export function SingleDatePicker({
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, "PPP") : <span>{placeholder}</span>}
+            {value ? format(value, "dd/MM/yyyy") : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 z-[70]" align="start">
           <Calendar
             mode="single"
             selected={value}
