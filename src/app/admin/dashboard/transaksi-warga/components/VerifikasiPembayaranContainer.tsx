@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import PaginationComponent from "./PaginationComponent";
-import { Check, Plus, DollarSign } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PreviewImage } from "@/components/modal/previewImage";
 import ManualPaymentSheet from "./ManualPaymentSheet";
@@ -21,20 +21,7 @@ import VerificationSheet from "./VerificationSheet";
 import RejectConfirmationDialog from "./RejectConfirmationDialog";
 import { Invoice, InvoiceStatus, VerificationStatus } from "@/types/invoice";
 
-// Define verification data type
-type VerificationData = {
-  id: string;
-  name: string;
-  contact: string;
-  payment: string;
-  month: string;
-  paymentDate: string;
-  totalAmount: string;
-  method: string;
-  proofPayment: string;
-  status: "pending" | "verified" | "ditolak" | "belum_dicek";
-  verificationStatus: string;
-};
+
 
 interface VerifikasiPembayaranContainerProps {
   searchTerm: string;
@@ -174,14 +161,11 @@ export default function VerifikasiPembayaranContainer({
       }
   };
 
-  const handleManualPaymentSubmit = () => {
-    // This function will be handled by ManualPaymentSheet component
-    // The actual submission logic is in ManualPaymentSheet's handleSubmit
-  };
+
 
   const updateManualPaymentForm = (
     field: string,
-    value: string | Date | File | null | undefined
+    value: string | Date | File | null | undefined | number
   ) => {
     setManualPaymentForm((prev) => ({
       ...prev,
