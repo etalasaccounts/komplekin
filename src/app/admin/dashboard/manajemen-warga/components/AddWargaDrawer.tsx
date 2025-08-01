@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, ArrowRight, ArrowLeft, Send, Loader2 } from "lucide-react";
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
+import { ChooseFile } from "@/components/input/chooseFile";
 import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -23,16 +24,22 @@ export default function AddWargaDrawer() {
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // File upload states
+  const [fotoKTP, setFotoKTP] = useState<File | null>(null);
+  const [fotoKK, setFotoKK] = useState<File | null>(null);
+  
+
 
   // Get cluster info from admin
   const { clusterId, clusterName, loading: clusterLoading } = useAuth();
 
-  // Form data state
+  // Form data state (reorganized according to screenshot)
   const [formData, setFormData] = useState<Partial<CreateWargaMagicData>>({
     email: '',
     fullname: '',
-    role: 'user', // Default value sesuai database
-    noTelp: '',
+    role: 'user', // Default role
+    noTelp: '', // HP Aktif
     address: '',
     houseType: '',
     houseNumber: '',
@@ -40,7 +47,7 @@ export default function AddWargaDrawer() {
     headOfFamily: '',
     emergencyJob: '',
     movingDate: '',
-    citizenStatus: 'Warga baru'
+    citizenStatus: 'Warga Baru'
   });
 
   // Reset form and state when drawer opens/closes
@@ -52,7 +59,7 @@ export default function AddWargaDrawer() {
       setFormData({
         email: '',
         fullname: '',
-        role: 'user', // Default value sesuai database
+        role: 'user',
         noTelp: '',
         address: '',
         houseType: '',
@@ -61,9 +68,11 @@ export default function AddWargaDrawer() {
         headOfFamily: '',
         emergencyJob: '',
         movingDate: '',
-        citizenStatus: 'Warga baru'
+        citizenStatus: 'Warga Baru'
       });
       setTanggalTinggal(undefined);
+      setFotoKTP(null);
+      setFotoKK(null);
     }
   };
 
@@ -91,10 +100,10 @@ export default function AddWargaDrawer() {
       houseType: formData.houseType || '',
       houseNumber: formData.houseNumber || '',
       ownershipStatus: formData.ownershipStatus || 'unknown',
-      headOfFamily: formData.headOfFamily || '',
+      headOfFamily: formData.headOfFamily || '', 
       emergencyJob: formData.emergencyJob || '',
       movingDate: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : undefined,
-              citizenStatus: formData.citizenStatus || 'Warga baru'
+      citizenStatus: formData.citizenStatus || 'Warga Baru'
     };
 
     const validation = wargaMagicService.validateWargaData(wargaData);
@@ -108,19 +117,56 @@ export default function AddWargaDrawer() {
     try {
       const result = await wargaMagicService.createWargaWithMagicLink(wargaData);
 
-      if (result.success) {
-        toast.success(`Warga ${formData.fullname} berhasil dibuat dan magic link dikirim!`);
-        
-        // Optional: Show magic link to admin for manual sharing
-        if (result.data?.magicLink) {
-          console.log('Magic Link untuk user:', result.data.magicLink);
-          // Bisa ditampilkan dalam modal atau copied to clipboard
+      if (result.success && result.data) {
+        // Copy important data to clipboard automatically
+        const credentialsText = `
+Akun KomplekIn berhasil dibuat!
+
+Nama: ${result.data.fullname}
+Email: ${result.data.email}
+Cluster: ${result.data.cluster || clusterName || 'Unknown'}
+Role: ${result.data.roleInfo?.title}
+
+Password Sementara: ${result.data.temporaryPassword}
+Magic Link: ${result.data.magicLink}
+
+Instruksi:
+1. Bagikan magic link dan password sementara kepada user
+2. User klik magic link → masukkan password sementara
+3. User buat password baru → bisa mulai menggunakan sistem
+        `.trim();
+
+        // Auto copy to clipboard
+        try {
+          await navigator.clipboard.writeText(credentialsText);
+          
+          // Show success toast with green background and white text  
+          toast.success(`✅ Warga ${result.data.fullname} berhasil dibuat!
+📋 Kredensial telah disalin ke clipboard
+📧 Bagikan magic link & password sementara secara manual`, {
+            style: {
+              background: '#22c55e',
+              color: 'white',
+              border: 'none'
+            },
+            duration: 5000
+          });
+        } catch {
+          // Fallback if clipboard fails
+          toast.success(`✅ Warga ${result.data.fullname} berhasil dibuat!
+Password sementara: ${result.data.temporaryPassword}
+Bagikan kredensial secara manual`, {
+            style: {
+              background: '#22c55e', 
+              color: 'white',
+              border: 'none'
+            },
+            duration: 5000
+          });
         }
         
-        // Auto close after 2 seconds
-        setTimeout(() => {
-          handleOpenChange(false);
-        }, 2000);
+        // Close drawer immediately
+        handleOpenChange(false);
       } else {
         toast.error(result.error || 'Gagal membuat warga');
       }
@@ -139,6 +185,7 @@ export default function AddWargaDrawer() {
     </Button>
   );
 
+  // Step 1: Basic Information
   const Step1Form = (
     <div className="grid gap-4 pt-4">
       {/* Cluster Info Display */}
@@ -158,16 +205,18 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="hp">Nomor HP Aktif</Label>
+        <Label htmlFor="hp">Nomor HP Aktif *</Label>
         <Input 
           id="hp" 
-          placeholder="0895349243330"
+          placeholder="089534924330"
           value={formData.noTelp}
           onChange={(e) => setFormData({...formData, noTelp: e.target.value})}
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="email">Email *</Label>
         <Input 
@@ -179,8 +228,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="alamat">Alamat Rumah</Label>
+        <Label htmlFor="alamat">Alamat Rumah *</Label>
         <Input 
           id="alamat" 
           placeholder="Komplek Mahata Margonda No12 Blok A"
@@ -189,8 +239,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="tipe-rumah">Tipe Rumah</Label>
+        <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
         <Input 
           id="tipe-rumah" 
           placeholder="42 B"
@@ -199,18 +250,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="nomor-rumah">Nomor Rumah</Label>
-        <Input 
-          id="nomor-rumah" 
-          placeholder="12A"
-          value={formData.houseNumber}
-          onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
+
       <div className="grid gap-2 w-full">
-        <Label htmlFor="status-kepemilikan">Status Kepemilikan</Label>
+        <Label htmlFor="status-kepemilikan">Status Kepemilikan *</Label>
         <Select 
           value={formData.ownershipStatus} 
           onValueChange={(value) => setFormData({...formData, ownershipStatus: value as CreateWargaMagicData['ownershipStatus']})}
@@ -229,8 +271,35 @@ export default function AddWargaDrawer() {
     </div>
   );
 
+  // Step 2: Documents & Additional Details  
   const Step2Form = (
     <div className="grid gap-4 pt-4">
+      <div className="grid gap-2">
+        <ChooseFile
+          label="Foto KTP"
+          id="foto-ktp"
+          accept="image/*"
+          value={fotoKTP}
+          onChange={setFotoKTP}
+          placeholder="Mathew Alexander"
+          disabled={isLoading}
+          maxSizeInMB={5}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <ChooseFile
+          label="Foto Kartu keluarga"
+          id="foto-kk"
+          accept="image/*"
+          value={fotoKK}
+          onChange={setFotoKK}
+          placeholder="Mathew Alexander"
+          disabled={isLoading}
+          maxSizeInMB={5}
+        />
+      </div>
+
       <div className="grid gap-2">
         <Label htmlFor="nama-kepala-keluarga">Nama Kepala Keluarga</Label>
         <Input 
@@ -241,16 +310,18 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="pekerjaan">Pekerjaan</Label>
         <Input 
           id="pekerjaan" 
-          placeholder="Software Engineer"
+          placeholder="CEO Figma"
           value={formData.emergencyJob}
           onChange={(e) => setFormData({...formData, emergencyJob: e.target.value})}
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
         <SingleDatePicker
@@ -262,24 +333,23 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2 w-full">
-        <Label htmlFor="role">Role</Label>
+        <Label htmlFor="citizen-status">Status Warga</Label>
         <Select 
-          value={formData.role} 
-          onValueChange={(value: 'admin' | 'user') => setFormData({...formData, role: value})}
+          value={formData.citizenStatus} 
+          onValueChange={(value: 'Pindah' | 'Warga Baru') => setFormData({...formData, citizenStatus: value})}
           disabled={isLoading}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Pilih role" />
+            <SelectValue placeholder="Pilih status warga" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="user">Warga</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="Warga Baru">Warga Baru</SelectItem>
+            <SelectItem value="Pindah">Pindah</SelectItem>
           </SelectContent>
         </Select>
       </div>
-
-
     </div>
   );
 
@@ -306,11 +376,11 @@ export default function AddWargaDrawer() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Mengirim...
+              Menambah Warga...
             </>
           ) : (
             <>
-              Kirim Undangan
+              Tambah Warga
               <Send className="ml-2 h-4 w-4" />
             </>
           )}
@@ -320,16 +390,18 @@ export default function AddWargaDrawer() {
   );
 
   return (
-    <Drawer
-      trigger={triggerButton}
-      title="Form Pendaftaran Warga Baru"
-      description="Isi data warga baru untuk mengirim undangan bergabung ke sistem."
-      steps={`Step ${step}/2`}
-      footer={footerContent}
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-    >
-      {step === 1 ? Step1Form : Step2Form}
-    </Drawer>
+    <>
+      <Drawer
+        trigger={triggerButton}
+        title="Form Pendaftaran Warga baru"
+        description="Isi data warga baru untuk menambahkan mereka ke dalam sistem."
+        steps={`Step ${step}/2`}
+        footer={footerContent}
+        open={isOpen}
+        onOpenChange={handleOpenChange}
+      >
+        {step === 1 ? Step1Form : Step2Form}
+      </Drawer>
+    </>
   );
 } 

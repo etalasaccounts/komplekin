@@ -11,7 +11,7 @@ export interface CreateWargaMagicData {
   headOfFamily?: string
   emergencyJob?: string
   movingDate?: string // Format: YYYY-MM-DD
-  citizenStatus?: 'Pindah' | 'Warga baru'
+  citizenStatus?: 'Pindah' | 'Warga Baru' // Only valid database enum values
 }
 
 export interface CreateWargaMagicResult {
@@ -21,10 +21,50 @@ export interface CreateWargaMagicResult {
   data?: {
     userId: string
     email: string
+    fullname: string
     profileId: string
     permissionId: string
     cluster: string
+    role: string
+    roleInfo: {
+      title: string
+      description: string
+      permissions: string[]
+    }
+    temporaryPassword: string
     magicLink: string | null
+    emailTemplate: {
+      subject: string
+      greeting: string
+      intro: string
+      roleSection: {
+        title: string
+        description: string
+        permissions: string[]
+      }
+      instructionsSection: {
+        title: string
+        steps: string[]
+      }
+      credentials: {
+        email: string
+        temporaryPassword: string
+      }
+      magicLink: string | null
+      footer: string
+    }
+  }
+}
+
+// Helper function to map database values to display values
+const mapCitizenStatusDisplay = (dbStatus: string): string => {
+  switch (dbStatus) {
+    case 'Warga baru':
+      return 'Warga Baru'
+    case 'Pindah':
+      return 'Pindah'
+    default:
+      return 'Warga Baru'
   }
 }
 
@@ -61,7 +101,7 @@ export const wargaMagicService = {
         return { success: false, error: validation.error }
       }
 
-      // Call API route yang baru (create user + profile + permissions + magic link sekaligus)
+      // Call API route untuk create user + profile + permissions + magic link sekaligus
       const response = await fetch('/api/admin/create-warga-magic', {
         method: 'POST',
         headers: {
@@ -75,23 +115,46 @@ export const wargaMagicService = {
       if (!response.ok) {
         return {
           success: false,
-          error: result.error || 'Gagal membuat warga baru'
+          error: result.error || 'Gagal membuat warga baru dengan magic link'
         }
       }
 
       return {
         success: true,
-        message: result.message,
+        message: result.message || 'Warga berhasil dibuat dengan magic link',
         data: result.data
       }
 
     } catch (error: unknown) {
-      console.error('Unexpected error:', error)
+      console.error('Unexpected error in createWargaWithMagicLink:', error)
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga'
       return {
         success: false,
         error: errorMessage
       }
     }
-  }
+  },
+
+  // Helper untuk generate magic link preview (untuk testing/debugging)
+  formatMagicLinkInfo(result: CreateWargaMagicResult) {
+    if (!result.success || !result.data) {
+      return null
+    }
+
+    return {
+      email: result.data.email,
+      fullname: result.data.fullname,
+      cluster: result.data.cluster,
+      role: result.data.role,
+      roleInfo: result.data.roleInfo,
+      temporaryPassword: result.data.temporaryPassword,
+      magicLink: result.data.magicLink,
+      userId: result.data.userId,
+      hasValidMagicLink: !!result.data.magicLink,
+      emailTemplate: result.data.emailTemplate
+    }
+  },
+
+  // Helper untuk mapping citizen status dari database ke display
+  mapCitizenStatusDisplay
 } 
