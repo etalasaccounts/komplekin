@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import StatusPembayaran from "./components/StatusPembayaranContainer";
 import FilterComponent, {
   FilterState,
+  StatusOption,
 } from "@/components/filter/filterComponent";
 import CreateTransaksiWargaDrawer from "./components/CreateTransaksiWargaDrawer";
 import { ClipboardList, FileText, Search } from "lucide-react";
@@ -15,6 +16,22 @@ import VerifikasiPembayaranContainer from "./components/VerifikasiPembayaranCont
 import { InvoiceStatus, VerificationStatus } from "@/types/invoice";
 import { toast } from "sonner";
 
+// Status options untuk tab Status Pembayaran
+const paymentStatusOptions: StatusOption[] = [
+  { value: "all", label: "Semua Status" },
+  { value: "sudah", label: "Sudah Bayar" },
+  { value: "belum", label: "Belum Bayar" },
+];
+
+// Status options untuk tab Verifikasi Pembayaran
+const verificationStatusOptions: StatusOption[] = [
+  { value: "all", label: "Semua Status" },
+  { value: "verified", label: "Terverifikasi" },
+  { value: "unverified", label: "Belum Diverifikasi" },
+  { value: "not_checked", label: "Belum Dicek" },
+  { value: "pending", label: "Pending" },
+];
+
 export default function TransaksiWargaPage() {
   const [activeTab, setActiveTab] = useState("status");
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,26 +39,34 @@ export default function TransaksiWargaPage() {
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "",
-    verificationStatus: "",
+    status: "all",
   });
 
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
-    status: "",
-    verificationStatus: "",
+    status: "all",
   });
 
   // Pindahkan hook ke parent component
   const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
 
+  // Reset filter setiap kali tab berubah
+  useEffect(() => {
+    const resetFilters = {
+      dateFrom: undefined,
+      dateTo: undefined,
+      status: "all",
+    };
+    setFilters(resetFilters);
+    setAppliedFilters(resetFilters);
+  }, [activeTab]);
+
   const handleResetFilters = () => {
     const resetFilters = {
       dateFrom: undefined,
       dateTo: undefined,
-      status: "",
-      verificationStatus: "",
+      status: "all",
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
@@ -66,7 +91,7 @@ export default function TransaksiWargaPage() {
       }
 
       // Status filter
-      if (appliedFilters.status) {
+      if (appliedFilters.status && appliedFilters.status !== "all") {
         if (appliedFilters.status === "sudah" && invoice.invoice_status !== InvoiceStatus.PAID) {
           return false;
         }
@@ -93,27 +118,17 @@ export default function TransaksiWargaPage() {
       }
 
       // Status filter for verification
-      if (appliedFilters.status) {
-        if (appliedFilters.status === "sudah" && invoice.invoice_status !== InvoiceStatus.PAID) {
+      if (appliedFilters.status && appliedFilters.status !== "all") {
+        if (appliedFilters.status === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
           return false;
         }
-        if (appliedFilters.status === "belum" && invoice.invoice_status !== InvoiceStatus.UNPAID) {
+        if (appliedFilters.status === "unverified" && invoice.verification_status !== VerificationStatus.UNVERIFIED) {
           return false;
         }
-      }
-
-      // Verification status filter
-      if (appliedFilters.verificationStatus && appliedFilters.verificationStatus !== "semua") {
-        if (appliedFilters.verificationStatus === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
+        if (appliedFilters.status === "not_checked" && invoice.verification_status !== VerificationStatus.NOT_YET_CHECKED) {
           return false;
         }
-        if (appliedFilters.verificationStatus === "unverified" && invoice.verification_status !== VerificationStatus.UNVERIFIED) {
-          return false;
-        }
-        if (appliedFilters.verificationStatus === "not_checked" && invoice.verification_status !== VerificationStatus.NOT_YET_CHECKED) {
-          return false;
-        }
-        if (appliedFilters.verificationStatus === "pending" && invoice.verification_status !== "PENDING") {
+        if (appliedFilters.status === "pending" && invoice.verification_status !== "PENDING") {
           return false;
         }
       }
@@ -122,15 +137,14 @@ export default function TransaksiWargaPage() {
     });
   }, [paidInvoices, appliedFilters]);
 
-  const handleApplyFilters = () => {
-    // Apply the current filters to the applied filters state
-    setAppliedFilters(filters);
+  const handleApplyFilters = (newFilters: FilterState) => {
+    // Apply the new filters to the applied filters state
+    setAppliedFilters(newFilters);
     
     // Show success toast
     const activeFilters = [];
-    if (filters.dateFrom || filters.dateTo) activeFilters.push("Tanggal");
-    if (filters.status) activeFilters.push("Status Pembayaran");
-    if (filters.verificationStatus) activeFilters.push("Status Verifikasi");
+    if (newFilters.dateFrom || newFilters.dateTo) activeFilters.push("Tanggal");
+    if (newFilters.status && newFilters.status !== "all") activeFilters.push("Status");
     
     if (activeFilters.length > 0) {
       toast.success("Filter berhasil diterapkan", {
@@ -144,12 +158,28 @@ export default function TransaksiWargaPage() {
       });
     }
     
-    console.log("Filters applied:", filters);
+    console.log("Filters applied:", newFilters);
   };
 
   // Check if there are unapplied filter changes
   const hasUnappliedChanges = JSON.stringify(filters) !== JSON.stringify(appliedFilters);
 
+  // Get current status options and label based on active tab
+  const getCurrentFilterConfig = () => {
+    if (activeTab === "status") {
+      return {
+        statusOptions: paymentStatusOptions,
+        statusLabel: "Status Pembayaran",
+      };
+    } else {
+      return {
+        statusOptions: verificationStatusOptions,
+        statusLabel: "Status Verifikasi",
+      };
+    }
+  };
+
+  const { statusOptions, statusLabel } = getCurrentFilterConfig();
 
   return (
     <div className="space-y-6">
@@ -205,10 +235,11 @@ export default function TransaksiWargaPage() {
           </div>
           <FilterComponent
             filters={filters}
-            setFilters={(filters) => setFilters(filters)}
+            setFilters={setFilters}
             handleApplyFilters={handleApplyFilters}
             handleResetFilters={handleResetFilters}
-            showVerificationFilter={activeTab === "verifikasi"}
+            statusOptions={statusOptions}
+            statusLabel={statusLabel}
             hasUnappliedChanges={hasUnappliedChanges}
           />
           <CreateTransaksiWargaDrawer
