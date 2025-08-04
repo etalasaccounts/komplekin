@@ -118,7 +118,53 @@ export default function AddWargaDrawer() {
       const result = await wargaMagicService.createWargaWithMagicLink(wargaData);
 
       if (result.success && result.data) {
-        // Copy important data to clipboard automatically
+        // Kirim email undangan otomatis
+        try {
+          const emailResponse = await fetch('/api/send-email/resend-invitation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userName: result.data.fullname,
+              email: result.data.email,
+              temporaryPassword: result.data.temporaryPassword,
+              magicLink: result.data.magicLink,
+              clusterName: clusterName || 'Komplek Anda',
+              role: result.data.roleInfo?.title || 'Warga'
+            }),
+          });
+
+          const emailResult = await emailResponse.json();
+          
+          if (emailResult.success) {
+            if (emailResult.development) {
+              // Development mode - email disimulasikan
+              toast.success(`Warga ${result.data.fullname} berhasil dibuat!
+Mode development: Email disimulasikan ke ${result.data.email}
+Untuk testing real, gunakan email n@etalas.com`, {
+                style: {
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none'
+                },
+                duration: 8000
+              });
+            } else {
+              // Email berhasil dikirim
+              toast.success(`Warga ${result.data.fullname} berhasil dibuat!
+Email undangan telah dikirim ke ${result.data.email}
+Password sementara akan diterima via email`, {
+                style: {
+                  background: '#22c55e',
+                  color: 'white',
+                  border: 'none'
+                },
+                duration: 6000
+              });
+            }
+          } else {
+            // Email gagal, tapi warga sudah dibuat - fallback ke clipboard
         const credentialsText = `
 Akun KomplekIn berhasil dibuat!
 
@@ -136,33 +182,77 @@ Instruksi:
 3. User buat password baru → bisa mulai menggunakan sistem
         `.trim();
 
-        // Auto copy to clipboard
         try {
           await navigator.clipboard.writeText(credentialsText);
-          
-          // Show success toast with green background and white text  
-          toast.success(`✅ Warga ${result.data.fullname} berhasil dibuat!
-📋 Kredensial telah disalin ke clipboard
-📧 Bagikan magic link & password sementara secara manual`, {
+              toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
+Email gagal dikirim - kredensial disalin ke clipboard
+Bagikan magic link & password secara manual`, {
+                style: {
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none'
+                },
+                duration: 7000
+              });
+            } catch {
+              toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
+Email gagal dikirim
+Password sementara: ${result.data.temporaryPassword}
+Bagikan kredensial secara manual`, {
+                style: {
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none'
+                },
+                duration: 7000
+              });
+            }
+          }
+        } catch (emailError) {
+          // Error saat kirim email - fallback ke clipboard
+          console.error('Email service error:', emailError);
+          const credentialsText = `
+Akun KomplekIn berhasil dibuat!
+
+Nama: ${result.data.fullname}
+Email: ${result.data.email}
+Cluster: ${result.data.cluster || clusterName || 'Unknown'}
+Role: ${result.data.roleInfo?.title}
+
+Password Sementara: ${result.data.temporaryPassword}
+Magic Link: ${result.data.magicLink}
+
+Instruksi:
+1. Bagikan magic link dan password sementara kepada user
+2. User klik magic link → masukkan password sementara
+3. User buat password baru → bisa mulai menggunakan sistem
+          `.trim();
+
+          try {
+            await navigator.clipboard.writeText(credentialsText);
+            toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
+Gagal mengirim email - kredensial disalin ke clipboard
+Bagikan magic link & password secara manual`, {
             style: {
-              background: '#22c55e',
+                background: '#f59e0b',
               color: 'white',
               border: 'none'
             },
-            duration: 5000
+              duration: 7000
           });
         } catch {
-          // Fallback if clipboard fails
-          toast.success(`✅ Warga ${result.data.fullname} berhasil dibuat!
+            toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
+Gagal mengirim email
 Password sementara: ${result.data.temporaryPassword}
 Bagikan kredensial secara manual`, {
             style: {
-              background: '#22c55e', 
+                background: '#f59e0b',
               color: 'white',
               border: 'none'
             },
-            duration: 5000
+              duration: 7000
           });
+          }
         }
         
         // Close drawer immediately
@@ -349,6 +439,9 @@ Bagikan kredensial secara manual`, {
             <SelectItem value="Pindah">Pindah</SelectItem>
           </SelectContent>
         </Select>
+        <p className="text-xs text-gray-500">
+          Semua status warga akan diarahkan ke halaman verifikasi yang sama
+        </p>
       </div>
     </div>
   );
