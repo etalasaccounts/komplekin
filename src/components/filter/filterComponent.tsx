@@ -2,7 +2,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@radix-ui/react-popover";
+} from "../ui/popover";
 import { Button } from "../ui/button";
 import { ChevronDown, X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -34,14 +34,15 @@ type FilterComponentProps = {
   handleApplyFilters: (newFilters: FilterState) => void;
   handleResetFilters: () => void;
   statusOptions?: StatusOption[]; // Custom status options
+  statusLabel?: string; // Custom label untuk status filter
+  hasUnappliedChanges?: boolean; // Tambahkan prop untuk menampilkan indikator perubahan
 };
 
-// Default status options
+// Default status options yang general
 const defaultStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
-  { value: "belum bayar", label: "Belum Bayar" },
-  { value: "sudah bayar", label: "Sudah Bayar" },
-  { value: "kurang bayar", label: "Kurang Bayar" },
+  { value: "active", label: "Aktif" },
+  { value: "inactive", label: "Tidak Aktif" },
 ];
 
 export default function FilterComponent({
@@ -50,6 +51,8 @@ export default function FilterComponent({
   handleApplyFilters,
   handleResetFilters,
   statusOptions = defaultStatusOptions,
+  statusLabel = "Status",
+  hasUnappliedChanges = false,
 }: FilterComponentProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
@@ -80,8 +83,11 @@ export default function FilterComponent({
     <div className="relative">
       <Popover open={filterOpen} onOpenChange={setFilterOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="relative">
             Filter
+            {hasUnappliedChanges && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+            )}
             <ChevronDown className="h-4 w-4 ml-2" />
           </Button>
         </PopoverTrigger>
@@ -111,7 +117,7 @@ export default function FilterComponent({
               {/* Date Range */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Date Range</Label>
+                  <Label className="text-sm font-medium">Rentang Tanggal</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -150,7 +156,7 @@ export default function FilterComponent({
 
               {/* Status Filter */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Status</Label>
+                <Label className="text-sm font-medium">{statusLabel}</Label>
                 <Select
                   value={tempFilters.status}
                   onValueChange={(value) =>
@@ -158,7 +164,7 @@ export default function FilterComponent({
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih Status" />
+                    <SelectValue placeholder={`Pilih ${statusLabel}`} />
                   </SelectTrigger>
                   <SelectContent className="z-[60]">
                     {statusOptions.map((option) => (
