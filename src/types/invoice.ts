@@ -14,6 +14,8 @@ export interface Invoice {
   invoice_status: string;
   verification_status?: string;
   user_permission?: UserPermissions;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export enum InvoiceStatus {

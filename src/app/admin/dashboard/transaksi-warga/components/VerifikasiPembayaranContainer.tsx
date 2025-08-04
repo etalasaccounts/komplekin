@@ -375,8 +375,8 @@ export default function VerifikasiPembayaranContainer({
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="">Rp{item.bill_amount?.toLocaleString() || "0"}</span>
-                    {item.user_permission?.profile?.fullname === "Mathew Alexander" && (
-                      <span className="text-sm text-red-500">-Rp20.000</span>
+                    {Number(item.amount_paid) < Number(item.bill_amount) && (
+                      <span className="text-sm text-red-500">-Rp{(Number(item.bill_amount) - Number(item.amount_paid)).toLocaleString()}</span>
                     )}
                   </div>
                 </TableCell>
