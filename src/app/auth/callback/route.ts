@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
             ? '/admin/auth/reset-password?new_user=true&magic_link=true'
             : '/user/auth/reset-password?new_user=true&magic_link=true'
         } else {
-          // Regular login - go to dashboard
+          // Regular email confirmation - check if user needs verification
           try {
             const { data: permissions } = await supabase
               .from('user_permissions')
@@ -55,13 +55,22 @@ export async function GET(request: NextRequest) {
 
             const role = permissions?.role || next
             
-            redirectUrl = role === 'admin' 
-              ? '/admin/dashboard'
-              : '/user/dashboard'
+            // For new admin registrations, go to verify page first
+            if (role === 'admin' && next === 'admin') {
+              redirectUrl = '/admin/auth/verify?new_user=true&magic_link=true'
+            } else if (role === 'admin') {
+              redirectUrl = '/admin/dashboard'
+            } else {
+              redirectUrl = '/user/dashboard'
+            }
           } catch (err) {
             console.error('Error fetching user role:', err)
-            // Fallback based on next parameter
-            redirectUrl = next === 'admin' ? '/admin/dashboard' : '/user/dashboard'
+            // Fallback - for admin registration, go to verify first
+            if (next === 'admin') {
+              redirectUrl = '/admin/auth/verify?new_user=true&magic_link=true'
+            } else {
+              redirectUrl = '/user/dashboard'
+            }
           }
         }
 
@@ -70,6 +79,13 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       console.error('Session exchange error:', error)
+      
+      // Handle specific PKCE/code verifier errors for new admin registrations
+      if (error instanceof Error && error.message.includes('code verifier') && next === 'admin') {
+        console.log('PKCE error detected for admin registration, redirecting to verify page with hash check')
+        return NextResponse.redirect(`${requestUrl.origin}/admin/auth/verify?new_user=true&magic_link=true&check_hash=true`)
+      }
+      
       return NextResponse.redirect(`${requestUrl.origin}/auth/error?message=Session creation failed`)
     }
   } else if (setup === 'true') {
