@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { SingleDatePicker } from "@/components/input/singleDatePicker"
-import { Check, FileText, ImageIcon, X, File } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { Invoice } from "@/types/invoice"
 import { PreviewImage } from "@/components/modal/previewImage"
 import { useState } from "react"
@@ -24,28 +24,17 @@ type VerificationSheetProps = {
   onReject: () => void;
 };
 
-const getFileIcon = (file: string) => {
-  if (file.includes("image/")) {
-    return <ImageIcon className="h-4 w-4" />;
-  } else if (file.includes("pdf")) {
-    return <FileText className="h-4 w-4" />;
-  } else {
-    return <File className="h-4 w-4" />;
-  }
-};
-
 export default function VerificationSheet({
   open,
   onOpenChange,
   selectedInvoice,
-  form,
   updateForm,
   onApprove,
   onReject,
 }: VerificationSheetProps) {
-  if (!selectedInvoice) return null;
-
   const [previewReceiptModalOpen, setPreviewReceiptModalOpen] = useState(false);
+
+  if (!selectedInvoice) return null;
 
 
   return (
@@ -116,7 +105,7 @@ export default function VerificationSheet({
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">Metode Bayar</Label>
-            <Input value={selectedInvoice.payment_method?.split("_").join(" ").charAt(0).toUpperCase()! + selectedInvoice.payment_method?.split("_").join(" ").slice(1)} disabled className="bg-gray-50" />
+            <Input value={selectedInvoice.payment_method ? selectedInvoice.payment_method.split("_").join(" ").charAt(0).toUpperCase() + selectedInvoice.payment_method.split("_").join(" ").slice(1) : ""} disabled className="bg-gray-50" />
           </div>
 
           <div className="space-y-2">

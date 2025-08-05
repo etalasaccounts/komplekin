@@ -11,6 +11,7 @@ import { useProfiles } from "@/hooks/useProfiles"
 import { useUserPermission } from "@/hooks/useUserPermission"
 import { InvoiceStatus, PaymentPurposeType, VerificationStatus } from "@/types/invoice"
 import { Invoice } from "@/types/invoice"
+import { useIuran } from "@/hooks/useIuran"
 
 type NewPaymentForm = {
     name: string;
@@ -34,6 +35,7 @@ export default function CreateTransaksiWargaDrawer({
     createInvoice 
 }: CreateTransaksiWargaDrawerProps) {
     const { profiles, loading } = useProfiles();
+    const { iuran } = useIuran();
     const { getUserPermissionByProfileId } = useUserPermission();
     const [newPaymentForm, setNewPaymentForm] = useState<NewPaymentForm>({
         name: "",
@@ -97,14 +99,14 @@ export default function CreateTransaksiWargaDrawer({
                 className="bg-black text-white hover:bg-black/90 cursor-pointer"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Buat Iuran Baru
+                Buat Invoice Baru
               </Button>
             </SheetTrigger>
             <SheetContent className="w-[400px] sm:w-[540px] flex flex-col">
               <SheetHeader>
-                <SheetTitle>Buat Iuran Warga</SheetTitle>
+                <SheetTitle>Buat Invoice Baru</SheetTitle>
                 <SheetDescription>
-                  Isi detail iuran warga untuk menambahkan tagihan baru ke
+                  Isi detail invoice untuk menambahkan tagihan baru ke
                   sistem.
                 </SheetDescription>
               </SheetHeader>
@@ -189,12 +191,11 @@ export default function CreateTransaksiWargaDrawer({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={PaymentPurposeType.IURAN_RT}>{PaymentPurposeType.IURAN_RT}</SelectItem>
-                      <SelectItem value={PaymentPurposeType.IURAN_KEAMANAN}>{PaymentPurposeType.IURAN_KEAMANAN}</SelectItem>
-                      <SelectItem value={PaymentPurposeType.IURAN_KEBERSIHAN}>
-                        {PaymentPurposeType.IURAN_KEBERSIHAN}
-                      </SelectItem>
-                      <SelectItem value={PaymentPurposeType.IURAN_LAINNYA}>{PaymentPurposeType.IURAN_LAINNYA}</SelectItem>
+                      {iuran.map((iuran) => (
+                        <SelectItem key={iuran.id} value={iuran.id.toString()}>
+                          {iuran.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

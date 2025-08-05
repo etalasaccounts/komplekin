@@ -292,7 +292,7 @@ export default function VerifikasiPembayaranContainer({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <span className="text-lg font-semibold">Table Iuran Bulanan</span>
+          <span className="text-lg font-semibold">Table Invoice Bulanan</span>
           <p className="text-xs font-semibold border border-[#E4E4E7] rounded-full px-2 py-1">
             Bulan {new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
           </p>

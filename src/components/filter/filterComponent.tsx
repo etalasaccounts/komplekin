@@ -21,9 +21,15 @@ export type FilterState = {
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
   status: string;
+  iuran?: string; // Tambahkan field iuran
 };
 
 export type StatusOption = {
+  value: string;
+  label: string;
+};
+
+export type IuranOption = {
   value: string;
   label: string;
 };
@@ -36,6 +42,8 @@ type FilterComponentProps = {
   statusOptions?: StatusOption[]; // Custom status options
   statusLabel?: string; // Custom label untuk status filter
   hasUnappliedChanges?: boolean; // Tambahkan prop untuk menampilkan indikator perubahan
+  enableIuranFilter?: boolean; // Prop untuk mengaktifkan filter iuran
+  iuranOptions?: IuranOption[]; // Opsi iuran untuk filter
 };
 
 // Default status options yang general
@@ -53,6 +61,8 @@ export default function FilterComponent({
   statusOptions = defaultStatusOptions,
   statusLabel = "Status",
   hasUnappliedChanges = false,
+  enableIuranFilter = false,
+  iuranOptions = [],
 }: FilterComponentProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>(filters);
@@ -73,6 +83,7 @@ export default function FilterComponent({
       dateFrom: undefined,
       dateTo: undefined,
       status: "all",
+      iuran: "all", // Reset iuran filter juga
     };
     setTempFilters(resetState);
     setFilters(resetState); // Also reset the actual filters
@@ -175,6 +186,31 @@ export default function FilterComponent({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Iuran Filter - hanya tampil jika enableIuranFilter = true */}
+              {enableIuranFilter && iuranOptions.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Jenis Iuran</Label>
+                  <Select
+                    value={tempFilters.iuran || "all"}
+                    onValueChange={(value) =>
+                      setTempFilters({ ...tempFilters, iuran: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pilih Jenis Iuran" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[60]">
+                      <SelectItem value="all">Semua Iuran</SelectItem>
+                      {iuranOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Apply Filter Button */}

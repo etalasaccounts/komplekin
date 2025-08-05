@@ -1,3 +1,4 @@
+import { Iuran } from "./iuran";
 import { UserPermissions } from "./user_permissions";
 
 export interface Invoice {
@@ -16,6 +17,8 @@ export interface Invoice {
   user_permission?: UserPermissions;
   created_at?: string;
   updated_at?: string;
+  iuran?: string;
+  master_iuran?: Iuran;
 }
 
 export enum InvoiceStatus {

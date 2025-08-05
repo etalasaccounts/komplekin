@@ -12,11 +12,13 @@ export const invoiceService = {
         user_permission:user_permissions!user_id(
         *, 
         profile:profiles!profile_id(*)
-        )
+        ),
+        master_iuran:master_iuran!iuran(*)
         `,
       )
       .order("updated_at", { ascending: false })
     if (error) throw error;
+    console.log("data invoices", data);
     return data;
   },
   async createInvoice(invoice: Invoice): Promise<Invoice> {
@@ -55,6 +57,8 @@ export const invoiceService = {
         date: new Date().toISOString(),
         receipt: invoice.receipt,
       })
+
+      if (ledgerError) throw ledgerError;
     }
     return data;
   },

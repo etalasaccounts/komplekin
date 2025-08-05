@@ -8,22 +8,23 @@ import StatusPembayaran from "./components/StatusPembayaranContainer";
 import FilterComponent, {
   FilterState,
   StatusOption,
+  IuranOption,
 } from "@/components/filter/filterComponent";
-import CreateTransaksiWargaDrawer from "./components/CreateTransaksiWargaDrawer";
-import { ClipboardList, FileText, Search } from "lucide-react";
+import { ClipboardList, FileText, PiggyBank, Search } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useIuran } from "@/hooks/useIuran";
 import VerifikasiPembayaranContainer from "./components/VerifikasiPembayaranContainer";
 import { InvoiceStatus, VerificationStatus } from "@/types/invoice";
 import { toast } from "sonner";
+import IuranContainer from "./components/IuranContainer";
+import IuranWargaDrawer from "./components/IuranWargaDrawer";
 
-// Status options untuk tab Status Pembayaran
 const paymentStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
   { value: "sudah", label: "Sudah Bayar" },
   { value: "belum", label: "Belum Bayar" },
 ];
 
-// Status options untuk tab Verifikasi Pembayaran
 const verificationStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
   { value: "verified", label: "Terverifikasi" },
@@ -33,40 +34,51 @@ const verificationStatusOptions: StatusOption[] = [
 ];
 
 export default function TransaksiWargaPage() {
-  const [activeTab, setActiveTab] = useState("status");
+  const [activeTab, setActiveTab] = useState("iuran");
   const [searchTerm, setSearchTerm] = useState("");
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
     status: "all",
+    iuran: "all",
   });
 
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
     status: "all",
+    iuran: "all",
   });
 
-  // Pindahkan hook ke parent component
   const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
+  
+  const { iuran: iuranList } = useIuran();
 
-  // Reset filter setiap kali tab berubah
   useEffect(() => {
     const resetFilters = {
       dateFrom: undefined,
       dateTo: undefined,
       status: "all",
+      iuran: "all",
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
   }, [activeTab]);
+
+  const iuranOptions: IuranOption[] = useMemo(() => {
+    return iuranList.map((iuran) => ({
+      value: iuran.id,
+      label: iuran.name,
+    }));
+  }, [iuranList]);
 
   const handleResetFilters = () => {
     const resetFilters = {
       dateFrom: undefined,
       dateTo: undefined,
       status: "all",
+      iuran: "all",
     };
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
@@ -77,10 +89,14 @@ export default function TransaksiWargaPage() {
     });
   };
 
-  // Filter logic for invoices
   const filteredInvoices = useMemo(() => {
+    console.log('Filtering invoices with:', {
+      appliedFilters,
+      totalInvoices: invoices.length,
+      iuranFilter: appliedFilters.iuran
+    });
+    
     return invoices.filter((invoice) => {
-      // Date range filter
       if (appliedFilters.dateFrom && invoice.payment_date) {
         const paymentDate = new Date(invoice.payment_date);
         if (paymentDate < appliedFilters.dateFrom) return false;
@@ -90,7 +106,6 @@ export default function TransaksiWargaPage() {
         if (paymentDate > appliedFilters.dateTo) return false;
       }
 
-      // Status filter
       if (appliedFilters.status && appliedFilters.status !== "all") {
         if (appliedFilters.status === "sudah" && invoice.invoice_status !== InvoiceStatus.PAID) {
           return false;
@@ -100,14 +115,23 @@ export default function TransaksiWargaPage() {
         }
       }
 
+      if (appliedFilters.iuran && appliedFilters.iuran !== "all") {
+        console.log('Checking iuran filter:', {
+          invoiceIuran: invoice.iuran,
+          filterIuran: appliedFilters.iuran,
+          matches: invoice.iuran === appliedFilters.iuran
+        });
+        if (invoice.iuran !== appliedFilters.iuran) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [invoices, appliedFilters]);
 
-  // Filter logic for paid invoices (verification)
   const filteredPaidInvoices = useMemo(() => {
     return paidInvoices.filter((invoice) => {
-      // Date range filter
       if (appliedFilters.dateFrom && invoice.payment_date) {
         const paymentDate = new Date(invoice.payment_date);
         if (paymentDate < appliedFilters.dateFrom) return false;
@@ -117,7 +141,6 @@ export default function TransaksiWargaPage() {
         if (paymentDate > appliedFilters.dateTo) return false;
       }
 
-      // Status filter for verification
       if (appliedFilters.status && appliedFilters.status !== "all") {
         if (appliedFilters.status === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
           return false;
@@ -133,18 +156,23 @@ export default function TransaksiWargaPage() {
         }
       }
 
+      if (appliedFilters.iuran && appliedFilters.iuran !== "all") {
+        if (invoice.iuran !== appliedFilters.iuran) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [paidInvoices, appliedFilters]);
 
   const handleApplyFilters = (newFilters: FilterState) => {
-    // Apply the new filters to the applied filters state
     setAppliedFilters(newFilters);
     
-    // Show success toast
     const activeFilters = [];
     if (newFilters.dateFrom || newFilters.dateTo) activeFilters.push("Tanggal");
     if (newFilters.status && newFilters.status !== "all") activeFilters.push("Status");
+    if (newFilters.iuran && newFilters.iuran !== "all") activeFilters.push("Iuran");
     
     if (activeFilters.length > 0) {
       toast.success("Filter berhasil diterapkan", {
@@ -161,10 +189,8 @@ export default function TransaksiWargaPage() {
     console.log("Filters applied:", newFilters);
   };
 
-  // Check if there are unapplied filter changes
   const hasUnappliedChanges = JSON.stringify(filters) !== JSON.stringify(appliedFilters);
 
-  // Get current status options and label based on active tab
   const getCurrentFilterConfig = () => {
     if (activeTab === "status") {
       return {
@@ -181,9 +207,10 @@ export default function TransaksiWargaPage() {
 
   const { statusOptions, statusLabel } = getCurrentFilterConfig();
 
+  const enableIuranFilter = activeTab === "status" || activeTab === "verifikasi";
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">Transaksi Warga</h1>
         <p className="text-sm text-muted-foreground">
@@ -192,10 +219,20 @@ export default function TransaksiWargaPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-
       <div className="flex items-center justify-between">
         <div className="flex space-x-1 p-1 w-fit">
+          <Button 
+          variant="ghost" 
+          onClick={() => setActiveTab("iuran")} 
+          className={cn(
+            "px-4 py-2 text-sm font-medium transition-colors rounded-none",
+            activeTab === "iuran"
+              ? "bg-background text-foreground border-b border-b-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}>
+            <PiggyBank className="size-4 mr-2" />
+            Iuran
+          </Button>
           <Button
             variant="ghost"
             onClick={() => setActiveTab("status")}
@@ -241,12 +278,16 @@ export default function TransaksiWargaPage() {
             statusOptions={statusOptions}
             statusLabel={statusLabel}
             hasUnappliedChanges={hasUnappliedChanges}
+            enableIuranFilter={enableIuranFilter}
+            iuranOptions={iuranOptions}
           />
-          <CreateTransaksiWargaDrawer
-            createSheetOpen={createSheetOpen}
-            setCreateSheetOpen={setCreateSheetOpen}
-            createInvoice={createInvoice}
-          />
+          {activeTab === "iuran" && (
+            <IuranWargaDrawer
+              createSheetOpen={createSheetOpen}
+              setCreateSheetOpen={setCreateSheetOpen}
+              createInvoice={createInvoice}
+            />
+          )}
         </div>
       </div>
       {activeTab === "status" && (
@@ -256,6 +297,9 @@ export default function TransaksiWargaPage() {
           loading={loading}
           handleDownload={handleDownload}
         />
+      )}
+      {activeTab === "iuran" && (
+        <IuranContainer />
       )}
       {activeTab === "verifikasi" && (
         <VerifikasiPembayaranContainer
