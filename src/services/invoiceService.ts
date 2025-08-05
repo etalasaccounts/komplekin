@@ -12,10 +12,13 @@ export const invoiceService = {
         user_permission:user_permissions!user_id(
         *, 
         profile:profiles!profile_id(*)
-        )
+        ),
+        master_iuran:master_iuran!iuran(*)
         `,
       )
+      .order("updated_at", { ascending: false })
     if (error) throw error;
+    console.log("data invoices", data);
     return data;
   },
   async createInvoice(invoice: Invoice): Promise<Invoice> {
@@ -34,11 +37,29 @@ export const invoiceService = {
       .update({
         verification_status: invoice.verification_status,
         invoice_status: invoice.invoice_status,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", invoice.id)
       .select()
       .single();
     if (error) throw error;
+
+    if (invoice.verification_status === VerificationStatus.VERIFIED) {
+      const {error: ledgerError} = await supabase.from("ledgers").insert({
+        user_id: invoice.user_id,
+        cluster_id: invoice.cluster_id,
+        invoice_id: invoice.id,
+        coa_id: "c1a4073d-5b8e-4bc4-adf0-290b58194d2f",
+        ledger_type: "Credit",
+        account_type: "Revenue",
+        description: `Pembayaran iuran bulan ${invoice.due_date.split(" ")[0]}`,
+        amount: invoice.amount_paid,
+        date: new Date().toISOString(),
+        receipt: invoice.receipt,
+      })
+
+      if (ledgerError) throw ledgerError;
+    }
     return data;
   },
 
@@ -89,6 +110,7 @@ export const invoiceService = {
           invoice_status: InvoiceStatus.PAID,
           verification_status: VerificationStatus.VERIFIED,
           payment_date: invoice.payment_date,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", invoice.id)
         .select()

@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { SingleDatePicker } from "@/components/input/singleDatePicker"
-import { ChooseFile } from "@/components/input/chooseFile"
 import { Check, X } from "lucide-react"
 import { Invoice } from "@/types/invoice"
+import { PreviewImage } from "@/components/modal/previewImage"
+import { useState } from "react"
 
 type VerificationForm = {
   tanggalBayar: Date | undefined;
@@ -27,14 +28,17 @@ export default function VerificationSheet({
   open,
   onOpenChange,
   selectedInvoice,
-  form,
   updateForm,
   onApprove,
   onReject,
 }: VerificationSheetProps) {
+  const [previewReceiptModalOpen, setPreviewReceiptModalOpen] = useState(false);
+
   if (!selectedInvoice) return null;
 
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[500px] sm:w-[500px] overflow-y-auto">
         <SheetHeader className="pb-4">
@@ -63,16 +67,7 @@ export default function VerificationSheet({
               className="bg-gray-50"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Pembayaran</Label>
-            <Input
-              value={selectedInvoice.payment_purpose || "-"}
-              disabled
-              className="bg-gray-50"
-            />
-          </div>
-
+          
           <div className="space-y-2">
             <Label className="text-sm font-medium">Bulan</Label>
             <Input value={selectedInvoice.due_date.split(" ")[0]} disabled className="bg-gray-50" />
@@ -81,7 +76,7 @@ export default function VerificationSheet({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Tanggal Bayar</Label>
             <SingleDatePicker
-              value={form.tanggalBayar}
+              value={new Date(selectedInvoice.payment_date!)}
               onChange={(date) => updateForm("tanggalBayar", date)}
               placeholder="06/07/2025"
               buttonClassName="w-full bg-gray-50"
@@ -93,33 +88,31 @@ export default function VerificationSheet({
             <Label className="text-sm font-medium">Jumlah Bayar *</Label>
             <div className="flex flex-col items-start">
               <Input
-                value={form.jumlahBayar}
-                onChange={(e) => updateForm("jumlahBayar", e.target.value)}
+                value={selectedInvoice.amount_paid}
                 placeholder="Rp120.000"
                 className="pr-20"
+                disabled
               />
+              {Number(selectedInvoice.amount_paid) < Number(selectedInvoice.bill_amount) && (
               <div className="">
                 <span className="text-sm text-red-500">
-                  Kurang Rp20.000
+                  Kurang Rp{(Number(selectedInvoice.bill_amount) - Number(selectedInvoice.amount_paid)).toLocaleString()}
                 </span>
               </div>
+              )}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">Metode Bayar</Label>
-            <Input value={selectedInvoice.payment_method} disabled className="bg-gray-50" />
+            <Input value={selectedInvoice.payment_method ? selectedInvoice.payment_method.split("_").join(" ").charAt(0).toUpperCase() + selectedInvoice.payment_method.split("_").join(" ").slice(1) : ""} disabled className="bg-gray-50" />
           </div>
 
           <div className="space-y-2">
-            <ChooseFile
-              label="Bukti Bayar"
-              id="verificationProofPayment"
-              accept="image/*,.pdf"
-              onChange={(file) => updateForm("buktiPembayaran", file)}
-              value={form.buktiPembayaran}
-              placeholder="No file chosen"
-            />
+            <Label className="text-sm font-medium">Bukti Bayar</Label>
+            <Button variant="outline" className="text-black hover:text-foreground/80 text-sm underline ml-2 disabled:opacity-50" onClick={() => setPreviewReceiptModalOpen(true)}>
+              Lihat Bukti Bayar
+            </Button>
           </div>
 
           {/* Action Buttons */}
@@ -143,5 +136,16 @@ export default function VerificationSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+    <PreviewImage
+    open={previewReceiptModalOpen}
+    onOpenChange={setPreviewReceiptModalOpen}
+    title="Bukti Pembayaran"
+    imageSrc={
+      selectedInvoice?.receipt
+    }
+    imageAlt={`Bukti Pembayaran - ${selectedInvoice?.user_permission?.profile?.fullname || "Payment"}`}
+    />
+    </>
   );
 } 

@@ -11,8 +11,13 @@ export const useUserPermission = () => {
         setUserPermissions(userPermissions);
     }
 
-    const getUserPermissionByProfileId = async (profileId: string): Promise<UserPermissions> => {
+    const getUserPermissionByProfileId = async (profileId: string) => {
         const userPermission = await userPermissionService.getUserPermissionsByProfileId(profileId);
+        return userPermission;
+    }
+
+    const getUserPermissionById = async (id: string) => {
+        const userPermission = await userPermissionService.getUserPermissionsById(id);
         return userPermission;
     }
 
@@ -20,5 +25,5 @@ export const useUserPermission = () => {
         getUserPermission();
     }, []);
 
-    return { userPermissions, getUserPermissionByProfileId };
+    return { userPermissions, getUserPermissionByProfileId, getUserPermissionById };
 }

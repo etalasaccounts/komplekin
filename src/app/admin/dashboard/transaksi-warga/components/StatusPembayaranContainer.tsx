@@ -35,7 +35,6 @@ export default function StatusPembayaran({
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice>();
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -45,7 +44,6 @@ export default function StatusPembayaran({
     invoice.user_permission?.profile?.house_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -85,7 +83,6 @@ export default function StatusPembayaran({
     });
   };
 
-  // Reset to first page when search term changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -98,7 +95,7 @@ export default function StatusPembayaran({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <h2 className="text-lg font-semibold text-foreground">
-            Table Iuran Bulanan
+            Table Invoice Bulanan
           </h2>
           <p className="text-xs font-semibold border border-[#E4E4E7] rounded-full px-2 py-1">
           Bulan {new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
@@ -106,7 +103,6 @@ export default function StatusPembayaran({
         </div>
       </div>
 
-      {/* Table */}
       <div className="rounded-md border bg-card relative z-0">
         <Table>
           <TableHeader>
@@ -133,7 +129,7 @@ export default function StatusPembayaran({
                 Tipe Rumah
               </TableHead>
               <TableHead className="text-muted-foreground text-sm font-medium">
-                Jumlah Bayar
+                Jumlah Bayar              
               </TableHead>
               <TableHead className="text-muted-foreground text-sm font-medium">
                 Jatuh Tempo
@@ -161,9 +157,9 @@ export default function StatusPembayaran({
                   <TableCell className="font-medium">
                     {invoice.user_permission?.profile?.fullname}
                   </TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.no_telp}</TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.house_number}</TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.house_type}</TableCell>
+                  <TableCell>{invoice.user_permission?.profile?.no_telp || '-'}</TableCell>
+                  <TableCell>{invoice.user_permission?.profile?.house_number || '-'}</TableCell>
+                  <TableCell>{invoice.user_permission?.profile?.house_type || '-'}</TableCell>
                 <TableCell>{invoice.amount_paid || '-'}</TableCell>
                 <TableCell>{invoice.due_date}</TableCell>
                 <TableCell>{invoice.payment_date || '-'}</TableCell>
@@ -216,7 +212,6 @@ export default function StatusPembayaran({
         </Table>
       </div>
 
-      {/* Pagination */}
       <PaginationComponent
         currentPage={currentPage}
         totalPages={totalPages}
