@@ -79,27 +79,48 @@ export default function AdminVerifyTempPasswordPage() {
               }
             }
 
-            setUserInfo({
-              email: session.user.email || '',
-              fullname: metadata?.fullname || '',
-              cluster: clusterName || metadata?.cluster_name || '',
-              role: role,
-              roleTitle: 'Administrator Cluster'
-            });
-          } catch (err) {
-            console.error('Error fetching admin permissions:', err);
-            // Use fallback from metadata
-            setUserInfo({
-              email: session.user.email || '',
-              fullname: metadata?.fullname || '',
-              cluster: metadata?.cluster_name || '',
-              role: role,
-              roleTitle: 'Administrator Cluster'
-            });
-          }
+                      setUserInfo({
+            email: session.user.email || '',
+            fullname: metadata?.fullname || '',
+            cluster: clusterName || metadata?.cluster_name || '',
+            role: role,
+            roleTitle: 'Administrator Cluster'
+          });
 
-          setSessionLoading(false);
-          return true;
+          // Check if this is a self-registered admin (not needing temp password)
+          // Self-registered admins who confirm email should go directly to dashboard
+          if (isNewUser && isMagicLink && role === 'admin' && permissions) {
+            console.log('Self-registered admin confirmed email, redirecting to dashboard...');
+            toast.success('Email berhasil dikonfirmasi! Mengalihkan ke dashboard admin...');
+            setTimeout(() => {
+              router.push('/admin/dashboard');
+            }, 2000);
+            return true;
+          }
+        } catch (err) {
+          console.error('Error fetching admin permissions:', err);
+          // Use fallback from metadata
+          setUserInfo({
+            email: session.user.email || '',
+            fullname: metadata?.fullname || '',
+            cluster: metadata?.cluster_name || '',
+            role: role,
+            roleTitle: 'Administrator Cluster'
+          });
+
+          // Even with error, if this looks like self-registration, redirect to dashboard
+          if (isNewUser && isMagicLink && role === 'admin') {
+            console.log('Self-registered admin (fallback), redirecting to dashboard...');
+            toast.success('Email berhasil dikonfirmasi! Mengalihkan ke dashboard admin...');
+            setTimeout(() => {
+              router.push('/admin/dashboard');
+            }, 2000);
+            return true;
+          }
+        }
+
+        setSessionLoading(false);
+        return true;
         }
         return false;
       } catch (error) {
@@ -135,7 +156,7 @@ export default function AdminVerifyTempPasswordPage() {
     return () => {
       mounted = false;
     };
-  }, [next, isNewUser, isMagicLink, error]);
+  }, [next, isNewUser, isMagicLink, error, router]);
 
   // Handle temporary password verification
   const handleVerifyTempPassword = async (e: React.FormEvent) => {

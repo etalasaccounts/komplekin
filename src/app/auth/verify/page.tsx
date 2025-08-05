@@ -57,7 +57,7 @@ export default function AuthVerifyPage() {
         console.log('Processing hash fragment authentication...');
         try {
           const supabase = createClient();
-          const { data, error } = await supabase.auth.getSession();
+          const { error } = await supabase.auth.getSession();
           if (error) {
             console.error('Hash auth error:', error);
             // Try to parse hash manually
@@ -67,7 +67,7 @@ export default function AuthVerifyPage() {
             
             if (accessToken) {
               console.log('Setting session from hash tokens...');
-              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              const { error: sessionError } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || ''
               });
