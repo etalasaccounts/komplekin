@@ -123,13 +123,6 @@ export default function LoginPage() {
                     "Masuk"
                   )}
                 </Button>
-
-                <div className="text-center text-sm">
-                  Belum punya akun?{" "}
-                  <Link href="/user/auth/register" className="underline">
-                    Daftar di sini
-                  </Link>
-                </div>
               </div>
             </form>
           </CardContent>
