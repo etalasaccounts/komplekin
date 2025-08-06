@@ -19,7 +19,22 @@ import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-export default function AddWargaDrawer() {
+interface WargaCreationData {
+  fullname: string;
+  email: string;
+  temporaryPassword: string;
+  magicLink: string | null;
+  cluster?: string;
+  roleInfo?: {
+    title: string;
+  };
+}
+
+interface AddWargaDrawerProps {
+  refetch?: () => void;
+}
+
+export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
   const [step, setStep] = useState(1);
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
@@ -33,6 +48,30 @@ export default function AddWargaDrawer() {
 
   // Get cluster info from admin
   const { clusterId, clusterName, loading: clusterLoading } = useAuth();
+
+  // Helper function untuk handle email failure dengan WhatsApp fallback
+  const handleEmailFailureWithWhatsApp = (wargaData: WargaCreationData, whatsappMessage: string) => {
+    toast.warning(`Warga ${wargaData.fullname} berhasil dibuat!
+
+Email gagal dikirim
+Password: ${wargaData.temporaryPassword}
+
+Klik untuk copy pesan WhatsApp`, {
+      style: {
+        background: '#fed7aa',
+        color: '#9a3412',
+        border: '1px solid #fb923c'
+      },
+      duration: 15000,
+      action: {
+        label: 'Copy WhatsApp',
+        onClick: () => {
+          navigator.clipboard.writeText(whatsappMessage);
+          toast.success('Pesan WhatsApp disalin! Paste ke chat warga', { duration: 3000 });
+        }
+      }
+    });
+  };
 
   // Form data state (reorganized according to screenshot)
   const [formData, setFormData] = useState<Partial<CreateWargaMagicData>>({
@@ -136,133 +175,120 @@ export default function AddWargaDrawer() {
           });
 
           const emailResult = await emailResponse.json();
+          console.log('Email API response:', emailResult);
           
           if (emailResult.success) {
             if (emailResult.development) {
-              // Development mode - email disimulasikan
-              toast.success(`Warga ${result.data.fullname} berhasil dibuat!
-Mode development: Email disimulasikan ke ${result.data.email}
-Untuk testing real, gunakan email n@etalas.com`, {
+              // Development mode - email disimulasikan dengan opsi WhatsApp
+              toast.success(`Warga ${result.data?.fullname} berhasil dibuat!
+
+Mode Development: Email disimulasikan
+Password: ${result.data?.temporaryPassword}
+
+Klik untuk copy pesan WhatsApp`, {
                 style: {
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none'
+                  background: '#dbeafe',
+                  color: '#1e40af',
+                  border: '1px solid #60a5fa'
                 },
-                duration: 8000
+                duration: 15000,
+                action: {
+                  label: 'Copy WhatsApp',
+                  onClick: () => {
+                    navigator.clipboard.writeText(emailResult.whatsappMessage);
+                    toast.success('Pesan WhatsApp disalin!', { duration: 3000 });
+                  }
+                }
               });
             } else {
               // Email berhasil dikirim
-              toast.success(`Warga ${result.data.fullname} berhasil dibuat!
+              const isTestMode = emailResult.isTestEmail;
+              const actualEmail = emailResult.actualEmail || result.data.email;
+              
+              const successMessage = isTestMode 
+                ? `Warga ${result.data.fullname} berhasil dibuat!
+
+MODE TEST: Email dikirim ke ${actualEmail}
+(Email asli warga: ${result.data.email})
+Password sementara ada di email test`
+                : `Warga ${result.data.fullname} berhasil dibuat!
+
 Email undangan telah dikirim ke ${result.data.email}
-Password sementara akan diterima via email`, {
+Password sementara akan diterima via email
+Mohon periksa inbox dan folder spam`;
+
+              toast.success(successMessage, {
                 style: {
-                  background: '#22c55e',
+                  background: isTestMode ? '#3b82f6' : '#22c55e',
                   color: 'white',
                   border: 'none'
                 },
-                duration: 6000
+                duration: 10000,
+                action: {
+                  label: 'Copy WhatsApp',
+                  onClick: () => {
+                    navigator.clipboard.writeText(emailResult.whatsappMessage);
+                    toast.success('Pesan WhatsApp disalin sebagai backup!', { duration: 3000 });
+                  }
+                }
               });
             }
           } else {
-            // Email gagal, tapi warga sudah dibuat - fallback ke clipboard
-        const credentialsText = `
-Akun KomplekIn berhasil dibuat!
-
-Nama: ${result.data.fullname}
-Email: ${result.data.email}
-Cluster: ${result.data.cluster || clusterName || 'Unknown'}
-Role: ${result.data.roleInfo?.title}
-
-Password Sementara: ${result.data.temporaryPassword}
-Magic Link: ${result.data.magicLink}
-
-Instruksi:
-1. Bagikan magic link dan password sementara kepada user
-2. User klik magic link → masukkan password sementara
-3. User buat password baru → bisa mulai menggunakan sistem
-        `.trim();
-
-        try {
-          await navigator.clipboard.writeText(credentialsText);
-              toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
-Email gagal dikirim - kredensial disalin ke clipboard
-Bagikan magic link & password secara manual`, {
-                style: {
-                  background: '#f59e0b',
-                  color: 'white',
-                  border: 'none'
-                },
-                duration: 7000
-              });
-            } catch {
-              toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
-Email gagal dikirim
-Password sementara: ${result.data.temporaryPassword}
-Bagikan kredensial secara manual`, {
-                style: {
-                  background: '#f59e0b',
-                  color: 'white',
-                  border: 'none'
-                },
-                duration: 7000
-              });
-            }
+            // Email gagal, tapi warga sudah dibuat - fallback ke WhatsApp
+            console.error('Email failed:', emailResult);
+            handleEmailFailureWithWhatsApp(result.data, emailResult.whatsappMessage || 'WhatsApp message not available');
           }
         } catch (emailError) {
-          // Error saat kirim email - fallback ke clipboard
+          // Error saat kirim email - fallback ke WhatsApp dengan generic message
           console.error('Email service error:', emailError);
-          const credentialsText = `
-Akun KomplekIn berhasil dibuat!
+          const fallbackMessage = `
+*Selamat Datang di KomplekIn!*
 
-Nama: ${result.data.fullname}
-Email: ${result.data.email}
-Cluster: ${result.data.cluster || clusterName || 'Unknown'}
-Role: ${result.data.roleInfo?.title}
+Halo *${result.data.fullname}*, akun KomplekIn Anda telah dibuat.
 
-Password Sementara: ${result.data.temporaryPassword}
-Magic Link: ${result.data.magicLink}
+*Detail Akun:*
+- Email: ${result.data.email}
+- Password Sementara: *${result.data.temporaryPassword}*
 
-Instruksi:
-1. Bagikan magic link dan password sementara kepada user
-2. User klik magic link → masukkan password sementara
-3. User buat password baru → bisa mulai menggunakan sistem
+*Link Verifikasi:*
+${result.data.magicLink || 'Tidak tersedia'}
+
+Silakan gunakan kredensial di atas untuk login.
           `.trim();
-
-          try {
-            await navigator.clipboard.writeText(credentialsText);
-            toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
-Gagal mengirim email - kredensial disalin ke clipboard
-Bagikan magic link & password secara manual`, {
-            style: {
-                background: '#f59e0b',
-              color: 'white',
-              border: 'none'
-            },
-              duration: 7000
-          });
-        } catch {
-            toast.warning(`Warga ${result.data.fullname} berhasil dibuat!
-Gagal mengirim email
-Password sementara: ${result.data.temporaryPassword}
-Bagikan kredensial secara manual`, {
-            style: {
-                background: '#f59e0b',
-              color: 'white',
-              border: 'none'
-            },
-              duration: 7000
-          });
-          }
+          
+          handleEmailFailureWithWhatsApp(result.data, fallbackMessage);
+        }
+        
+        // Refresh data untuk menampilkan data terbaru tanpa reload halaman
+        if (refetch) {
+          setTimeout(() => {
+            refetch();
+          }, 500);
         }
         
         // Close drawer immediately
         handleOpenChange(false);
-      } else {
-        toast.error(result.error || 'Gagal membuat warga');
+            } else {
+        toast.error(`${result.error || 'Gagal membuat warga'}`, {
+          style: {
+            background: '#ef4444',
+            color: 'white',
+            border: 'none'
+          },
+          duration: 5000
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan tidak terduga';
-      toast.error(errorMessage);
+      console.error('Warga creation error:', err);
+      toast.error(`${errorMessage}`, {
+        style: {
+          background: '#ef4444',
+          color: 'white',
+          border: 'none'
+        },
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
     }

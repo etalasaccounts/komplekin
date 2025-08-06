@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
 import { ChooseFile } from "@/components/input/chooseFile";
+import { useWargaActions } from "@/hooks/useWarga";
+import { toast } from "sonner";
 
 const parseDateString = (dateString: string): Date | undefined => {
   const parts = dateString.split('/');
@@ -30,6 +32,9 @@ const parseDateString = (dateString: string): Date | undefined => {
 };
 
 export interface WargaData {
+  id?: number; // Sequential number for display purposes
+  originalId?: string; // Original UUID from database for operations
+  profileId?: string; // Add profileId for profile updates
   nama: string;
   role: string;
   kontak: string;
@@ -52,6 +57,7 @@ interface WargaDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialIsEditing?: boolean;
+  refetch?: () => void;
 }
 
 export default function WargaDetailModal({
@@ -59,6 +65,7 @@ export default function WargaDetailModal({
   open,
   onOpenChange,
   initialIsEditing = false,
+  refetch,
 }: WargaDetailModalProps) {
   const [isEditing, setIsEditing] = useState(initialIsEditing);
   const [activeTab, setActiveTab] = useState("data-pribadi");
@@ -67,7 +74,10 @@ export default function WargaDetailModal({
   const [isHapusModalOpen, setIsHapusModalOpen] = useState(false);
   const [isPreviewImageOpen, setIsPreviewImageOpen] = useState(false);
   const [previewData, setPreviewData] = useState<{ ktp?: string; kk?: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Database actions
+  const { updateStatus, updateCitizenStatus, deleteWarga, updateProfile } = useWargaActions();
 
   const [formData, setFormData] = useState(warga);
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
@@ -83,22 +93,246 @@ export default function WargaDetailModal({
   }, [open, warga, initialIsEditing]);
 
   const handleEditClick = () => setIsEditing(true);
-  const handleUpdate = () => {
-    console.log("Updating data:", { ...formData, tanggalTinggal, fotoKTPFile, fotoKKFile });
-    setIsEditing(false);
+  
+  const handleUpdate = async () => {
+    if (!warga.profileId) {
+      toast.error('Profile ID tidak ditemukan');
+      console.error('Missing profileId:', warga.profileId);
+      return;
+    }
+
+    // Convert and validate profile ID
+    const profileId = String(warga.profileId);
+    if (!profileId || profileId.trim() === '' || profileId === 'undefined' || profileId === 'null') {
+      toast.error('Format Profile ID tidak valid');
+      console.error('Invalid profileId format:', warga.profileId);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Prepare updated profile data
+      const profileData = {
+        fullname: formData.nama,
+        email: formData.email,
+        no_telp: formData.kontak,
+        address: formData.alamat,
+        house_type: formData.tipeRumah,
+        ownership_status: formData.statusKepemilikan,
+        head_of_family: formData.kepalaKeluarga,
+        emergency_telp: formData.kontakDarurat,
+        work: formData.pekerjaan,
+        moving_date: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : formData.tanggalTinggal,
+      };
+
+      console.log("Updating profile with ID:", profileId, "Data:", profileData);
+
+      // Update profile in database
+      await updateProfile(profileId, profileData);
+      
+      toast.success('Data warga berhasil diperbarui');
+      setIsEditing(false);
+      
+      // Refresh data to show updated information
+      if (refetch) {
+        setTimeout(() => {
+          refetch();
+        }, 500);
+      }
+      
+    } catch (error) {
+      console.error('Error updating warga:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('22P02')) {
+          toast.error('Format data tidak valid. Periksa data yang diinput.');
+        } else if (error.message.includes('23505')) {
+          toast.error('Email atau data sudah digunakan oleh warga lain.');
+        } else {
+          toast.error(`Gagal memperbarui data: ${error.message}`);
+        }
+      } else {
+        toast.error('Gagal memperbarui data warga');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTolakClick = () => {
     setIsTolakModalOpen(true);
   };
 
-  const handleConfirmTolak = (alasan: string) => {
-    console.log("Pendaftaran ditolak dengan alasan:", alasan);
-    // Logika untuk menolak pendaftaran...
+  const handleConfirmTolak = async (alasan: string) => {
+    if (!warga.originalId) {
+      toast.error('ID warga tidak ditemukan');
+      console.error('Missing warga originalId:', warga.originalId);
+      return;
+    }
+
+    // Validate UUID format
+    if (typeof warga.originalId !== 'string' || warga.originalId.trim() === '') {
+      toast.error('Format ID tidak valid');
+      console.error('Invalid originalId format:', warga.originalId);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Rejecting warga with originalId:', warga.originalId, 'Reason:', alasan);
+      await updateStatus(warga.originalId, 'Inactive');
+      toast.success(`Pendaftaran ${warga.nama} telah ditolak`);
+      setIsTolakModalOpen(false);
+      onOpenChange(false); // Close modal after action
+      if (refetch) refetch(); // Refresh to update data
+    } catch (error) {
+      console.error('Error rejecting warga:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('22P02')) {
+          toast.error('Format data tidak valid. Periksa ID warga.');
+        } else {
+          toast.error(`Gagal menolak pendaftaran: ${error.message}`);
+        }
+      } else {
+        toast.error('Gagal menolak pendaftaran warga');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleHapus = () => {
-    console.log(`Menghapus warga: ${warga.nama}`);
+  const handleApprove = async () => {
+    if (!warga.originalId) {
+      toast.error('ID warga tidak ditemukan');
+      console.error('Missing warga originalId:', warga.originalId);
+      return;
+    }
+
+    // Validate UUID format
+    if (typeof warga.originalId !== 'string' || warga.originalId.trim() === '') {
+      toast.error('Format ID tidak valid');
+      console.error('Invalid originalId format:', warga.originalId);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Approving warga with originalId:', warga.originalId);
+      await updateStatus(warga.originalId, 'Active');
+      toast.success(`${warga.nama} telah diterima sebagai warga`);
+      onOpenChange(false); // Close modal after action
+      if (refetch) refetch(); // Refresh to update data
+    } catch (error) {
+      console.error('Error approving warga:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('22P02')) {
+          toast.error('Format data tidak valid. Periksa ID warga.');
+        } else {
+          toast.error(`Gagal menerima warga: ${error.message}`);
+        }
+      } else {
+        toast.error('Gagal menerima warga');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleHapus = async () => {
+    if (!warga.originalId) {
+      toast.error('ID warga tidak ditemukan');
+      console.error('Missing warga originalId:', warga.originalId);
+      return;
+    }
+
+    // Validate UUID format
+    if (typeof warga.originalId !== 'string' || warga.originalId.trim() === '') {
+      toast.error('Format ID tidak valid');
+      console.error('Invalid originalId format:', warga.originalId);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Deleting warga with originalId:', warga.originalId);
+      await deleteWarga(warga.originalId);
+      toast.success(`Data ${warga.nama} berhasil dihapus`);
+      setIsHapusModalOpen(false);
+      onOpenChange(false); // Close modal after action
+      if (refetch) refetch(); // Refresh to update data
+    } catch (error) {
+      console.error('Error deleting warga:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('22P02')) {
+          toast.error('Format data tidak valid. Periksa ID warga.');
+        } else if (error.message.includes('23503')) {
+          toast.error('Tidak dapat menghapus karena data masih terkait dengan data lain.');
+        } else {
+          toast.error(`Gagal menghapus data: ${error.message}`);
+        }
+      } else {
+        toast.error('Gagal menghapus data warga');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRestoreAccess = async () => {
+    if (!warga.originalId || !warga.profileId) {
+      toast.error('ID warga atau Profile ID tidak ditemukan');
+      console.error('Missing IDs:', { originalId: warga.originalId, profileId: warga.profileId });
+      return;
+    }
+
+    // Validate UUID and profile ID format
+    if (typeof warga.originalId !== 'string' || warga.originalId.trim() === '') {
+      toast.error('Format ID warga tidak valid');
+      console.error('Invalid originalId format:', warga.originalId);
+      return;
+    }
+
+    const profileId = String(warga.profileId);
+    if (!profileId || profileId.trim() === '' || profileId === 'undefined' || profileId === 'null') {
+      toast.error('Format Profile ID tidak valid');
+      console.error('Invalid profile ID format:', warga.profileId);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Restoring access for:', { originalId: warga.originalId, profileId });
+      
+      // Update user status to Active
+      await updateStatus(warga.originalId, 'Active');
+      
+      // Update citizen status to 'Warga baru'
+      await updateCitizenStatus(profileId, 'Warga baru');
+      
+      toast.success(`Akses ${warga.nama} telah dipulihkan`);
+      onOpenChange(false); // Close modal after action
+      if (refetch) refetch(); // Refresh to update data
+    } catch (error) {
+      console.error('Error restoring access:', error);
+      
+      // More specific error handling
+      if (error instanceof Error) {
+        if (error.message.includes('22P02')) {
+          toast.error('Format data tidak valid. Periksa ID warga.');
+        } else if (error.message.includes('23503')) {
+          toast.error('Data terkait tidak ditemukan di database.');
+        } else {
+          toast.error(`Gagal memulihkan akses: ${error.message}`);
+        }
+      } else {
+        toast.error('Gagal memulihkan akses warga');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const footerButton = () => {
@@ -106,9 +340,13 @@ export default function WargaDetailModal({
 
     if (isEditing) {
       return (
-        <Button className="bg-black text-white hover:bg-black/90" onClick={handleUpdate}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Perbarui Data
+        <Button 
+          className="bg-black text-white hover:bg-black/90" 
+          onClick={handleUpdate}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? 'Memperbarui...' : 'Perbarui Data'}
         </Button>
       );
     }
@@ -116,13 +354,21 @@ export default function WargaDetailModal({
     if (warga.status === "Perlu Persetujuan") {
       return (
         <div className="flex justify-end w-full gap-3">
-          <Button variant="outline" onClick={handleTolakClick}>
+          <Button 
+            variant="outline" 
+            onClick={handleTolakClick}
+            disabled={isLoading}
+          >
             <X className="mr-2 h-4 w-4" />
             Tolak Warga
           </Button>
-          <Button className="bg-black text-white hover:bg-black/90">
+          <Button 
+            className="bg-black text-white hover:bg-black/90"
+            onClick={handleApprove}
+            disabled={isLoading}
+          >
             <Check className="mr-2 h-4 w-4" />
-            Terima Warga
+            {isLoading ? 'Memproses...' : 'Terima Warga'}
           </Button>
         </div>
       );
@@ -131,20 +377,32 @@ export default function WargaDetailModal({
     if (warga.status === "Pindah" || warga.status === "Ditolak") {
       return (
         <div className="flex justify-end w-full gap-3">
-          <Button variant="destructive" onClick={() => setIsHapusModalOpen(true)}>
+          <Button 
+            variant="destructive" 
+            onClick={() => setIsHapusModalOpen(true)}
+            disabled={isLoading}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Hapus Data Warga
           </Button>
-          <Button className="bg-black text-white hover:bg-black/90">
+          <Button 
+            className="bg-black text-white hover:bg-black/90"
+            onClick={handleRestoreAccess}
+            disabled={isLoading}
+          >
             <UserPlus className="mr-2 h-4 w-4" />
-            Berikan Akses Kembali
+            {isLoading ? 'Memproses...' : 'Berikan Akses Kembali'}
           </Button>
         </div>
       );
     }
     
     return (
-      <Button className="bg-black text-white hover:bg-black/90" onClick={handleEditClick}>
+      <Button 
+        className="bg-black text-white hover:bg-black/90" 
+        onClick={handleEditClick}
+        disabled={isLoading}
+      >
         <Edit className="mr-2 h-4 w-4" />
         Edit Data Warga
       </Button>
