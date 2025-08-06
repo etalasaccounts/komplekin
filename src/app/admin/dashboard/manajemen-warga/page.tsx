@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,105 +37,107 @@ import TolakPendaftaranModal from "./components/TolakPendaftaranModal";
 import HapusWargaModal from "./components/HapusWargaModal";
 import StatusWargaTable from "./components/StatusWargaTable";
 import { PreviewImage } from "../components/PreviewImage";
+import { useWarga } from "@/hooks/useWarga";
+import { WargaWithProfile } from "@/services/wargaService";
 
-// Dummy data, idealnya ini akan datang dari API
-const pendaftaranData: (WargaData & { id: number })[] = [
-  {
-    id: 1,
-    nama: "Mathew Alexander",
-    alamat: "Komplek Mahata Margonda No12...",
-    kontak: "089534924330",
-    statusKepemilikan: "Sewa",
-    tanggalTinggal: "06/07/2025",
-    tanggalDaftar: "06/07/2025",
-    status: "Perlu Persetujuan",
-    role: "Warga Komplek",
-    email: "mathewalexander@example.com",
-    tipeRumah: "Tipe 42 A",
-    kepalaKeluarga: "Mathew Alexander",
-    kontakDarurat: "081234567890",
-    pekerjaan: "Software Engineer",
-    fotoKTP: "https://picsum.photos/800/500?random=1",
-    fotoKK: "https://picsum.photos/800/600?random=2",
-  },
-  {
-    id: 2,
-    nama: "John Doe",
-    alamat: "Komplek Mahata Margonda No13...",
-    kontak: "081234567890",
-    statusKepemilikan: "Milik Sendiri",
-    tanggalTinggal: "01/01/2024",
-    tanggalDaftar: "01/01/2024",
-    status: "Ditolak",
-    role: "Warga Komplek",
-    email: "johndoe@example.com",
-    tipeRumah: "Tipe 50 B",
-    kepalaKeluarga: "John Doe",
-    kontakDarurat: "089876543210",
-    pekerjaan: "UI/UX Designer",
-    fotoKTP: "https://picsum.photos/800/500?random=3",
-    fotoKK: "https://picsum.photos/800/600?random=4",
-  },
-    {
-    id: 3,
-    nama: "Jane Smith",
-    alamat: "Komplek Mahata Margonda No14...",
-    kontak: "087654321098",
-    statusKepemilikan: "Sewa",
-    tanggalTinggal: "15/03/2023",
-    tanggalDaftar: "15/03/2023",
-    status: "Aktif",
-    role: "Warga Komplek",
-    email: "janesmith@example.com",
-    tipeRumah: "Tipe 36 A",
-    kepalaKeluarga: "Jane Smith",
-    kontakDarurat: "081122334455",
-    pekerjaan: "Product Manager",
-    fotoKTP: "https://picsum.photos/800/500?random=5",
-    fotoKK: "https://picsum.photos/800/600?random=6",
-  },
-  {
-    id: 4,
-    nama: "Michael Brown",
-    alamat: "Komplek Mahata Margonda No15...",
-    kontak: "081298765432",
-    statusKepemilikan: "Milik Sendiri",
-    tanggalTinggal: "20/08/2022",
-    tanggalDaftar: "20/08/2022",
-    status: "Pindah",
-    role: "Warga Komplek",
-    email: "michaelbrown@example.com",
-    tipeRumah: "Tipe 60 C",
-    kepalaKeluarga: "Michael Brown",
-    kontakDarurat: "087712345678",
-    pekerjaan: "Data Scientist",
-    fotoKTP: "https://picsum.photos/800/500?random=7",
-    fotoKK: "https://picsum.photos/800/600?random=8",
-  },
-  {
-    id: 5,
-    nama: "Sarah Wilson",
-    alamat: "Komplek Mahata Margonda No16...",
-    kontak: "085612345678",
-    statusKepemilikan: "Sewa",
-    tanggalTinggal: "10/10/2024",
-    tanggalDaftar: "10/10/2024",
-    status: "Warga Baru",
-    role: "Warga Komplek",
-    email: "sarahwilson@example.com",
-    tipeRumah: "Tipe 36 B",
-    kepalaKeluarga: "Sarah Wilson",
-    kontakDarurat: "089987654321",
-    pekerjaan: "Marketing",
-    fotoKTP: "https://picsum.photos/800/500?random=9",
-    fotoKK: "https://picsum.photos/800/600?random=10",
-  },
-];
+// Fungsi untuk mengkonversi data dari database ke format komponen
+const mapWargaDataToComponent = (wargaData: WargaWithProfile[]): (WargaData & { id: number })[] => {
+  return wargaData.map((item, index) => ({
+    id: index + 1, // Use sequential number for display purposes
+    originalId: item.id, // Keep original UUID for database operations
+    profileId: item.profile_id, // Add profileId for updates
+    nama: item.profile.fullname,
+    alamat: item.profile.address,
+    kontak: item.profile.no_telp,
+    statusKepemilikan: item.profile.ownership_status,
+    tanggalTinggal: formatDate(item.profile.moving_date),
+    tanggalDaftar: formatDate(item.profile.created_at),
+    status: mapStatusToComponent(item.user_status, item.role, item.profile.citizen_status),
+    role: mapRoleToComponent(item.role),
+    email: item.profile.email,
+    tipeRumah: item.profile.house_type,
+    kepalaKeluarga: item.profile.head_of_family,
+    kontakDarurat: item.profile.emergency_telp,
+    pekerjaan: item.profile.work || item.profile.emergency_job,
+    fotoKTP: item.profile.file_ktp,
+    fotoKK: item.profile.file_kk,
+  }));
+};
+
+// Helper function untuk format tanggal
+const formatDate = (dateString: string): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+// Helper function untuk mapping status
+const mapStatusToComponent = (
+  userStatus: string, 
+  role: string, 
+  citizenStatus: string
+): "Perlu Persetujuan" | "Ditolak" | "Aktif" | "Pindah" | "Warga Baru" => {
+  // Prioritas: user_status dari user_permissions table
+  if (userStatus === 'Inactive') return "Ditolak";
+  if (userStatus === 'Active') {
+    // Jika Active, cek citizen_status untuk detail lebih lanjut
+    if (citizenStatus === 'Pindah') return "Pindah";
+    if (citizenStatus === 'Warga baru') return "Warga Baru";
+    return "Aktif";
+  }
+  
+  // Default jika belum ada user_status (null/undefined)
+  return "Perlu Persetujuan";
+};
+
+// Helper function untuk mapping role
+const mapRoleToComponent = (role: string): string => {
+  switch (role) {
+    case 'admin':
+      return 'Admin Komplek';
+    case 'super admin':
+      return 'Super Admin';
+    case 'user':
+    default:
+      return 'Warga Komplek';
+  }
+};
 
 function ManajemenWarga() {
-  const [activeTab, setActiveTab] = useState("pendaftaran");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Ambil tab aktif dari URL parameter, default ke "daftar-warga"
+  const activeTab = searchParams.get('tab') || 'daftar-warga';
+  
+  // Ambil data warga dari database
+  const { warga: rawWargaData, loading, error, refetch } = useWarga();
+
+  // Convert data untuk komponen
+  const pendaftaranData = useMemo(() => {
+    const mappedData = mapWargaDataToComponent(rawWargaData);
+    
+    // Sort descending berdasarkan tanggal daftar (terbaru di atas)
+    const sortedData = mappedData.sort((a, b) => {
+      const dateA = new Date(a.tanggalDaftar?.split('/').reverse().join('-') || '1970-01-01');
+      const dateB = new Date(b.tanggalDaftar?.split('/').reverse().join('-') || '1970-01-01');
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    // Debug: Log untuk troubleshooting
+    console.log('Raw warga data from database:', rawWargaData);
+    console.log('Mapped data for components:', mappedData);
+    console.log('Sorted data (descending):', sortedData);
+    console.log('Total data count:', sortedData.length);
+    
+    return sortedData;
+  }, [rawWargaData]);
 
   const modal = searchParams.get('modal');
   const userId = searchParams.get('id');
@@ -147,38 +149,96 @@ function ManajemenWarga() {
     router.push('/admin/dashboard/manajemen-warga');
   };
 
+  // Pagination logic
+  const getCurrentPageData = <T,>(data: T[]): T[] => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (totalItems: number) => {
+    return Math.ceil(totalItems / itemsPerPage);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleTabChange = (tab: string) => {
+    // Prevent access to hidden pendaftaran tab
+    if (tab === "pendaftaran") {
+      const currentParams = new URLSearchParams(searchParams);
+      currentParams.set('tab', 'daftar-warga');
+      router.push(`/admin/dashboard/manajemen-warga?${currentParams.toString()}`);
+      setCurrentPage(1);
+      return;
+    }
+    
+    // Update URL parameter
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('tab', tab);
+    router.push(`/admin/dashboard/manajemen-warga?${currentParams.toString()}`);
+    setCurrentPage(1); // Reset to first page when changing tabs
+  };
+
   const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-muted-foreground">Loading data warga...</div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-destructive">Error: {error}</div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
-      case "daftar":
-        const daftarWarga = pendaftaranData.filter(w => w.status !== "Perlu Persetujuan" && w.status !== "Ditolak");
+      case "daftar-warga":
+        const daftarWarga = pendaftaranData.filter(w => 
+          w.status === "Aktif" || w.status === "Warga Baru" || w.status === "Pindah"
+        );
+        const paginatedDaftarWarga = getCurrentPageData(daftarWarga);
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold">Daftar Warga Komplek</h2>
               <Badge variant="outline" className="bg-muted px-2 py-1 rounded-full">{daftarWarga.length} Warga Terdaftar</Badge>
             </div>
-            <WargaList dataWarga={daftarWarga} />
+            <WargaList dataWarga={paginatedDaftarWarga} refetch={refetch} />
           </div>
         );
-      case "pendaftaran":
+      // Temporarily hidden - case "pendaftaran"
+      case "pendaftaran-warga":
+        const pendaftaranWarga = pendaftaranData.filter(w => 
+          w.status === "Perlu Persetujuan" || w.status === "Ditolak"
+        );
+        const paginatedPendaftaranWarga = getCurrentPageData(pendaftaranWarga);
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold">Pendaftaran Warga</h2>
-              <Badge variant="outline" className="bg-muted px-2 py-1 rounded-full">{pendaftaranData.length} Warga Mendaftar</Badge>
+              <Badge variant="outline" className="bg-muted px-2 py-1 rounded-full">{pendaftaranWarga.length} Warga Mendaftar</Badge>
             </div>
-            <PendaftaranTable pendaftaranData={pendaftaranData}/>
+            <PendaftaranTable pendaftaranData={paginatedPendaftaranWarga}/>
           </div>
         );
-      case "status":
-        const statusWargaData = pendaftaranData.filter(warga => warga.status === "Pindah" || warga.status === "Aktif");
+      case "status-warga":
+        // Show all warga for status management (no filtering)
+        const statusWargaData = pendaftaranData;
+        const paginatedStatusWarga = getCurrentPageData(statusWargaData);
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-semibold">Status Warga</h2>
               <Badge variant="outline" className="bg-muted px-2 py-1 rounded-full">{statusWargaData.length} Warga</Badge>
             </div>
-            <StatusWargaTable statusWargaData={statusWargaData} />
+            <StatusWargaTable statusWargaData={paginatedStatusWarga} refetch={refetch} />
           </div>
         );
       default:
@@ -200,29 +260,32 @@ function ManajemenWarga() {
         <div className="flex space-x-1 p-2 w-fit">
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("daftar")}
+            onClick={() => handleTabChange("daftar-warga")}
             className={`px-4 py-2 text-sm font-medium transition-colors rounded-none ${
-              activeTab === "daftar" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
+              activeTab === "daftar-warga" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
             }`}
           >
             <ClipboardList className="size-4" />
             Daftar Warga
           </Button>
+          {/* Temporarily hidden - Tab Pendaftaran */}
+          {false && (
+            <Button
+              variant="ghost"
+              onClick={() => handleTabChange("pendaftaran-warga")}
+              className={`px-4 py-2 text-sm font-medium transition-colors rounded-none ${
+                activeTab === "pendaftaran-warga" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <FileText className="size-4" />
+              Pendaftaran
+            </Button>
+          )}
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("pendaftaran")}
+            onClick={() => handleTabChange("status-warga")}
             className={`px-4 py-2 text-sm font-medium transition-colors rounded-none ${
-              activeTab === "pendaftaran" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <FileText className="size-4" />
-            Pendaftaran
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setActiveTab("status")}
-            className={`px-4 py-2 text-sm font-medium transition-colors rounded-none ${
-              activeTab === "status" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
+              activeTab === "status-warga" ? "border-b border-foreground text-foreground" : "text-muted-foreground"
             }`}
           >
             <Users className="size-4" />
@@ -253,46 +316,124 @@ function ManajemenWarga() {
               <DropdownMenuCheckboxItem>Admin</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <AddWargaDrawer />
+          <AddWargaDrawer refetch={refetch} />
         </div>
       </div>
 
       {renderContent()}
 
+      {/* Dynamic Pagination */}
+      {(() => {
+        let currentData = [];
+        let totalItems = 0;
+        
+        switch (activeTab) {
+          case "daftar-warga":
+            currentData = pendaftaranData.filter(w => w.status === "Aktif" || w.status === "Warga Baru" || w.status === "Pindah");
+            break;
+          // Temporarily hidden - case "pendaftaran"
+          case "pendaftaran-warga":
+            currentData = pendaftaranData.filter(w => w.status === "Perlu Persetujuan" || w.status === "Ditolak");
+            break;
+          case "status-warga":
+            currentData = pendaftaranData; // Show all warga for status management
+            break;
+          default:
+            currentData = pendaftaranData;
+        }
+        
+        totalItems = currentData.length;
+        const totalPages = getTotalPages(totalItems);
+        const startIndex = (currentPage - 1) * itemsPerPage + 1;
+        const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
+        
+        if (totalItems === 0) return null;
+        
+        return (
       <div className="flex items-center justify-between text-sm text-muted-foreground w-full">
-        <span className="text-nowrap">Menampilkan 10 dari 112 List Warga</span>
+            <span className="text-nowrap">
+              Menampilkan {startIndex} - {endIndex} dari {totalItems} List Warga
+            </span>
+            {totalPages > 1 && (
         <Pagination className="w-full flex justify-end">
             <PaginationContent>
                 <PaginationItem>
-                    <PaginationPrevious href="#" />
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) handlePageChange(currentPage - 1);
+                      }}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
                 </PaginationItem>
-                <PaginationItem>
-                    <PaginationLink href="#">1</PaginationLink>
+                  
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(pageNumber);
+                          }}
+                          isActive={currentPage === pageNumber}
+                          className="cursor-pointer"
+                        >
+                          {pageNumber}
+                        </PaginationLink>
                 </PaginationItem>
-                <PaginationItem>
-                    <PaginationLink href="#">2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                    <PaginationLink href="#">3</PaginationLink>
-                </PaginationItem>
+                    );
+                  })}
+                  
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <>
                 <PaginationItem>
                     <PaginationEllipsis />
                 </PaginationItem>
                 <PaginationItem>
-                    <PaginationLink href="#">8</PaginationLink>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(totalPages);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {totalPages}
+                        </PaginationLink>
                 </PaginationItem>
+                    </>
+                  )}
+                  
                 <PaginationItem>
-                    <PaginationLink href="#">9</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                    <PaginationLink href="#">10</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                    <PaginationNext href="#" />
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                      }}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
                 </PaginationItem>
             </PaginationContent>
         </Pagination>
+            )}
     </div>
+        );
+      })()}
 
     {selectedWarga && (
       <>
@@ -305,6 +446,7 @@ function ManajemenWarga() {
           }}
           warga={selectedWarga}
           initialIsEditing={isEditing}
+          refetch={refetch}
         />
         <TolakPendaftaranModal
           open={modal === 'reject'}

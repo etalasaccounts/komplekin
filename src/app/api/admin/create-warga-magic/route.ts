@@ -174,7 +174,8 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           profile_id: profileData.id,
           cluster_id: clusterId,
-          role: role
+          role: role,
+          user_status: 'Active' // Set status to Active for new warga
         })
 
       if (permissionError) {
