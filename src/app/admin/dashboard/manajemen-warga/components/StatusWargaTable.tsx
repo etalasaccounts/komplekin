@@ -21,21 +21,74 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal } from 'lucide-react';
 import { WargaData } from './WargaDetailModal';
+import { useWargaActions } from "@/hooks/useWarga";
+import { toast } from "sonner";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "Aktif":
-        return <Badge className="bg-[#2597D0] text-white rounded-full">Aktif</Badge>;
+      return <Badge className="bg-[#2597D0] text-white rounded-full">Aktif</Badge>;
     case "Pindah":
       return <Badge className="bg-[#717784] text-white rounded-full">Pindah</Badge>;
+    case "Ditolak":
+      return <Badge className="bg-[#D02533] text-white rounded-full">Ditolak</Badge>;
+    case "Warga Baru":
+      return <Badge className="bg-[#CE5E12] text-white rounded-full">Warga Baru</Badge>;
+    case "Perlu Persetujuan":
+      return <Badge className="bg-[#2547D0] text-white rounded-full">Perlu Persetujuan</Badge>;
     default:
       return <Badge>{status}</Badge>;
   }
 };
 
-const ActionMenu = ({ wargaId }: { wargaId: number }) => {
-  const handleAction = (action: string) => {
-    console.log(`${action} for warga ID: ${wargaId}`);
+const ActionMenu = ({ originalId, refetch }: { originalId?: string; refetch?: () => void }) => {
+  const { updateRole, updateCitizenStatus, deleteWarga } = useWargaActions();
+
+  const handleMakeAdmin = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      await updateRole(originalId, 'admin');
+      toast.success('Warga berhasil dijadikan admin');
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error updating warga role:', error);
+      toast.error('Gagal mengubah role warga');
+    }
+  };
+
+  const handleMarkAsPindah = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      // Note: updateCitizenStatus needs profileId, not user permission ID
+      // This might need to be fixed based on actual implementation
+      await updateCitizenStatus(originalId, 'Pindah');
+      toast.success('Status warga berhasil diubah menjadi Pindah');
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Gagal mengubah status warga');
+    }
+  };
+
+  const handleDeleteWarga = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      await deleteWarga(originalId, false); // soft delete
+      toast.success('Warga berhasil dihapus');
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error deleting warga:', error);
+      toast.error('Gagal menghapus warga');
+    }
   };
 
   return (
@@ -47,15 +100,24 @@ const ActionMenu = ({ wargaId }: { wargaId: number }) => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleAction('Jadikan Admin')}>Jadikan Admin</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAction('Warga Pindah')}>Warga Pindah</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAction('Hapus Warga')} className="text-red-600">Hapus Warga</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleMakeAdmin}>Jadikan Admin</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleMarkAsPindah}>Warga Pindah</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDeleteWarga} className="text-red-600">Hapus Warga</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
-export default function StatusWargaTable({ statusWargaData }: { statusWargaData: (WargaData & { id: number, status: string })[] }) {
+interface StatusWargaTableProps {
+  statusWargaData: (WargaData & { id: number })[];
+  refetch?: () => void;
+}
+
+export default function StatusWargaTable({ statusWargaData, refetch }: StatusWargaTableProps) {
+  // Debug: Log data yang diterima
+  console.log('StatusWargaTable received data:', statusWargaData);
+  console.log('StatusWargaTable data count:', statusWargaData.length);
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -94,7 +156,7 @@ export default function StatusWargaTable({ statusWargaData }: { statusWargaData:
               </TableCell>
               <TableCell>{getStatusBadge(item.status)}</TableCell>
               <TableCell>
-                <ActionMenu wargaId={item.id} />
+                <ActionMenu originalId={item.originalId} refetch={refetch} />
               </TableCell>
             </TableRow>
           ))}

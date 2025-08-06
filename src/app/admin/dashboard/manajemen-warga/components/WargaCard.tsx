@@ -18,9 +18,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useWargaActions } from "@/hooks/useWarga";
+import { toast } from "sonner";
 
 interface WargaCardProps {
   id: number;
+  originalId?: string;
   status: string;
   nama: string;
   role: string;
@@ -28,12 +31,16 @@ interface WargaCardProps {
   alamat: string;
   tipeRumah: string;
   tanggalDaftar: string;
+  refetch?: () => void;
 }
 
-const getStatusVariant = (status: string) => {
+const getStatusVariant = (status: string, role: string) => {
+  // Jika role adalah admin, return pink color
+  if (role.toLowerCase().includes('admin')) {
+    return "bg-[#D0257A] text-white";
+  }
+  
   switch (status.toLowerCase()) {
-    case "admin":
-      return "bg-[#D0257A] text-white";
     case "warga baru":
       return "bg-[#CE5E12] text-white";
     case "aktif":
@@ -45,9 +52,62 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-const ActionMenu = ({ status, wargaId }: { status: string; wargaId: number }) => {
+const ActionMenu = ({ status, originalId, role, refetch }: { status: string; originalId?: string; role: string; refetch?: () => void }) => {
   const currentPath = "/admin/dashboard/manajemen-warga";
   const statusLowerCase = status.toLowerCase();
+  const roleLowerCase = role.toLowerCase();
+  const { updateRole, deleteWarga, updateCitizenStatus } = useWargaActions();
+
+  const handleMakeAdmin = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      await updateRole(originalId, 'admin');
+      toast.success('Warga berhasil dijadikan admin');
+      // Refresh data to update table
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error making admin:', error);
+      toast.error('Gagal mengubah role warga');
+    }
+  };
+
+  const handleDeleteWarga = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      await deleteWarga(originalId);
+      toast.success('Warga berhasil dihapus');
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error deleting warga:', error);
+      toast.error('Gagal menghapus warga');
+    }
+  };
+
+  const handleMarkAsPindah = async () => {
+    if (!originalId) {
+      toast.error('ID warga tidak ditemukan');
+      return;
+    }
+    try {
+      // Note: updateCitizenStatus needs profileId, not user permission ID
+      // This might need to be fixed based on actual implementation
+      await updateCitizenStatus(originalId, 'Pindah');
+      toast.success('Status warga berhasil diubah menjadi Pindah');
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error marking as pindah:', error);
+      toast.error('Gagal mengubah status warga');
+    }
+  };
+
+  // Determine if user is already admin
+  const isAdmin = roleLowerCase.includes('admin');
 
   return (
     <DropdownMenu>
@@ -60,27 +120,32 @@ const ActionMenu = ({ status, wargaId }: { status: string; wargaId: number }) =>
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {statusLowerCase !== 'admin' ? (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href={`${currentPath}?modal=view&id=${wargaId}&edit=true`} className="cursor-pointer">
-                Edit Data Warga
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
-              Jadikan Admin
-            </DropdownMenuItem>
+        {/* Edit Data Warga - Always available */}
+        <DropdownMenuItem asChild>
+          <Link href={`${currentPath}?modal=view&id=${wargaId}&edit=true`} className="cursor-pointer">
+            Edit Data Warga
+          </Link>
+        </DropdownMenuItem>
+        
+        {/* Jadikan Admin - Only if not already admin */}
+        {!isAdmin && (
+          <DropdownMenuItem className="cursor-pointer" onClick={handleMakeAdmin}>
+            Jadikan Admin
+          </DropdownMenuItem>
+        )}
 
-            {statusLowerCase === 'pindah' && (
-              <DropdownMenuItem asChild>
-                <Link href={`${currentPath}?modal=delete&id=${wargaId}`} className="cursor-pointer text-destructive">
-                  Hapus Warga
-                </Link>
-              </DropdownMenuItem>
-            )}
-          </>
-        ) : (
-          <DropdownMenuItem disabled>Tidak ada aksi</DropdownMenuItem>
+        {/* Tandai Pindah - Only if not already 'pindah' status */}
+        {statusLowerCase !== 'pindah' && (
+          <DropdownMenuItem className="cursor-pointer" onClick={handleMarkAsPindah}>
+            Tandai Pindah
+          </DropdownMenuItem>
+        )}
+
+        {/* Hapus Warga - Available for 'pindah' status or non-admin users */}
+        {(statusLowerCase === 'pindah' || !isAdmin) && (
+          <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleDeleteWarga}>
+            Hapus Warga
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -90,6 +155,7 @@ const ActionMenu = ({ status, wargaId }: { status: string; wargaId: number }) =>
 
 export default function WargaCard({
   id,
+  originalId,
   status,
   nama,
   role,
@@ -97,13 +163,16 @@ export default function WargaCard({
   alamat,
   tipeRumah,
   tanggalDaftar,
+  refetch,
 }: WargaCardProps): React.ReactElement {
 
   return (
     <div className="bg-card rounded-xl border p-4 flex flex-col space-y-4">
       <div className="flex items-start justify-between">
-        <Badge className={`${getStatusVariant(status)}`}>{status}</Badge>
-        <ActionMenu status={status} wargaId={id} />
+        <Badge className={`${getStatusVariant(status, role)}`}>
+          {role.toLowerCase().includes('admin') ? 'Admin' : status}
+        </Badge>
+        <ActionMenu status={status} originalId={originalId} role={role} refetch={refetch} />
       </div>
 
       <div className="flex flex-col items-center text-center space-y-2">

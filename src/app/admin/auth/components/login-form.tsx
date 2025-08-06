@@ -126,6 +126,18 @@ export function LoginForm({
                   </>
                 )}
               </Button>
+              
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Belum memiliki akun admin?{" "}
+                  <Link
+                    href="/admin/auth/daftar"
+                    className="text-primary underline-offset-2 hover:underline font-medium"
+                  >
+                    Daftar di sini
+                  </Link>
+                </p>
+              </div>
             </div>
           </form>
         </CardContent>

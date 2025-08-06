@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound, Loader2, AlertCircle, Check } from "lucide-react";
 import { authService } from "@/services/auth";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,10 +28,49 @@ export default function ResetPasswordPage() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
 
+  // Magic link detection from URL params
+  const isMagicLink = searchParams.get('magic_link') === 'true';
+  const isNewUser = searchParams.get('new_user') === 'true';
+  const checkHash = searchParams.get('check_hash') === 'true';
+  const tempVerified = searchParams.get('temp_verified') === 'true';
+  const error = searchParams.get('error');
+
   useEffect(() => {
     let mounted = true;
     let retryCount = 0;
-    const maxRetries = 10;
+    const maxRetries = 15; // Increase retries for magic link
+
+    console.log('Reset password page params:', { isMagicLink, isNewUser, checkHash, tempVerified, error });
+
+    // Check for hash fragment authentication (from magic link)
+    const checkHashAuthentication = async () => {
+      if (checkHash) {
+        console.log('Checking hash fragment for authentication...');
+        
+        // Check if there's authentication data in URL hash
+        const hash = window.location.hash;
+        if (hash && (hash.includes('access_token') || hash.includes('type=signup'))) {
+          console.log('Found authentication in hash fragment');
+          
+                     // Use Supabase to process the hash fragment
+           try {
+             const { data: { session } } = await authService.getClient().auth.getSession();
+             if (session && mounted) {
+               console.log('Hash fragment authentication successful:', session.user.email);
+               setSession(session);
+               setSessionLoading(false);
+               
+               // Clean URL by removing hash fragment
+               window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+               return true;
+             }
+           } catch (err) {
+             console.error('Error processing hash fragment:', err);
+           }
+        }
+      }
+      return false;
+    };
 
     // Check if user came from forgot password flow
     const resetEmail = localStorage.getItem("reset_password_email");
@@ -49,6 +89,7 @@ export default function ResetPasswordPage() {
           data: { session },
         } = await authService.getClient().auth.getSession();
         if (session && mounted) {
+          console.log('Found existing session:', session.user.email);
           setSession(session);
           return true;
         }
@@ -59,112 +100,91 @@ export default function ResetPasswordPage() {
       }
     };
 
-    // Retry logic for session detection
-    const retrySessionCheck = async () => {
+    // Retry logic for session detection (more aggressive for magic link)
+    const waitForSession = async () => {
+      // First check hash fragment if needed
+      if (checkHash && retryCount === 0) {
+        const hashAuth = await checkHashAuthentication();
+        if (hashAuth) {
+          return;
+        }
+      }
+      
       const sessionFound = await checkExistingSession();
-
-      if (!sessionFound && retryCount < maxRetries && mounted) {
-        retryCount++;
-        setTimeout(retrySessionCheck, 500); // Wait 500ms before retry
-      } else if (mounted) {
-        // Stop loading after max retries or session found
+      
+      if (sessionFound) {
         setSessionLoading(false);
+        return;
+      }
+
+      if (retryCount < maxRetries && mounted) {
+        retryCount++;
+        console.log(`Waiting for session... Attempt ${retryCount}/${maxRetries}`);
+        
+        // Longer wait for magic link flow
+        const waitTime = isMagicLink ? 1000 : 500;
+        setTimeout(waitForSession, waitTime);
+      } else {
+        console.log('Session not found after max retries');
+        setSessionLoading(false);
+        
+        // For magic link flow, show error if no session after retries
+        if (isMagicLink && !error) {
+          toast.error('Sesi tidak ditemukan. Silakan klik ulang magic link atau hubungi admin.');
+        }
       }
     };
 
-    // Initial check
-    retrySessionCheck();
-
-    const {
-      data: { subscription },
-    } = authService.onAuthStateChange((event, session) => {
-      if (mounted) {
-        // This listener is crucial for catching the PASSWORD_RECOVERY event
-        if (
-          event === "PASSWORD_RECOVERY" ||
-          (event === "SIGNED_IN" && session)
-        ) {
-          setSession(session);
-          setSessionLoading(false);
-        }
-      }
-    });
+    waitForSession();
 
     return () => {
       mounted = false;
-      subscription?.unsubscribe();
     };
-  }, []);
+  }, [isMagicLink, isNewUser, checkHash, tempVerified, error]);
 
-  // Show loading screen while checking for session
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="p-6 text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Memuat...</h3>
-              <p className="text-sm text-muted-foreground">
-                Memeriksa sesi reset password...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle password reset submission
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!session) {
+      toast.error("Session tidak valid. Silakan coba lagi.");
+      return;
+    }
     if (password !== confirmPassword) {
-      toast.error("Kata sandi tidak cocok.");
+      toast.error("Konfirmasi password tidak cocok.");
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Kata sandi harus minimal 6 karakter.");
+      toast.error("Password minimal 6 karakter.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { error } = await authService.getClient().auth.updateUser({
-        password: password,
+      const { error: updateError } = await authService.getClient().auth.updateUser({
+        password: password
       });
 
-      if (error) {
-        toast.error("Gagal mengubah kata sandi. Silakan coba lagi.");
+      if (updateError) {
+        toast.error("Gagal mengubah password. Silakan coba lagi.");
       } else {
-        // Clear password recovery mode flags
-        localStorage.removeItem("password_recovery_mode");
-        localStorage.removeItem("password_recovery_timestamp");
-
-        toast.success(
-          "Kata sandi berhasil diubah! Mengalihkan ke dashboard..."
-        );
-
+        toast.success("Password berhasil dibuat!");
         setRedirecting(true);
 
-        // Get user role to determine redirect destination
-        setTimeout(async () => {
-          try {
-            const { role } = await authService.getUserPermissions(
-              session?.user?.id || ""
-            );
-            const redirectUrl =
-              role === "admin" ? "/admin/dashboard" : "/user/dashboard";
-            router.push(redirectUrl);
-          } catch {
-            // Fallback redirect
-            router.push("/user/dashboard");
+        // Redirect based on user role
+        setTimeout(() => {
+          if (session.user?.user_metadata?.role === 'admin') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/user/dashboard');
           }
         }, 1500);
       }
-    } catch {
-      toast.error("Terjadi kesalahan yang tidak terduga.");
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error("Terjadi kesalahan saat mengubah password.");
     } finally {
       setLoading(false);
     }
@@ -173,52 +193,86 @@ export default function ResetPasswordPage() {
   // Show loading screen while redirecting
   if (redirecting) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">
-            Mengalihkan ke dashboard...
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Berhasil! Mengalihkan ke dashboard...
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Mohon tunggu sebentar
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // Show message if no session is available for password recovery
+  // Render different states
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {isMagicLink ? 'Memproses Magic Link...' : 'Memuat...'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {isMagicLink 
+                    ? 'Mohon tunggu, sedang memverifikasi magic link Anda'
+                    : 'Mohon tunggu sebentar'
+                  }
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!session) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="p-6 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
-              <KeyRound className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">
-                Menunggu Link Reset Password
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Silakan periksa email Anda dan klik link reset password untuk
-                melanjutkan. Link tersebut akan membawa Anda kembali ke halaman
-                ini dengan akses untuk mengubah kata sandi.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Tidak menerima email? Periksa folder spam atau coba kirim ulang.
-              </p>
-            </div>
-            <div className="space-y-2">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center space-y-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Session Tidak Valid
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {isMagicLink 
+                    ? 'Magic link tidak valid atau sudah kedaluwarsa. Silakan hubungi admin untuk mendapatkan magic link baru.'
+                    : 'Session untuk reset password tidak ditemukan. Silakan coba lagi dari awal.'
+                  }
+                </p>
+              </div>
               <Button
-                onClick={() => router.push("/user/auth/forgot-password")}
-                className="w-full"
-              >
-                Kirim Ulang Email Reset
-              </Button>
-              <Button
+                onClick={() => {
+                  if (isMagicLink) {
+                    router.push('/user/auth');
+                  } else {
+                    router.push('/user/auth/forgot-password');
+                  }
+                }}
                 variant="outline"
-                onClick={() => router.push("/user/auth/login")}
                 className="w-full"
               >
-                Kembali ke Login
+                {isMagicLink ? 'Kembali ke Login' : 'Coba Lagi'}
               </Button>
             </div>
           </CardContent>
@@ -248,14 +302,27 @@ export default function ResetPasswordPage() {
               Buat Kata Sandi Baru
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
-              Masukkan kata sandi baru Anda
+              {tempVerified 
+                ? "Password sementara berhasil diverifikasi. Sekarang buat password baru yang aman untuk akun Anda."
+                : "Masukkan kata sandi baru Anda"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4">
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4 text-sm font-medium"
-            >
+            {/* Temporary Password Verification Success */}
+            {tempVerified && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <h3 className="font-medium text-green-800">Verifikasi Berhasil!</h3>
+                </div>
+                <p className="text-sm text-green-700">
+                  Password sementara Anda telah berhasil diverifikasi. Silakan buat password baru yang aman untuk melanjutkan.
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword} className="space-y-4 text-sm font-medium">
               <div className="space-y-2">
                 <Label htmlFor="password">Kata Sandi Baru</Label>
                 <Input

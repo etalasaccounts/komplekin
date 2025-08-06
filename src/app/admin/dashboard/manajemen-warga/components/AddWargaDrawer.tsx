@@ -14,25 +14,71 @@ import {
 } from "@/components/ui/select";
 import { Plus, ArrowRight, ArrowLeft, Send, Loader2 } from "lucide-react";
 import { SingleDatePicker } from "@/components/input/singleDatePicker";
+import { ChooseFile } from "@/components/input/chooseFile";
 import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-export default function AddWargaDrawer() {
+interface WargaCreationData {
+  fullname: string;
+  email: string;
+  temporaryPassword: string;
+  magicLink: string | null;
+  cluster?: string;
+  roleInfo?: {
+    title: string;
+  };
+}
+
+interface AddWargaDrawerProps {
+  refetch?: () => void;
+}
+
+export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
   const [step, setStep] = useState(1);
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // File upload states
+  const [fotoKTP, setFotoKTP] = useState<File | null>(null);
+  const [fotoKK, setFotoKK] = useState<File | null>(null);
+  
+
 
   // Get cluster info from admin
   const { clusterId, clusterName, loading: clusterLoading } = useAuth();
 
-  // Form data state
+  // Helper function untuk handle email failure dengan WhatsApp fallback
+  const handleEmailFailureWithWhatsApp = (wargaData: WargaCreationData, whatsappMessage: string) => {
+    toast.warning(`Warga ${wargaData.fullname} berhasil dibuat!
+
+Email gagal dikirim
+Password: ${wargaData.temporaryPassword}
+
+Klik untuk copy pesan WhatsApp`, {
+      style: {
+        background: '#fed7aa',
+        color: '#9a3412',
+        border: '1px solid #fb923c'
+      },
+      duration: 15000,
+      action: {
+        label: 'Copy WhatsApp',
+        onClick: () => {
+          navigator.clipboard.writeText(whatsappMessage);
+          toast.success('Pesan WhatsApp disalin! Paste ke chat warga', { duration: 3000 });
+        }
+      }
+    });
+  };
+
+  // Form data state (reorganized according to screenshot)
   const [formData, setFormData] = useState<Partial<CreateWargaMagicData>>({
     email: '',
     fullname: '',
-    role: 'user', // Default value sesuai database
-    noTelp: '',
+    role: 'user', // Default role
+    noTelp: '', // HP Aktif
     address: '',
     houseType: '',
     houseNumber: '',
@@ -40,7 +86,7 @@ export default function AddWargaDrawer() {
     headOfFamily: '',
     emergencyJob: '',
     movingDate: '',
-    citizenStatus: 'Warga baru'
+    citizenStatus: 'Warga Baru'
   });
 
   // Reset form and state when drawer opens/closes
@@ -52,7 +98,7 @@ export default function AddWargaDrawer() {
       setFormData({
         email: '',
         fullname: '',
-        role: 'user', // Default value sesuai database
+        role: 'user',
         noTelp: '',
         address: '',
         houseType: '',
@@ -61,9 +107,11 @@ export default function AddWargaDrawer() {
         headOfFamily: '',
         emergencyJob: '',
         movingDate: '',
-        citizenStatus: 'Warga baru'
+        citizenStatus: 'Warga Baru'
       });
       setTanggalTinggal(undefined);
+      setFotoKTP(null);
+      setFotoKK(null);
     }
   };
 
@@ -91,10 +139,10 @@ export default function AddWargaDrawer() {
       houseType: formData.houseType || '',
       houseNumber: formData.houseNumber || '',
       ownershipStatus: formData.ownershipStatus || 'unknown',
-      headOfFamily: formData.headOfFamily || '',
+      headOfFamily: formData.headOfFamily || '', 
       emergencyJob: formData.emergencyJob || '',
       movingDate: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : undefined,
-              citizenStatus: formData.citizenStatus || 'Warga baru'
+      citizenStatus: formData.citizenStatus || 'Warga Baru'
     };
 
     const validation = wargaMagicService.validateWargaData(wargaData);
@@ -108,25 +156,139 @@ export default function AddWargaDrawer() {
     try {
       const result = await wargaMagicService.createWargaWithMagicLink(wargaData);
 
-      if (result.success) {
-        toast.success(`Warga ${formData.fullname} berhasil dibuat dan magic link dikirim!`);
-        
-        // Optional: Show magic link to admin for manual sharing
-        if (result.data?.magicLink) {
-          console.log('Magic Link untuk user:', result.data.magicLink);
-          // Bisa ditampilkan dalam modal atau copied to clipboard
+      if (result.success && result.data) {
+        // Kirim email undangan otomatis
+        try {
+          const emailResponse = await fetch('/api/send-email/resend-invitation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userName: result.data.fullname,
+              email: result.data.email,
+              temporaryPassword: result.data.temporaryPassword,
+              magicLink: result.data.magicLink,
+              clusterName: clusterName || 'Komplek Anda',
+              role: result.data.roleInfo?.title || 'Warga'
+            }),
+          });
+
+          const emailResult = await emailResponse.json();
+          console.log('Email API response:', emailResult);
+          
+          if (emailResult.success) {
+            if (emailResult.development) {
+              // Development mode - email disimulasikan dengan opsi WhatsApp
+              toast.success(`Warga ${result.data?.fullname} berhasil dibuat!
+
+Mode Development: Email disimulasikan
+Password: ${result.data?.temporaryPassword}
+
+Klik untuk copy pesan WhatsApp`, {
+                style: {
+                  background: '#dbeafe',
+                  color: '#1e40af',
+                  border: '1px solid #60a5fa'
+                },
+                duration: 15000,
+                action: {
+                  label: 'Copy WhatsApp',
+                  onClick: () => {
+                    navigator.clipboard.writeText(emailResult.whatsappMessage);
+                    toast.success('Pesan WhatsApp disalin!', { duration: 3000 });
+                  }
+                }
+              });
+            } else {
+              // Email berhasil dikirim
+              const isTestMode = emailResult.isTestEmail;
+              const actualEmail = emailResult.actualEmail || result.data.email;
+              
+              const successMessage = isTestMode 
+                ? `Warga ${result.data.fullname} berhasil dibuat!
+
+MODE TEST: Email dikirim ke ${actualEmail}
+(Email asli warga: ${result.data.email})
+Password sementara ada di email test`
+                : `Warga ${result.data.fullname} berhasil dibuat!
+
+Email undangan telah dikirim ke ${result.data.email}
+Password sementara akan diterima via email
+Mohon periksa inbox dan folder spam`;
+
+              toast.success(successMessage, {
+                style: {
+                  background: isTestMode ? '#3b82f6' : '#22c55e',
+                  color: 'white',
+                  border: 'none'
+                },
+                duration: 10000,
+                action: {
+                  label: 'Copy WhatsApp',
+                  onClick: () => {
+                    navigator.clipboard.writeText(emailResult.whatsappMessage);
+                    toast.success('Pesan WhatsApp disalin sebagai backup!', { duration: 3000 });
+                  }
+                }
+              });
+            }
+          } else {
+            // Email gagal, tapi warga sudah dibuat - fallback ke WhatsApp
+            console.error('Email failed:', emailResult);
+            handleEmailFailureWithWhatsApp(result.data, emailResult.whatsappMessage || 'WhatsApp message not available');
+          }
+        } catch (emailError) {
+          // Error saat kirim email - fallback ke WhatsApp dengan generic message
+          console.error('Email service error:', emailError);
+          const fallbackMessage = `
+*Selamat Datang di KomplekIn!*
+
+Halo *${result.data.fullname}*, akun KomplekIn Anda telah dibuat.
+
+*Detail Akun:*
+- Email: ${result.data.email}
+- Password Sementara: *${result.data.temporaryPassword}*
+
+*Link Verifikasi:*
+${result.data.magicLink || 'Tidak tersedia'}
+
+Silakan gunakan kredensial di atas untuk login.
+          `.trim();
+          
+          handleEmailFailureWithWhatsApp(result.data, fallbackMessage);
         }
         
-        // Auto close after 2 seconds
-        setTimeout(() => {
-          handleOpenChange(false);
-        }, 2000);
-      } else {
-        toast.error(result.error || 'Gagal membuat warga');
+        // Refresh data untuk menampilkan data terbaru tanpa reload halaman
+        if (refetch) {
+          setTimeout(() => {
+            refetch();
+          }, 500);
+        }
+        
+        // Close drawer immediately
+        handleOpenChange(false);
+            } else {
+        toast.error(`${result.error || 'Gagal membuat warga'}`, {
+          style: {
+            background: '#ef4444',
+            color: 'white',
+            border: 'none'
+          },
+          duration: 5000
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan tidak terduga';
-      toast.error(errorMessage);
+      console.error('Warga creation error:', err);
+      toast.error(`${errorMessage}`, {
+        style: {
+          background: '#ef4444',
+          color: 'white',
+          border: 'none'
+        },
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -139,6 +301,7 @@ export default function AddWargaDrawer() {
     </Button>
   );
 
+  // Step 1: Basic Information
   const Step1Form = (
     <div className="grid gap-4 pt-4">
       {/* Cluster Info Display */}
@@ -158,16 +321,18 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="hp">Nomor HP Aktif</Label>
+        <Label htmlFor="hp">Nomor HP Aktif *</Label>
         <Input 
           id="hp" 
-          placeholder="0895349243330"
+          placeholder="089534924330"
           value={formData.noTelp}
           onChange={(e) => setFormData({...formData, noTelp: e.target.value})}
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="email">Email *</Label>
         <Input 
@@ -179,8 +344,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="alamat">Alamat Rumah</Label>
+        <Label htmlFor="alamat">Alamat Rumah *</Label>
         <Input 
           id="alamat" 
           placeholder="Komplek Mahata Margonda No12 Blok A"
@@ -189,8 +355,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
-        <Label htmlFor="tipe-rumah">Tipe Rumah</Label>
+        <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
         <Input 
           id="tipe-rumah" 
           placeholder="42 B"
@@ -199,18 +366,9 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
-      <div className="grid gap-2">
-        <Label htmlFor="nomor-rumah">Nomor Rumah</Label>
-        <Input 
-          id="nomor-rumah" 
-          placeholder="12A"
-          value={formData.houseNumber}
-          onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
+
       <div className="grid gap-2 w-full">
-        <Label htmlFor="status-kepemilikan">Status Kepemilikan</Label>
+        <Label htmlFor="status-kepemilikan">Status Kepemilikan *</Label>
         <Select 
           value={formData.ownershipStatus} 
           onValueChange={(value) => setFormData({...formData, ownershipStatus: value as CreateWargaMagicData['ownershipStatus']})}
@@ -229,8 +387,35 @@ export default function AddWargaDrawer() {
     </div>
   );
 
+  // Step 2: Documents & Additional Details  
   const Step2Form = (
     <div className="grid gap-4 pt-4">
+      <div className="grid gap-2">
+        <ChooseFile
+          label="Foto KTP"
+          id="foto-ktp"
+          accept="image/*"
+          value={fotoKTP}
+          onChange={setFotoKTP}
+          placeholder="Mathew Alexander"
+          disabled={isLoading}
+          maxSizeInMB={5}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <ChooseFile
+          label="Foto Kartu keluarga"
+          id="foto-kk"
+          accept="image/*"
+          value={fotoKK}
+          onChange={setFotoKK}
+          placeholder="Mathew Alexander"
+          disabled={isLoading}
+          maxSizeInMB={5}
+        />
+      </div>
+
       <div className="grid gap-2">
         <Label htmlFor="nama-kepala-keluarga">Nama Kepala Keluarga</Label>
         <Input 
@@ -241,16 +426,18 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="pekerjaan">Pekerjaan</Label>
         <Input 
           id="pekerjaan" 
-          placeholder="Software Engineer"
+          placeholder="CEO Figma"
           value={formData.emergencyJob}
           onChange={(e) => setFormData({...formData, emergencyJob: e.target.value})}
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2">
         <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
         <SingleDatePicker
@@ -262,24 +449,26 @@ export default function AddWargaDrawer() {
           disabled={isLoading}
         />
       </div>
+
       <div className="grid gap-2 w-full">
-        <Label htmlFor="role">Role</Label>
+        <Label htmlFor="citizen-status">Status Warga</Label>
         <Select 
-          value={formData.role} 
-          onValueChange={(value: 'admin' | 'user') => setFormData({...formData, role: value})}
+          value={formData.citizenStatus} 
+          onValueChange={(value: 'Pindah' | 'Warga Baru') => setFormData({...formData, citizenStatus: value})}
           disabled={isLoading}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Pilih role" />
+            <SelectValue placeholder="Pilih status warga" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="user">Warga</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="Warga Baru">Warga Baru</SelectItem>
+            <SelectItem value="Pindah">Pindah</SelectItem>
           </SelectContent>
         </Select>
+        <p className="text-xs text-gray-500">
+          Semua status warga akan diarahkan ke halaman verifikasi yang sama
+        </p>
       </div>
-
-
     </div>
   );
 
@@ -306,11 +495,11 @@ export default function AddWargaDrawer() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Mengirim...
+              Menambah Warga...
             </>
           ) : (
             <>
-              Kirim Undangan
+              Tambah Warga
               <Send className="ml-2 h-4 w-4" />
             </>
           )}
@@ -320,16 +509,18 @@ export default function AddWargaDrawer() {
   );
 
   return (
-    <Drawer
-      trigger={triggerButton}
-      title="Form Pendaftaran Warga Baru"
-      description="Isi data warga baru untuk mengirim undangan bergabung ke sistem."
-      steps={`Step ${step}/2`}
-      footer={footerContent}
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-    >
-      {step === 1 ? Step1Form : Step2Form}
-    </Drawer>
+    <>
+      <Drawer
+        trigger={triggerButton}
+        title="Form Pendaftaran Warga baru"
+        description="Isi data warga baru untuk menambahkan mereka ke dalam sistem."
+        steps={`Step ${step}/2`}
+        footer={footerContent}
+        open={isOpen}
+        onOpenChange={handleOpenChange}
+      >
+        {step === 1 ? Step1Form : Step2Form}
+      </Drawer>
+    </>
   );
 } 
