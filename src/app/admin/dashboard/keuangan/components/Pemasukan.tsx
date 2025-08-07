@@ -13,146 +13,107 @@ import {
   TableCell,
   TableBody,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-  PaginationNext,
-} from "@/components/ui/pagination";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PreviewImage } from "@/components/modal/previewImage";
 import FilterComponent, {
   FilterState,
 } from "@/components/filter/filterComponent";
-
-type PemasukanItem = {
-  id: number;
-  tanggal: string;
-  pemasukkan: string;
-  kategori: string;
-  nominal: string;
-  metode: string;
-  buktiPembayaran: string;
-  keterangan: string;
-};
-
-type PaymentHistory = {
-  bulan: string;
-  tanggalBayar: string;
-  kategori: string;
-  nominal: string;
-  metode: string;
-  buktiBayar: string;
-  status: string;
-};
+import { AccountType, Ledger } from "@/types/ledger";
+import { useLedger } from "@/hooks/useLedger";
+import DetailLedgerModal from "./DetailLedgerModal";
+import PaginationComponent from "../../transaksi-warga/components/PaginationComponent";
 
 export default function Pemasukan() {
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [transferReceiptModalOpen, setTransferReceiptModalOpen] =
     useState(false);
-  const [selectedUser, setSelectedUser] = useState<PemasukanItem | null>(null);
+  const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null);
+  const { ledgers, loading } = useLedger();
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
     status: "",
   });
 
-  // Sample data for Pemasukan (Income)
-  const pemasukanData: PemasukanItem[] = [
-    {
-      id: 1,
-      tanggal: "06/07/2025",
-      pemasukkan: "Mathew Alexander",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Iuran Bulan Juli 2025",
-    },
-    {
-      id: 2,
-      tanggal: "06/07/2025",
-      pemasukkan: "William Kim",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Iuran Bulan Juli 2025",
-    },
-    {
-      id: 3,
-      tanggal: "06/07/2025",
-      pemasukkan: "Jackon Lee",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Iuran Bulan Juli 2025",
-    },
-  ];
+  // Reset pagination ketika search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]); 
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Filter dan search state
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+    dateFrom: undefined,
+    dateTo: undefined,
+    status: "",
+  });
+  
+  // Filter data berdasarkan search term dan applied filters
+  const getFilteredLedgers = () => {
+    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.REVENUE);
+    
+    // Search filter - search di semua kolom kecuali tanggal dan bukti bayar
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(ledger => {
+        const searchableFields = [
+          ledger.invoice.user_permission?.profile.fullname || '',
+          ledger.coa.name || '',
+          ledger.amount?.toString() || '',
+          ledger.invoice.payment_method || '',
+          ledger.description || '',
+        ];
+        
+        return searchableFields.some(field => 
+          field.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    // Date filter
+    if (appliedFilters.dateFrom) {
+      filtered = filtered.filter(ledger => {
+        const ledgerDate = new Date(ledger.date);
+        return ledgerDate >= appliedFilters.dateFrom!;
+      });
+    }
+    
+    if (appliedFilters.dateTo) {
+      filtered = filtered.filter(ledger => {
+        const ledgerDate = new Date(ledger.date);
+        return ledgerDate <= appliedFilters.dateTo!;
+      });
+    }
+    
+    return filtered;
+  };
+  
+  const filteredLedgers = getFilteredLedgers();
+  const totalItems = filteredLedgers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentLedgers = filteredLedgers.slice(startIndex, endIndex);
 
-  // Sample payment history data for the modal
-  const getPaymentHistory = (): PaymentHistory[] => [
-    {
-      bulan: "Juli 2025",
-      tanggalBayar: "06/07/2025",
-      kategori: "Iuran Bulanan",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiBayar: "Lihat Bukti Bayar",
-      status: "Lunas",
-    },
-    {
-      bulan: "Juni 2025",
-      tanggalBayar: "06/07/2025",
-      kategori: "Iuran Bulanan",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiBayar: "Lihat Bukti Bayar",
-      status: "Lunas",
-    },
-    {
-      bulan: "Mei 2025",
-      tanggalBayar: "06/07/2025",
-      kategori: "Iuran Bulanan",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiBayar: "Lihat Bukti Bayar",
-      status: "Lunas",
-    },
-    {
-      bulan: "April 2025",
-      tanggalBayar: "06/07/2025",
-      kategori: "Iuran Bulanan",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiBayar: "Lihat Bukti Bayar",
-      status: "Lunas",
-    },
-    {
-      bulan: "Maret 2025",
-      tanggalBayar: "06/07/2025",
-      kategori: "Iuran Bulanan",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiBayar: "Lihat Bukti Bayar",
-      status: "Lunas",
-    },
-  ];
-
-  const handleViewDetail = (item: PemasukanItem) => {
-    setSelectedUser(item);
+  const handleViewDetail = (item: Ledger) => {
+    setSelectedLedger(item);
     setDetailModalOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters(filters);
+    setCurrentPage(1); // Reset ke halaman pertama ketika filter diterapkan
   };
 
   const handleResetFilters = () => {
@@ -161,6 +122,12 @@ export default function Pemasukan() {
       dateTo: undefined,
       status: "",
     });
+    setAppliedFilters({
+      dateFrom: undefined,
+      dateTo: undefined,
+      status: "",
+    });
+    setCurrentPage(1); // Reset ke halaman pertama ketika filter direset
   };
 
   return (
@@ -182,7 +149,7 @@ export default function Pemasukan() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Cari berdasarkan nama, nomor rumah, dll"
+                  placeholder="Cari berdasarkan tanggal, nama, kategori, dll"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-80"
@@ -191,7 +158,7 @@ export default function Pemasukan() {
               <FilterComponent
                 filters={filters}
                 setFilters={(filters) => setFilters(filters)}
-                handleApplyFilters={() => {}}
+                handleApplyFilters={handleApplyFilters}
                 handleResetFilters={handleResetFilters}
               />
             </div>
@@ -214,33 +181,38 @@ export default function Pemasukan() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pemasukanData.map((item) => (
+              {currentLedgers.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <input type="checkbox" className="rounded" />
                   </TableCell>
-                  <TableCell className="font-medium">{item.tanggal}</TableCell>
-                  <TableCell>{item.pemasukkan}</TableCell>
-                  <TableCell>{item.kategori}</TableCell>
-                  <TableCell className="font-medium">{item.nominal}</TableCell>
+                  <TableCell className="font-medium">
+                    {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
+                  </TableCell>
+                  <TableCell>{item.invoice.user_permission?.profile.fullname}</TableCell>
+                  <TableCell>{item.coa.name}</TableCell>
+                  <TableCell className="font-medium">{item.amount}</TableCell>
                   <TableCell>
                     <Badge
                       variant="secondary"
                       className="text-xs font-semibold rounded-full"
                     >
-                      {item.metode}
+                      {item.invoice.payment_method}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Button
                       variant="link"
                       className="p-0 h-auto text-black underline"
-                      onClick={() => setTransferReceiptModalOpen(true)}
+                      onClick={() => {
+                        setTransferReceiptModalOpen(true);
+                        setSelectedLedger(item);
+                      }}
                     >
-                      {item.buktiPembayaran}
+                      Lihat Bukti Transfer
                     </Button>
                   </TableCell>
-                  <TableCell>{item.keterangan}</TableCell>
+                  <TableCell>{item.description}</TableCell>
                   <TableCell className="max-w-[30px]">
                     <div className="flex items-center space-x-0">
                       <Button
@@ -261,152 +233,37 @@ export default function Pemasukan() {
           </Table>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
-            <p className="text-sm text-muted-foreground">
-              Menampilkan 8 dari 112 List Warga
-            </p>
-            <div className="w-fit">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious href="#" />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#" isActive>
-                      1
-                    </PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">2</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">3</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">8</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">9</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">10</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext href="#" />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+          <div className="mt-6">
+            <PaginationComponent
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={setCurrentPage}
+              itemLabel="List Pemasukan"
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Detail Modal */}
-      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="max-w-6xl min-w-6xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-          <DialogHeader className="flex flex-row items-center justify-between p-6 bg-white sticky top-0 z-10">
-            <DialogTitle className="text-xl font-bold">
-              Detail Pembayaran Iuran
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0"
-              onClick={() => setDetailModalOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto  pt-0 p-6">
-            {selectedUser && (
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-row items-center justify-start gap-3">
-                  <h3 className="text-lg font-semibold">
-                    Table Pembayaran Iuran
-                  </h3>
-                  <Badge
-                    variant="outline"
-                    className="text-xs text-foreground font-semibold rounded-full"
-                  >
-                    Tahun 2025
-                  </Badge>
-                </div>
-
-                {/* Payment History Table */}
-                <div className=" rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Bulan
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Tanggal Bayar
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Kategori
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Nominal
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Metode
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Bukti Bayar
-                        </TableHead>
-                        <TableHead className="font-medium text-muted-foreground">
-                          Status
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getPaymentHistory().map((payment, index) => (
-                        <TableRow key={index} className="hover:bg-gray-50">
-                          <TableCell className="py-4">
-                            {payment.bulan}
-                          </TableCell>
-                          <TableCell>{payment.tanggalBayar}</TableCell>
-                          <TableCell>{payment.kategori}</TableCell>
-                          <TableCell>{payment.nominal}</TableCell>
-                          <TableCell>{payment.metode}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="link"
-                              className="p-0 h-auto text-black font-normal underline"
-                              onClick={() => setTransferReceiptModalOpen(true)}
-                            >
-                              {payment.buktiBayar}
-                            </Button>
-                          </TableCell>
-                          <TableCell>{payment.status}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DetailLedgerModal
+        selectedLedger={selectedLedger as Ledger}
+        detailModalOpen={detailModalOpen}
+        setDetailModalOpen={setDetailModalOpen}
+      />
+      
       {/* Preview Image Modal */}
       <PreviewImage
         open={transferReceiptModalOpen}
         onOpenChange={setTransferReceiptModalOpen}
         title="Bukti Transfer Bank"
         imageSrc={
-          selectedUser?.buktiPembayaran === "Lihat Bukti Transfer"
-            ? "/images/bukti-pembayaran.png"
-            : undefined
+          selectedLedger?.receipt
         }
         imageAlt={`Bukti Transfer Bank - ${
-          selectedUser?.pemasukkan || "Payment"
+          selectedLedger?.invoice.user_permission?.profile.fullname || "Payment"
         }`}
       />
     </div>
