@@ -11,9 +11,34 @@ export const useLedger = () => {
             setLoading(true);
             const ledgers = await ledgerService.getLedgers();
             setLedgers(ledgers);
-            console.log(ledgers);
         } catch (error) {
             console.error("Error fetching ledgers:", error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const createLedger = async (ledgerData: Ledger): Promise<Ledger> => {
+        try {
+        const ledger = await ledgerService.createLedger(ledgerData);
+        fetchLedgers();
+        return ledger;
+        } catch (error) {
+            console.error("Error creating ledger:", error);
+            return null as unknown as Ledger;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const updateLedger = async (id: string, ledgerData: Ledger): Promise<Ledger> => {
+        try {
+            const ledger = await ledgerService.updateLedger(id, ledgerData);
+            fetchLedgers();
+            return ledger;
+        } catch (error) {
+            console.error("Error updating ledger:", error);
+            return null as unknown as Ledger;
         } finally {
             setLoading(false);
         }
@@ -26,6 +51,8 @@ export const useLedger = () => {
     return { 
         ledgers,
         loading,
-        fetchLedgers
+        fetchLedgers,
+        createLedger,
+        updateLedger
     };
 }

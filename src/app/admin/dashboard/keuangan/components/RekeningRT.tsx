@@ -12,15 +12,6 @@ import {
   TableCell,
   TableBody,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-  PaginationNext,
-} from "@/components/ui/pagination";
 import { useEffect, useMemo, useState } from "react";
 import CreateExpense from "./CreateExpense";
 import { ClusterBankAccount } from "@/types/cluster_bank_accounts";

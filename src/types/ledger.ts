@@ -1,8 +1,10 @@
 import { Invoice } from "./invoice";
+import { UserPermissions } from "./user_permissions";
 
 export interface Ledger {
   id: string;
   user_id: string;
+  user_permission: UserPermissions;
   cluster_id: string;
   cluster: Cluster;
   invoice_id: string;

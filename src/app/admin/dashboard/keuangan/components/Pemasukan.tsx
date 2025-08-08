@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, X, Search } from "lucide-react";
+import { Eye, X, Search, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -165,6 +165,11 @@ export default function Pemasukan() {
           </div>
         </CardHeader>
         <CardContent>
+        {loading ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -231,6 +236,7 @@ export default function Pemasukan() {
               ))}
             </TableBody>
           </Table>
+        )}
 
           {/* Pagination */}
           <div className="mt-6">
@@ -245,8 +251,8 @@ export default function Pemasukan() {
               itemLabel="List Pemasukan"
             />
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       <DetailLedgerModal
         selectedLedger={selectedLedger as Ledger}

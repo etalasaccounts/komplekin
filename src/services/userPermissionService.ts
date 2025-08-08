@@ -11,7 +11,7 @@ export const userPermissionService = {
     },
 
     async getUserPermissionsByProfileId(profileId: string): Promise<UserPermissions> {
-        const { data, error } = await supabase.from("user_permissions").select("*").eq("profile_id", profileId);
+        const { data, error } = await supabase.from("user_permissions").select("*, profile:profiles(*)").eq("profile_id", profileId);
         if (error) throw error;
         return data[0];
     },

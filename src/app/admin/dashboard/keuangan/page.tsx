@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 import Pemasukan from "./components/Pemasukan";
 import Pengeluaran from "./components/Pengeluaran";
 import RekeningRT from "./components/RekeningRT";
-import { useLedger } from "@/hooks/useLedger";
+import { useAuth } from "@/hooks/useAuth";
 export default function KeuanganPage() {
   const [activeTab, setActiveTab] = useState("pemasukan");
-  const { ledgers, loading } = useLedger();
+  const { profile } = useAuth();
 
   return (
       <div className="space-y-6">
@@ -75,7 +75,7 @@ export default function KeuanganPage() {
 
         {activeTab === "pemasukan" && <Pemasukan />}
 
-        {activeTab === "pengeluaran" && <Pengeluaran />}
+        {activeTab === "pengeluaran" && <Pengeluaran profile={profile} />}
 
         {activeTab === "rekening-rt" && <RekeningRT />}
       </div>
