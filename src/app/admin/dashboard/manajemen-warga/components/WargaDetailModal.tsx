@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import { Edit, ClipboardList, FileText, RefreshCw, X, Check, Trash2, UserPlus, Upload, Eye } from "lucide-react";
+import { Edit, ClipboardList, FileText, RefreshCw, X, Check, Trash2, UserPlus} from "lucide-react";
 import Modal from "../../components/Modal";
 import { PreviewImage } from "../../components/PreviewImage";
 import TolakPendaftaranModal from './TolakPendaftaranModal'; // Import komponen

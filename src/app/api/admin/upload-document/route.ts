@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const uniqueFilename = `temp_${timestamp}_${Math.random().toString(36).substr(2, 9)}_${documentType}_${timestamp}.${extension}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('files')
       .upload(`${documentType}/${uniqueFilename}`, file, {
         cacheControl: '3600',

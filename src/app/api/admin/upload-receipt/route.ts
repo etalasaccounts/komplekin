@@ -1,21 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 );
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const fileType = formData.get('fileType') as string; // 'ktp' atau 'kartu_keluarga'
-    const originalFilename = formData.get('originalFilename') as string;
+    const bucketName = formData.get('bucketName') as string || 'payment-receipts';
 
-    if (!file || !fileType) {
+    if (!file) {
       return NextResponse.json(
-        { error: 'File dan tipe file diperlukan' },
+        { error: 'No file provided' },
         { status: 400 }
       );
     }
@@ -23,13 +28,13 @@ export async function POST(request: NextRequest) {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       return NextResponse.json(
-        { error: 'File harus berupa gambar' },
+        { error: 'File harus berupa gambar (JPG, PNG, GIF, dll)' },
         { status: 400 }
       );
     }
 
     // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024;
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'Ukuran file terlalu besar. Maksimal 5MB' },
@@ -38,43 +43,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique filename
-    const timestamp = Date.now();
-    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const uniqueFilename = `temp_${timestamp}_${Math.random().toString(36).substr(2, 9)}_${fileType}_${timestamp}.${extension}`;
+    const randomUUID = crypto.randomUUID();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `payment_receipt_${randomUUID}.${fileExtension}`;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('files')
-      .upload(`${fileType}/${uniqueFilename}`, file, {
+    // Convert File to Buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Upload to Supabase storage
+    const { error } = await supabaseAdmin.storage
+      .from(bucketName)
+      .upload(fileName, buffer, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
+      console.error('Upload error:', error);
       return NextResponse.json(
-        { error: 'Gagal mengupload file ke storage' },
+        { error: `Upload failed: ${error.message}` },
         { status: 500 }
       );
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('files')
-      .getPublicUrl(`${fileType}/${uniqueFilename}`);
+    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`;
 
     return NextResponse.json({
       success: true,
-      filename: uniqueFilename,
-      url: urlData.publicUrl,
-      fileType: fileType,
-      originalFilename: originalFilename
+      url: publicUrl,
+      fileName: fileName
     });
 
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Terjadi kesalahan saat upload file' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

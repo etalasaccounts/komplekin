@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Ledger, AccountType } from "@/types/ledger";
+import { Ledger } from "@/types/ledger";
 import { ledgerService } from "@/services/ledgerService";
 
 export const useLedger = () => {

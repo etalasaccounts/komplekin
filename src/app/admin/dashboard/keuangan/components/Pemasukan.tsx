@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, X, Search, Loader2 } from "lucide-react";
+import { Eye, Search, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -13,13 +13,6 @@ import {
   TableCell,
   TableBody,
 } from "@/components/ui/table";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { PreviewImage } from "@/components/modal/previewImage";
 import FilterComponent, {

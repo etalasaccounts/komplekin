@@ -11,24 +11,32 @@ import { urlToFile, base64ToFile, validateFileForUpload } from "@/lib/utils";
 import { toast } from "sonner";
 import { UserPermissions } from "@/types/user_permissions";
 
+export type ExpenseForm = {
+    tanggal: Date | undefined;
+    keterangan: string;
+    nominal: string;
+    dibayarkanOleh: string;
+    buktiPembayaran: File | string | null;
+}
+
 type CreateExpenseDrawerProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingExpense: Ledger | null;
-    createLedger: (expenseData: Ledger) => Promise<Ledger>;
-    updateLedger: (id: string, expenseData: Ledger) => Promise<Ledger>;
+    createLedger: (expenseData: ExpenseForm) => Promise<Ledger>;
+    updateLedger: (id: string, expenseData: ExpenseForm) => Promise<Ledger>;
     userPermission: UserPermissions;
 }
 
 export default function CreateExpenseDrawer({ open, onOpenChange, editingExpense, createLedger, updateLedger, userPermission }: CreateExpenseDrawerProps) {
     const [isEditMode, setIsEditMode] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [expenseForm, setExpenseForm] = useState({
-        tanggal: undefined as Date | undefined,
+    const [expenseForm, setExpenseForm] = useState<ExpenseForm>({
+        tanggal: undefined,
         keterangan: "",
         nominal: "",
         dibayarkanOleh: "",
-        buktiPembayaran: null as File | string | null,
+        buktiPembayaran: null,
     });
 
     useEffect(() => {
@@ -83,9 +91,9 @@ export default function CreateExpenseDrawer({ open, onOpenChange, editingExpense
             setIsSubmitting(true);
             
             if (isEditMode && editingExpense) {
-                await updateLedger(editingExpense.id, expenseForm as unknown as Ledger);
+                await updateLedger(editingExpense.id, expenseForm);
             } else {
-                await createLedger(expenseForm as unknown as Ledger);
+                await createLedger(expenseForm);
             }
             onOpenChange(false);
         } catch (error) {

@@ -19,14 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PreviewImage } from "@/components/modal/previewImage";
 import FilterComponent, {
   FilterState,
 } from "@/components/filter/filterComponent";
 import { AccountType, Ledger, LedgerType } from "@/types/ledger";
 import { useLedger } from "@/hooks/useLedger";
-import DetailLedgerModal from "./DetailLedgerModal";
 import PaginationComponent from "../../transaksi-warga/components/PaginationComponent";
 import CreateExpenseDrawer from "./CreateExpenseDrawer";
 import { ledgerService } from "@/services/ledgerService";
@@ -34,6 +33,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPermission } from "@/hooks/useUserPermission";
 import { UserPermissions } from "@/types/user_permissions";
+import Image from "next/image";
+import { ExpenseForm } from "./CreateExpenseDrawer";
 
 
 interface PengeluaranProps {
@@ -85,16 +86,24 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
       work: "",
     },
   });
-  const getUserPermission = async () => {
-    const userPermission = await getUserPermissionByProfileId(profile?.id || "");
-    setUserPermission(userPermission);
-  }
+
+  const getUserPermission = useCallback(async () => {
+    if (profile?.id) {
+      const userPermission = await getUserPermissionByProfileId(profile.id);
+      setUserPermission(userPermission);
+    }
+  }, [profile?.id]);
+
+  // Ambil user permission saat komponen mount atau profile berubah
+  useEffect(() => {
+    getUserPermission();
+  }, [getUserPermission]);
 
   // Reset pagination ketika search term berubah
   useEffect(() => {
     setCurrentPage(1);
-    getUserPermission();
-  }, [searchTerm]); 
+  }, [searchTerm]);
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -187,10 +196,10 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
     setExpenseSheetOpen(true);
   };
 
-  const createLedger = async (expenseData: any): Promise<Ledger> => {
+  const createLedger = async (expenseData: ExpenseForm): Promise<Ledger> => {
     try {
       const ledgerData: Partial<Ledger> & { receipt?: string | File } = {
-        date: expenseData.tanggal?.toISOString(),
+        date: expenseData.tanggal,
         description: expenseData.keterangan,
         amount: parseFloat(expenseData.nominal),
         account_type: AccountType.EXPENSE,
@@ -198,7 +207,7 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
         cluster_id: clusterId || "",
         user_id: userPermission.id,
         ledger_type: LedgerType.DEBIT,
-        receipt: expenseData.buktiPembayaran, // This can be File or string
+        receipt: expenseData.buktiPembayaran as string, // This can be File or string
       };
 
       const createdLedger = await ledgerService.createLedger(ledgerData as Ledger & { receipt?: string | File });
@@ -213,13 +222,13 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
     }
   };
 
-  const updateLedger = async (id: string, expenseData: any): Promise<Ledger> => {
+  const updateLedger = async (id: string, expenseData: ExpenseForm): Promise<Ledger> => {
     try {
       const ledgerData: Partial<Ledger> & { receipt?: string | File } = {
-        date: expenseData.tanggal?.toISOString(),
+        date: expenseData.tanggal,
         description: expenseData.keterangan,
         amount: parseFloat(expenseData.nominal),
-        receipt: expenseData.buktiPembayaran, // This can be File or string
+        receipt: expenseData.buktiPembayaran as string, // This can be File or string
       };
 
       const updatedLedger = await ledgerService.updateLedger(id, ledgerData as Ledger & { receipt?: string | File });
@@ -440,10 +449,12 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
                     <label className="text-sm text-gray-500">Bukti Bayar</label>
                     <div className="mt-2">
                       <div className="w-full h-80 relative rounded-lg overflow-hidden bg-gray-50 border">
-                        <img
-                          src="/images/bukti-pembayaran.png"
+                        <Image
+                          src={selectedLedger?.receipt}
                           alt="Bukti Pembayaran"
                           className="w-full h-full object-contain"
+                          width={100}
+                          height={100}
                         />
                       </div>
                     </div>
