@@ -19,6 +19,9 @@ interface ChooseFileProps {
   multiple?: boolean;
   maxSizeInMB?: number;
   showMaxSize?: boolean;
+  isUploading?: boolean;
+  onView?: (file: File | string) => void;
+  viewOnly?: boolean;
 }
 
 export function ChooseFile({
@@ -35,6 +38,9 @@ export function ChooseFile({
   multiple = false,
   maxSizeInMB = 5,
   showMaxSize = false,
+  isUploading = false,
+  onView,
+  viewOnly = false,
 }: ChooseFileProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -77,20 +83,34 @@ export function ChooseFile({
         <div className="flex items-center justify-between w-full overflow-hidden">
           <div className="flex items-center space-x-2">
             {getFileIcon(value)}
-            <span className="truncate max-w-[220px]">{value.name}</span>
+            <span className="truncate max-w-[180px]">{value.name}</span>
           </div>
-          <button
-            type="button"
-            onClick={handleRemoveFile}
-            disabled={disabled}
-            className="text-black hover:text-foreground/80 text-sm underline ml-2 disabled:opacity-50"
-          >
-            Hapus
-          </button>
+          <div className="flex items-center space-x-2">
+            {onView && (
+              <button
+                type="button"
+                onClick={() => onView(value)}
+                disabled={isUploading}
+                className="text-blue-600 hover:text-blue-800 text-sm underline disabled:opacity-50"
+              >
+                Lihat
+              </button>
+            )}
+            {!viewOnly && (
+            <button
+              type="button"
+              onClick={handleRemoveFile}
+              disabled={disabled || isUploading}
+              className="text-red-600 hover:text-red-800 text-sm underline disabled:opacity-50"
+            >
+              Hapus
+            </button>
+          )}
+          </div>
         </div>
       );
     }
-    return <span>Choose File</span>;
+    return <span>{isUploading ? 'Uploading...' : 'Choose File'}</span>;
   };
 
   return (
@@ -113,7 +133,7 @@ export function ChooseFile({
             type="file"
             accept={accept}
             onChange={handleFileChange}
-            disabled={disabled}
+            disabled={disabled || isUploading}
             multiple={multiple}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
           />
@@ -121,11 +141,13 @@ export function ChooseFile({
             className={cn(
               "flex items-center space-x-2 px-3 py-2 border border-input rounded-md",
               "hover:bg-accent hover:text-accent-foreground transition-colors",
-              disabled && "opacity-50 cursor-not-allowed",
+              (disabled || isUploading) && "opacity-50 cursor-not-allowed",
               error && "border-red-500"
             )}
           >
-            <span className="font-medium text-sm">Choose File</span>
+            <span className="font-medium text-sm">
+              {isUploading ? 'Uploading...' : 'Choose File'}
+            </span>
             <span className="text-sm text-gray-500 truncate">
               {placeholder}
             </span>
@@ -136,7 +158,7 @@ export function ChooseFile({
         <div
           className={cn(
             "flex items-center space-x-2 px-3 py-2 border border-input rounded-md",
-            disabled && "opacity-50"
+            (disabled || isUploading) && "opacity-50"
           )}
         >
           <span className="font-medium text-sm w-full">

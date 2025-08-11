@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { Edit, ClipboardList, FileText, RefreshCw, X, Check, Trash2, UserPlus } from "lucide-react";
+import { Edit, ClipboardList, FileText, RefreshCw, X, Check, Trash2, UserPlus, Upload, Eye } from "lucide-react";
 import Modal from "../../components/Modal";
 import { PreviewImage } from "../../components/PreviewImage";
 import TolakPendaftaranModal from './TolakPendaftaranModal'; // Import komponen
@@ -15,6 +15,7 @@ import { SingleDatePicker } from "@/components/input/singleDatePicker";
 import { ChooseFile } from "@/components/input/chooseFile";
 import { useWargaActions } from "@/hooks/useWarga";
 import { toast } from "sonner";
+import { validateFileForUpload, urlToFile } from "@/lib/utils";
 
 const parseDateString = (dateString: string): Date | undefined => {
   const parts = dateString.split('/');
@@ -79,18 +80,198 @@ export default function WargaDetailModal({
   // Database actions
   const { updateStatus, updateCitizenStatus, deleteWarga, updateProfile } = useWargaActions();
 
-  const [formData, setFormData] = useState(warga);
+  // Helper function to ensure all form fields have valid default values
+  const getDefaultFormData = (wargaData: WargaData) => ({
+    id: wargaData.id || 0,
+    originalId: wargaData.originalId || '',
+    profileId: wargaData.profileId || '',
+    nama: wargaData.nama || '',
+    role: wargaData.role || '',
+    kontak: wargaData.kontak || '',
+    email: wargaData.email || '',
+    alamat: wargaData.alamat || '',
+    tipeRumah: wargaData.tipeRumah || '',
+    statusKepemilikan: wargaData.statusKepemilikan || 'Milik Sendiri',
+    kepalaKeluarga: wargaData.kepalaKeluarga || '',
+    kontakDarurat: wargaData.kontakDarurat || '',
+    pekerjaan: wargaData.pekerjaan || '',
+    tanggalTinggal: wargaData.tanggalTinggal || '',
+    fotoKTP: wargaData.fotoKTP || '',
+    fotoKK: wargaData.fotoKK || '',
+    status: wargaData.status || 'Perlu Persetujuan',
+    tanggalDaftar: wargaData.tanggalDaftar || '',
+  });
+
+  const [formData, setFormData] = useState(() => getDefaultFormData(warga));
   const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [fotoKTPFile, setFotoKTPFile] = useState<File | null>(null);
   const [fotoKKFile, setFotoKKFile] = useState<File | null>(null);
+  const [isUploadingKTP, setIsUploadingKTP] = useState(false);
+  const [isUploadingKK, setIsUploadingKK] = useState(false);
+
+  // Ensure formData is always controlled by providing fallback values
+  const safeFormData = {
+    nama: formData.nama || '',
+    kontak: formData.kontak || '',
+    email: formData.email || '',
+    alamat: formData.alamat || '',
+    tipeRumah: formData.tipeRumah || '',
+    statusKepemilikan: formData.statusKepemilikan || 'Milik Sendiri',
+    kepalaKeluarga: formData.kepalaKeluarga || '',
+    kontakDarurat: formData.kontakDarurat || '',
+    pekerjaan: formData.pekerjaan || '',
+  };
+
+  // File upload functions
+  const uploadFile = async (file: File, documentType: 'ktp' | 'kartu_keluarga'): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    formData.append('originalFilename', file.name);
+
+    const response = await fetch('/api/admin/upload-document', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Upload gagal');
+    }
+
+    const result = await response.json();
+    return result.url;
+  };
+
+  const handleKTPFileChange = async (file: File | null) => {
+    if (!file) {
+      setFotoKTPFile(null);
+      return;
+    }
+
+    // Validate file
+    const validation = validateFileForUpload(file);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'File KTP tidak valid');
+      return;
+    }
+
+    setIsUploadingKTP(true);
+    try {
+      const uploadedUrl = await uploadFile(file, 'ktp');
+      setFotoKTPFile(file);
+      setFormData(prev => ({ ...prev, fotoKTP: uploadedUrl }));
+      toast.success('Foto KTP berhasil diupload');
+    } catch (error) {
+      console.error('Error uploading KTP:', error);
+      toast.error('Gagal upload foto KTP');
+    } finally {
+      setIsUploadingKTP(false);
+    }
+  };
+
+  const handleKKFileChange = async (file: File | null) => {
+    if (!file) {
+      setFotoKKFile(null);
+      return;
+    }
+
+    // Validate file
+    const validation = validateFileForUpload(file);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'File KK tidak valid');
+      return;
+    }
+
+    setIsUploadingKK(true);
+    try {
+      const uploadedUrl = await uploadFile(file, 'kartu_keluarga');
+      setFotoKKFile(file);
+      setFormData(prev => ({ ...prev, fotoKK: uploadedUrl }));
+      toast.success('Foto KK berhasil diupload');
+    } catch (error) {
+      console.error('Error uploading KK:', error);
+      toast.error('Gagal upload foto KK');
+    } finally {
+      setIsUploadingKK(false);
+    }
+  };
+
+  // Handle preview file
+  const handleViewFile = (fileOrUrl: File | string) => {
+    let imageUrl: string;
+    
+    if (fileOrUrl instanceof File) {
+      imageUrl = URL.createObjectURL(fileOrUrl);
+    } else {
+      imageUrl = fileOrUrl;
+    }
+    
+    // Determine which type of document this is based on the file object
+    if (fotoKTPFile && fileOrUrl === fotoKTPFile) {
+      setPreviewData({ ktp: imageUrl });
+    } else if (fotoKKFile && fileOrUrl === fotoKKFile) {
+      setPreviewData({ kk: imageUrl });
+    } else {
+      // Fallback: check URL content
+      if (imageUrl.includes('ktp')) {
+        setPreviewData({ ktp: imageUrl });
+      } else {
+        setPreviewData({ kk: imageUrl });
+      }
+    }
+    
+    setShowMainModal(false);
+    setIsPreviewImageOpen(true);
+  };
 
   useEffect(() => {
     if (open) {
-      setFormData(warga);
+      setFormData(getDefaultFormData(warga));
       setTanggalTinggal(parseDateString(warga.tanggalTinggal));
       setIsEditing(initialIsEditing);
+      
+      // Load existing files from URLs
+      const loadExistingFiles = async () => {
+        try {
+          // Load KTP file if exists
+          if (warga.fotoKTP && warga.fotoKTP.startsWith('http')) {
+            const ktpFile = await urlToFile(warga.fotoKTP, 'ktp.jpg');
+            setFotoKTPFile(ktpFile);
+          }
+          
+          // Load KK file if exists
+          if (warga.fotoKK && warga.fotoKK.startsWith('http')) {
+            const kkFile = await urlToFile(warga.fotoKK, 'kk.jpg');
+            setFotoKKFile(kkFile);
+          }
+        } catch (error) {
+          console.error('Error loading existing files:', error);
+          // If conversion fails, keep the files as null
+          setFotoKTPFile(null);
+          setFotoKKFile(null);
+        }
+      };
+
+      loadExistingFiles();
     }
   }, [open, warga, initialIsEditing]);
+
+  // Reset form when switching between edit and view modes
+  useEffect(() => {
+    if (isEditing) {
+      setFormData(getDefaultFormData(warga));
+      setTanggalTinggal(parseDateString(warga.tanggalTinggal));
+    }
+  }, [isEditing, warga]);
+
+  // Reset file states when modal closes
+  useEffect(() => {
+    if (!open) {
+      setFotoKTPFile(null);
+      setFotoKKFile(null);
+    }
+  }, [open]);
 
   const handleEditClick = () => setIsEditing(true);
   
@@ -111,18 +292,21 @@ export default function WargaDetailModal({
 
     setIsLoading(true);
     try {
-      // Prepare updated profile data
+      // Prepare updated profile data using safeFormData
       const profileData = {
-        fullname: formData.nama,
-        email: formData.email,
-        no_telp: formData.kontak,
-        address: formData.alamat,
-        house_type: formData.tipeRumah,
-        ownership_status: formData.statusKepemilikan,
-        head_of_family: formData.kepalaKeluarga,
-        emergency_telp: formData.kontakDarurat,
-        work: formData.pekerjaan,
+        fullname: safeFormData.nama.trim(),
+        email: safeFormData.email.trim(),
+        no_telp: safeFormData.kontak.trim(),
+        address: safeFormData.alamat.trim(),
+        house_type: safeFormData.tipeRumah.trim(),
+        ownership_status: safeFormData.statusKepemilikan,
+        head_of_family: safeFormData.kepalaKeluarga.trim(),
+        emergency_telp: safeFormData.kontakDarurat.trim(),
+        work: safeFormData.pekerjaan.trim(),
         moving_date: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : formData.tanggalTinggal,
+        // Add photo URLs if they were uploaded
+        file_ktp: formData.fotoKTP,
+        file_kk: formData.fotoKK,
       };
 
       console.log("Updating profile with ID:", profileId, "Data:", profileData);
@@ -130,8 +314,12 @@ export default function WargaDetailModal({
       // Update profile in database
       await updateProfile(profileId, profileData);
       
+      onOpenChange(false);
       toast.success('Data warga berhasil diperbarui');
       setIsEditing(false);
+      setFotoKTPFile(null);
+      setFotoKKFile(null);
+
       
       // Refresh data to show updated information
       if (refetch) {
@@ -409,12 +597,6 @@ export default function WargaDetailModal({
     );
   };
 
-  const handleImageClick = (type: 'ktp' | 'kk') => {
-    setPreviewData(type === 'ktp' ? { ktp: warga.fotoKTP } : { kk: warga.fotoKK });
-    setShowMainModal(false);
-    setIsPreviewImageOpen(true);
-  };
-
   const handleClosePreview = () => {
     setIsPreviewImageOpen(false);
     setShowMainModal(true);
@@ -469,36 +651,68 @@ export default function WargaDetailModal({
             {activeTab === "data-pribadi" && (
               isEditing ? (
                 // EDIT MODE
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6" key={`edit-form-${warga.id}`}>
                 {/* Left Column */}
                 <div className="space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="nama">Nama Lengkap *</Label>
-                      <Input id="nama" value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} />
+                      <Input 
+                        id="nama" 
+                        value={safeFormData.nama} 
+                        onChange={(e) => setFormData({...formData, nama: e.target.value})}
+                        placeholder="Masukkan nama lengkap"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="hp">Nomor HP Aktif *</Label>
-                      <Input id="hp" value={formData.kontak} onChange={(e) => setFormData({...formData, kontak: e.target.value})} />
+                      <Input 
+                        id="hp" 
+                        value={safeFormData.kontak} 
+                        onChange={(e) => setFormData({...formData, kontak: e.target.value})}
+                        placeholder="Masukkan nomor HP"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="email">Email *</Label>
-                      <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        value={safeFormData.email} 
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        placeholder="Masukkan email"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="alamat">Alamat Rumah</Label>
-                      <Input id="alamat" value={formData.alamat} onChange={(e) => setFormData({...formData, alamat: e.target.value})} />
+                      <Input 
+                        id="alamat" 
+                        value={safeFormData.alamat} 
+                        onChange={(e) => setFormData({...formData, alamat: e.target.value})}
+                        placeholder="Masukkan alamat rumah"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
-                      <Input id="tipe-rumah" value={formData.tipeRumah} onChange={(e) => setFormData({...formData, tipeRumah: e.target.value})} />
+                      <Input 
+                        id="tipe-rumah" 
+                        value={safeFormData.tipeRumah} 
+                        onChange={(e) => setFormData({...formData, tipeRumah: e.target.value})}
+                        placeholder="Masukkan tipe rumah"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="status-kepemilikan">Status Kepemilikan</Label>
-                      <Select value={formData.statusKepemilikan} onValueChange={(value) => setFormData({...formData, statusKepemilikan: value})}>
-                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <Select 
+                        value={safeFormData.statusKepemilikan} 
+                        onValueChange={(value) => setFormData({...formData, statusKepemilikan: value})}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih status kepemilikan" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Sewa">Sewa</SelectItem>
                           <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
+                          <SelectItem value="Milik Orang Tua">Milik Orang Tua</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -507,23 +721,52 @@ export default function WargaDetailModal({
                   <div className="space-y-4">
                      <div className="grid gap-2">
                         <Label htmlFor="foto-ktp">Foto KTP</Label>
-                        <ChooseFile id="foto-ktp" value={fotoKTPFile} onChange={setFotoKTPFile} placeholder={formData.fotoKTP ? "Ganti file..." : "Pilih file..."} />
+                        <ChooseFile 
+                          id="foto-ktp" 
+                          value={fotoKTPFile} 
+                          onChange={handleKTPFileChange} 
+                          placeholder={formData.fotoKTP ? "Ganti file..." : "Pilih file..."} 
+                          isUploading={isUploadingKTP}
+                          onView={handleViewFile}
+                        />
                      </div>
                      <div className="grid gap-2">
                         <Label htmlFor="foto-kk">Foto Kartu Keluarga</Label>
-                        <ChooseFile id="foto-kk" value={fotoKKFile} onChange={setFotoKKFile} placeholder={formData.fotoKK ? "Ganti file..." : "Pilih file..."} />
+                        <ChooseFile 
+                          id="foto-kk" 
+                          value={fotoKKFile} 
+                          onChange={handleKKFileChange} 
+                          placeholder={formData.fotoKK ? "Ganti file..." : "Pilih file..."} 
+                          isUploading={isUploadingKK}
+                          onView={handleViewFile}
+                        />
                      </div>
                      <div className="grid gap-2">
                         <Label htmlFor="hp-darurat">Nomor HP Darurat</Label>
-                        <Input id="hp-darurat" value={formData.kontakDarurat} onChange={(e) => setFormData({...formData, kontakDarurat: e.target.value})} />
+                        <Input 
+                          id="hp-darurat" 
+                          value={safeFormData.kontakDarurat} 
+                          onChange={(e) => setFormData({...formData, kontakDarurat: e.target.value})}
+                          placeholder="Masukkan nomor HP darurat"
+                        />
                      </div>
                      <div className="grid gap-2">
                         <Label htmlFor="kepala-keluarga">Nama Kepala Keluarga</Label>
-                        <Input id="kepala-keluarga" value={formData.kepalaKeluarga} onChange={(e) => setFormData({...formData, kepalaKeluarga: e.target.value})} />
+                        <Input 
+                          id="kepala-keluarga" 
+                          value={safeFormData.kepalaKeluarga} 
+                          onChange={(e) => setFormData({...formData, kepalaKeluarga: e.target.value})}
+                          placeholder="Masukkan nama kepala keluarga"
+                        />
                      </div>
                      <div className="grid gap-2">
                         <Label htmlFor="pekerjaan">Pekerjaan</Label>
-                        <Input id="pekerjaan" value={formData.pekerjaan} onChange={(e) => setFormData({...formData, pekerjaan: e.target.value})} />
+                        <Input 
+                          id="pekerjaan" 
+                          value={safeFormData.pekerjaan} 
+                          onChange={(e) => setFormData({...formData, pekerjaan: e.target.value})}
+                          placeholder="Masukkan pekerjaan"
+                        />
                      </div>
                      <div className="grid gap-2 w-full">
                         <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
@@ -553,17 +796,27 @@ export default function WargaDetailModal({
                   <div>
                       <p className="text-sm text-gray-500 mb-2">Foto KTP</p>
                       {warga.fotoKTP ? (
-                        <div className="w-full max-w-[100px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => handleImageClick('ktp')}>
-                          <Image src={warga.fotoKTP} alt="Foto KTP" width={300} height={190} className="rounded-lg border object-cover w-full" />
-                        </div>
+                        <ChooseFile 
+                          id="view-ktp" 
+                          value={fotoKTPFile} 
+                          onChange={() => {}} 
+                          placeholder="Foto KTP tersedia" 
+                          viewOnly={true}
+                          onView={handleViewFile}
+                        />
                       ) : <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 h-32 flex items-center justify-center bg-gray-50 w-full max-w-sm"><p className="text-gray-400 text-sm">KTP Image Placeholder</p></div>}
                   </div>
                   <div>
                       <p className="text-sm text-gray-500 mb-2">Foto KK</p>
                       {warga.fotoKK ? (
-                        <div className="w-full max-w-[100px] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => handleImageClick('kk')}>
-                          <Image src={warga.fotoKK} alt="Foto KK" width={300} height={190} className="rounded-lg border object-cover w-full" />
-                        </div>
+                        <ChooseFile 
+                          id="view-kk" 
+                          value={fotoKKFile} 
+                          onChange={() => {}} 
+                          placeholder="Foto KK tersedia" 
+                          viewOnly={true}
+                          onView={handleViewFile}
+                        />
                       ) : <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 h-32 flex items-center justify-center bg-gray-50 w-full max-w-sm"><p className="text-gray-400 text-sm">KK Image Placeholder</p></div>}
                   </div>
                     <div><p className="text-sm text-gray-500 mb-1">Nama Kepala Keluarga</p><p className="font-semibold">{warga.kepalaKeluarga}</p></div>

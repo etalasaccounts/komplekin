@@ -177,7 +177,7 @@ export function RegisterForm({
           fullname: personalInfo.namapengguna,
           address: clusterInfo.alamat,
           house_type: 'cluster', // default untuk admin cluster
-          ownership_status: 'owner', // default untuk admin
+          ownership_status: 'Milik Sendiri', // default untuk admin
           citizen_status: 'Warga baru' // nilai enum yang valid
         })
         .select()

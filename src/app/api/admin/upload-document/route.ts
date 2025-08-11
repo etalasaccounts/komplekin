@@ -10,12 +10,20 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const fileType = formData.get('fileType') as string; // 'ktp' atau 'kartu_keluarga'
+    const documentType = formData.get('documentType') as string; // 'ktp' atau 'kartu_keluarga'
     const originalFilename = formData.get('originalFilename') as string;
 
-    if (!file || !fileType) {
+    if (!file || !documentType) {
       return NextResponse.json(
-        { error: 'File dan tipe file diperlukan' },
+        { error: 'File dan tipe dokumen diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    // Validate document type
+    if (!['ktp', 'kartu_keluarga'].includes(documentType)) {
+      return NextResponse.json(
+        { error: 'Tipe dokumen tidak valid' },
         { status: 400 }
       );
     }
@@ -40,12 +48,12 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now();
     const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const uniqueFilename = `temp_${timestamp}_${Math.random().toString(36).substr(2, 9)}_${fileType}_${timestamp}.${extension}`;
+    const uniqueFilename = `temp_${timestamp}_${Math.random().toString(36).substr(2, 9)}_${documentType}_${timestamp}.${extension}`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('files')
-      .upload(`${fileType}/${uniqueFilename}`, file, {
+      .upload(`${documentType}/${uniqueFilename}`, file, {
         cacheControl: '3600',
         upsert: false
       });
@@ -61,13 +69,13 @@ export async function POST(request: NextRequest) {
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('files')
-      .getPublicUrl(`${fileType}/${uniqueFilename}`);
+      .getPublicUrl(`${documentType}/${uniqueFilename}`);
 
     return NextResponse.json({
       success: true,
       filename: uniqueFilename,
       url: urlData.publicUrl,
-      fileType: fileType,
+      documentType: documentType,
       originalFilename: originalFilename
     });
 
