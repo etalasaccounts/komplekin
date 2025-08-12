@@ -1,391 +1,183 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import { Lock, Loader2, AlertCircle, Check, Shield } from "lucide-react";
-import { authService } from "@/services/auth";
-import { Session } from "@supabase/supabase-js";
-import { toast } from "sonner";
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
-// Component utama yang menggunakan useSearchParams
-function AdminVerifyTempPasswordContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [tempPassword, setTempPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [session, setSession] = useState<Session | null>(null);
-
-  // Get params from URL
-  const next = searchParams.get('next');
-  const isNewUser = searchParams.get('new_user') === 'true';
-  const isMagicLink = searchParams.get('magic_link') === 'true';
-  const error = searchParams.get('error');
-
-  // User info from session
-  const [userInfo, setUserInfo] = useState<{
+interface VerificationResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+  user?: {
+    id: string;
     email: string;
-    fullname: string;
-    cluster: string;
-    role: string;
-    roleTitle: string;
-  } | null>(null);
+    verified: boolean;
+  };
+}
+
+export default function AdminVerificationPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [message, setMessage] = useState('');
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    let mounted = true;
-    let retryCount = 0;
-    const maxRetries = 10;
-
-    console.log('Admin verify temp password page params:', { next, isNewUser, isMagicLink, error });
-
-    // Check for existing session
-    const checkSession = async () => {
+    const verifyToken = async () => {
       try {
-        const { data: { session } } = await authService.getClient().auth.getSession();
-        if (session && mounted) {
-          console.log('Found admin session for temp password verification:', session.user.email);
-          setSession(session);
+        const token = searchParams.get('token');
+        const purpose = searchParams.get('purpose');
 
-          // Get user info from session metadata
-          const metadata = session.user.user_metadata;
-          const role = metadata?.role || 'admin';
-
-          // Fetch additional user info
-          try {
-            const { data: permissions } = await authService.getClient()
-              .from('user_permissions')
-              .select('role, cluster:clusters(cluster_name)')
-              .eq('user_id', session.user.id)
-              .single();
-
-            // Handle cluster data - could be object or array depending on join
-            let clusterName = '';
-            if (permissions?.cluster) {
-              if (Array.isArray(permissions.cluster)) {
-                clusterName = permissions.cluster[0]?.cluster_name || '';
-              } else {
-                clusterName = (permissions.cluster as { cluster_name?: string })?.cluster_name || '';
-              }
-            }
-
-                      setUserInfo({
-            email: session.user.email || '',
-            fullname: metadata?.fullname || '',
-            cluster: clusterName || metadata?.cluster_name || '',
-            role: role,
-            roleTitle: 'Administrator Cluster'
-          });
-
-          // Check if this is a self-registered admin (not needing temp password)
-          // Self-registered admins who confirm email should go directly to dashboard
-          if (isNewUser && isMagicLink && role === 'admin' && permissions) {
-            console.log('Self-registered admin confirmed email, redirecting to dashboard...');
-            toast.success('Email berhasil dikonfirmasi! Mengalihkan ke dashboard admin...');
-            setTimeout(() => {
-              router.push('/admin/dashboard');
-            }, 2000);
-            return true;
-          }
-        } catch (err) {
-          console.error('Error fetching admin permissions:', err);
-          // Use fallback from metadata
-          setUserInfo({
-            email: session.user.email || '',
-            fullname: metadata?.fullname || '',
-            cluster: metadata?.cluster_name || '',
-            role: role,
-            roleTitle: 'Administrator Cluster'
-          });
-
-          // Even with error, if this looks like self-registration, redirect to dashboard
-          if (isNewUser && isMagicLink && role === 'admin') {
-            console.log('Self-registered admin (fallback), redirecting to dashboard...');
-            toast.success('Email berhasil dikonfirmasi! Mengalihkan ke dashboard admin...');
-            setTimeout(() => {
-              router.push('/admin/dashboard');
-            }, 2000);
-            return true;
-          }
+        if (!token || !purpose) {
+          setVerificationStatus('error');
+          setMessage('Parameter verifikasi tidak lengkap');
+          return;
         }
 
-        setSessionLoading(false);
-        return true;
+        if (purpose !== 'email_verification') {
+          setVerificationStatus('error');
+          setMessage('Tujuan verifikasi tidak valid');
+          return;
         }
-        return false;
+
+        const response = await fetch(`/api/admin/verify?token=${token}&purpose=${purpose}`);
+        const data: VerificationResponse = await response.json();
+
+        if (data.success) {
+          setVerificationStatus('success');
+          setMessage(data.message);
+          setUserData(data.user);
+          
+          // Redirect ke dashboard admin setelah 3 detik
+          setTimeout(() => {
+            router.push('/admin/dashboard');
+          }, 3000);
+        } else {
+          setVerificationStatus('error');
+          setMessage(data.error || 'Verifikasi gagal');
+        }
       } catch (error) {
-        console.error('Error checking admin session:', error);
-        return false;
+        console.error('Verification error:', error);
+        setVerificationStatus('error');
+        setMessage('Terjadi kesalahan saat verifikasi');
       }
     };
 
-    // Retry logic for session detection
-    const waitForSession = async () => {
-      const sessionFound = await checkSession();
-      
-      if (sessionFound) {
-        return;
-      }
+    verifyToken();
+  }, [searchParams, router]);
 
-      if (retryCount < maxRetries && mounted) {
-        retryCount++;
-        console.log(`Waiting for admin session... Attempt ${retryCount}/${maxRetries}`);
-        setTimeout(waitForSession, 800);
-      } else {
-        console.log('Admin session not found after max retries');
-        setSessionLoading(false);
-        
-        if (!error) {
-          toast.error('Sesi tidak ditemukan. Silakan klik ulang magic link.');
-        }
-      }
-    };
-
-    waitForSession();
-
-    return () => {
-      mounted = false;
-    };
-  }, [next, isNewUser, isMagicLink, error, router]);
-
-  // Handle temporary password verification
-  const handleVerifyTempPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!session || !userInfo) {
-      toast.error("Session tidak valid. Silakan coba lagi.");
-      return;
-    }
-
-    if (!tempPassword.trim()) {
-      toast.error("Password sementara tidak boleh kosong.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Verify temporary password by trying to sign in with it
-      const { data: signInData, error: signInError } = await authService.getClient().auth.signInWithPassword({
-        email: userInfo.email,
-        password: tempPassword
-      });
-
-      if (signInError) {
-        console.error('Admin temporary password verification failed:', signInError);
-        toast.error("Password sementara salah. Silakan coba lagi.");
-        return;
-      }
-
-      if (signInData.user) {
-        console.log('Admin temporary password verified successfully');
-        toast.success("Password sementara berhasil diverifikasi!");
-        
-        setVerifying(true);
-
-        // Redirect to admin reset password page after short delay
-        setTimeout(() => {
-          router.push('/admin/auth/reset-password?new_user=true&temp_verified=true');
-        }, 1500);
-      }
-    } catch (error) {
-      console.error('Error verifying admin temporary password:', error);
-      toast.error("Terjadi kesalahan saat memverifikasi password.");
-    } finally {
-      setLoading(false);
+  const getStatusIcon = () => {
+    switch (verificationStatus) {
+      case 'loading':
+        return <AlertTriangle className="h-16 w-16 text-yellow-500 animate-pulse" />;
+      case 'success':
+        return <CheckCircle className="h-16 w-16 text-green-500" />;
+      case 'error':
+        return <XCircle className="h-16 w-16 text-red-500" />;
+      default:
+        return null;
     }
   };
 
-  // Show verifying screen
-  if (verifying) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Verifikasi Admin Berhasil!
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Mengalihkan ke halaman buat password admin baru...
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getStatusColor = () => {
+    switch (verificationStatus) {
+      case 'loading':
+        return 'text-yellow-600';
+      case 'success':
+        return 'text-green-600';
+      case 'error':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
 
-  // Show loading screen while checking session
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Memproses Magic Link Admin...
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Mohon tunggu, sedang memverifikasi akun admin Anda
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show error if no session
-  if (!session || !userInfo) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-red-500" />
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Session Admin Tidak Valid
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Magic link admin tidak valid atau sudah kedaluwarsa. Silakan hubungi administrator sistem.
-                </p>
-              </div>
-              <Button
-                onClick={() => router.push('/admin/auth')}
-                variant="outline"
-                className="w-full"
-              >
-                Kembali ke Login Admin
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getStatusBgColor = () => {
+    switch (verificationStatus) {
+      case 'loading':
+        return 'bg-yellow-50 border-yellow-200';
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-md mx-auto">
-        <Card className="border-0 shadow-none gap-10">
-          <CardHeader className="text-center mt-4">
-            <div className="flex items-center justify-center space-x-2 mb-8">
-              <Image src="/images/logo.png" alt="Logo" width={18} height={18} />
-              <h1 className="text-lg font-semibold">KomplekIn Admin</h1>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/images/illustration/verify-otp.svg"
-                alt="Verify Admin Password"
-                width={170}
-                height={200}
-              />
-            </div>
-            <CardTitle className="text-xl mt-10">Verifikasi Password Admin</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              Masukkan password sementara administrator yang diberikan
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4">
-            {/* Admin Info Card */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="h-4 w-4 text-amber-600" />
-                <h3 className="font-medium text-amber-900">Akun Administrator:</h3>
-              </div>
-              <div className="space-y-1 text-sm text-amber-800">
-                <p><strong>Nama:</strong> {userInfo.fullname}</p>
-                <p><strong>Email:</strong> {userInfo.email}</p>
-                <p><strong>Cluster:</strong> {userInfo.cluster}</p>
-                <p><strong>Role:</strong> {userInfo.roleTitle}</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleVerifyTempPassword} className="space-y-4 text-sm font-medium">
-              <div className="space-y-2">
-                <Label htmlFor="tempPassword">Password Sementara Administrator</Label>
-                <Input
-                  className="text-sm font-normal min-h-10"
-                  id="tempPassword"
-                  type="password"
-                  placeholder="Masukkan password sementara admin"
-                  value={tempPassword}
-                  onChange={(e) => setTempPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  Password ini diberikan oleh administrator sistem melalui email atau pesan aman
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 pt-4 text-sm font-medium">
-                <Button
-                  type="submit"
-                  className="w-full bg-foreground text-background hover:bg-foreground/90"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Memverifikasi...
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      Verifikasi Password Admin
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-xs text-gray-500">
-                Setelah verifikasi berhasil, Anda akan diminta untuk membuat password admin baru yang aman.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-export default function AdminVerifyTempPasswordPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading verification page...</p>
+          <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+          <h2 className="mt-6 text-xl font-semibold text-gray-900">
+            Verifikasi Email Admin
+          </h2>
         </div>
       </div>
-    }>
-      <AdminVerifyTempPasswordContent />
-    </Suspense>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className={`bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border-2 ${getStatusBgColor()}`}>
+          <div className="text-center">
+            {getStatusIcon()}
+            
+            <h3 className={`mt-4 text-lg font-medium ${getStatusColor()}`}>
+              {verificationStatus === 'loading' && 'Memverifikasi...'}
+              {verificationStatus === 'success' && 'Verifikasi Berhasil!'}
+              {verificationStatus === 'error' && 'Verifikasi Gagal'}
+            </h3>
+            
+            <p className="mt-2 text-sm text-gray-600">
+              {message}
+            </p>
+
+            {verificationStatus === 'success' && userData && (
+              <div className="mt-4 p-4 bg-green-50 rounded-md border border-green-200">
+                <p className="text-sm text-green-800">
+                  <strong>Email:</strong> {userData.email}
+                </p>
+                <p className="text-sm text-green-800 mt-1">
+                  <strong>Status:</strong> Terverifikasi
+                </p>
+              </div>
+            )}
+
+            {verificationStatus === 'success' && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-500">
+                  Anda akan dialihkan ke dashboard admin dalam beberapa detik...
+                </p>
+                <button
+                  onClick={() => router.push('/admin/dashboard')}
+                  className="mt-3 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Ke Dashboard Admin
+                </button>
+              </div>
+            )}
+
+            {verificationStatus === 'error' && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-500 mb-4">
+                  Jika Anda mengalami masalah, silakan hubungi tim support atau coba lagi.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            © 2025 KomplekIn. Sistem Manajemen Komplek Modern.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -192,13 +192,6 @@ Klik untuk copy pesan WhatsApp`, {
                   border: '1px solid #60a5fa'
                 },
                 duration: 15000,
-                action: {
-                  label: 'Copy WhatsApp',
-                  onClick: () => {
-                    navigator.clipboard.writeText(emailResult.whatsappMessage);
-                    toast.success('Pesan WhatsApp disalin!', { duration: 3000 });
-                  }
-                }
               });
             } else {
               // Email berhasil dikirim
@@ -224,13 +217,6 @@ Mohon periksa inbox dan folder spam`;
                   border: 'none'
                 },
                 duration: 10000,
-                action: {
-                  label: 'Copy WhatsApp',
-                  onClick: () => {
-                    navigator.clipboard.writeText(emailResult.whatsappMessage);
-                    toast.success('Pesan WhatsApp disalin sebagai backup!', { duration: 3000 });
-                  }
-                }
               });
             }
           } else {
