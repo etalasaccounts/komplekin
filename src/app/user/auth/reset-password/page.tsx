@@ -1,387 +1,348 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import { KeyRound, Loader2, AlertCircle, Check } from "lucide-react";
-import { authService } from "@/services/auth";
-import { Session } from "@supabase/supabase-js";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 
-function ResetPasswordContent() {
-  const router = useRouter();
+interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+  user?: {
+    id: string;
+    email: string;
+  };
+}
+
+export default function UserResetPasswordPage() {
   const searchParams = useSearchParams();
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const router = useRouter();
+  const [token, setToken] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [session, setSession] = useState<Session | null>(null);
-
-  // Magic link detection from URL params
-  const isMagicLink = searchParams.get('magic_link') === 'true';
-  const isNewUser = searchParams.get('new_user') === 'true';
-  const checkHash = searchParams.get('check_hash') === 'true';
-  const tempVerified = searchParams.get('temp_verified') === 'true';
-  const error = searchParams.get('error');
+  const [resetStatus, setResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    let mounted = true;
-    let retryCount = 0;
-    const maxRetries = 15; // Increase retries for magic link
-
-    console.log('Reset password page params:', { isMagicLink, isNewUser, checkHash, tempVerified, error });
-
-    // Check for hash fragment authentication (from magic link)
-    const checkHashAuthentication = async () => {
-      if (checkHash) {
-        console.log('Checking hash fragment for authentication...');
-        
-        // Check if there's authentication data in URL hash
-        const hash = window.location.hash;
-        if (hash && (hash.includes('access_token') || hash.includes('type=signup'))) {
-          console.log('Found authentication in hash fragment');
-          
-                     // Use Supabase to process the hash fragment
-           try {
-             const { data: { session } } = await authService.getClient().auth.getSession();
-             if (session && mounted) {
-               console.log('Hash fragment authentication successful:', session.user.email);
-               setSession(session);
-               setSessionLoading(false);
-               
-               // Clean URL by removing hash fragment
-               window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-               return true;
-             }
-           } catch (err) {
-             console.error('Error processing hash fragment:', err);
-           }
-        }
-      }
-      return false;
-    };
-
-    // Check if user came from forgot password flow
-    const resetEmail = localStorage.getItem("reset_password_email");
-    if (resetEmail) {
-      toast.info("Email reset password telah dikirim", {
-        description: `Silakan periksa email ${resetEmail} dan klik link untuk melanjutkan reset password.`,
-      });
-      // Clear the stored email after showing the message
-      localStorage.removeItem("reset_password_email");
+    // Ambil token dan purpose dari URL
+    const urlToken = searchParams.get('token');
+    const urlPurpose = searchParams.get('purpose');
+    
+    if (urlToken && urlPurpose) {
+      setToken(urlToken);
+      setPurpose(urlPurpose);
     }
+  }, [searchParams]);
 
-    // Check if there's already an existing session for password recovery
-    const checkExistingSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await authService.getClient().auth.getSession();
-        if (session && mounted) {
-          console.log('Found existing session:', session.user.email);
-          setSession(session);
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("Error checking session:", error);
-        return false;
-      }
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return {
+      minLength,
+      hasUpperCase,
+      hasLowerCase,
+      hasNumbers,
+      hasSpecialChar,
+      isValid: minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
     };
+  };
 
-    // Retry logic for session detection (more aggressive for magic link)
-    const waitForSession = async () => {
-      // First check hash fragment if needed
-      if (checkHash && retryCount === 0) {
-        const hashAuth = await checkHashAuthentication();
-        if (hashAuth) {
-          return;
-        }
-      }
-      
-      const sessionFound = await checkExistingSession();
-      
-      if (sessionFound) {
-        setSessionLoading(false);
-        return;
-      }
-
-      if (retryCount < maxRetries && mounted) {
-        retryCount++;
-        console.log(`Waiting for session... Attempt ${retryCount}/${maxRetries}`);
-        
-        // Longer wait for magic link flow
-        const waitTime = isMagicLink ? 1000 : 500;
-        setTimeout(waitForSession, waitTime);
-      } else {
-        console.log('Session not found after max retries');
-        setSessionLoading(false);
-        
-        // For magic link flow, show error if no session after retries
-        if (isMagicLink && !error) {
-          toast.error('Sesi tidak ditemukan. Silakan klik ulang magic link atau hubungi admin.');
-        }
-      }
-    };
-
-    waitForSession();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isMagicLink, isNewUser, checkHash, tempVerified, error]);
-
-  // Handle password reset submission
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!session) {
-      toast.error("Session tidak valid. Silakan coba lagi.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Konfirmasi password tidak cocok.");
+    
+    if (!token || !purpose) {
+      setResetStatus('error');
+      setMessage('Token reset password tidak valid');
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password minimal 6 karakter.");
+    if (newPassword !== confirmPassword) {
+      setResetStatus('error');
+      setMessage('Password dan konfirmasi password tidak cocok');
+      return;
+    }
+
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setResetStatus('error');
+      setMessage('Password tidak memenuhi kriteria keamanan');
       return;
     }
 
     setLoading(true);
+    setResetStatus('idle');
 
     try {
-      const { error: updateError } = await authService.getClient().auth.updateUser({
-        password: password
+      const response = await fetch('/api/auth/verify-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          purpose,
+          newPassword
+        })
       });
 
-      if (updateError) {
-        toast.error("Gagal mengubah password. Silakan coba lagi.");
-      } else {
-        toast.success("Password berhasil dibuat!");
-        setRedirecting(true);
+      const data: ResetPasswordResponse = await response.json();
 
-        // Redirect based on user role
+      if (data.success) {
+        setResetStatus('success');
+        setMessage(data.message);
+        setUserData(data.user);
+        
+        // Redirect ke login user setelah 3 detik
         setTimeout(() => {
-          if (session.user?.user_metadata?.role === 'admin') {
-            router.push('/admin/dashboard');
-          } else {
-            router.push('/user/dashboard');
-          }
-        }, 1500);
+          router.push('/user/auth');
+        }, 3000);
+      } else {
+        setResetStatus('error');
+        setMessage(data.error || 'Reset password gagal');
       }
     } catch (error) {
-      console.error('Error updating password:', error);
-      toast.error("Terjadi kesalahan saat mengubah password.");
+      console.error('Password reset error:', error);
+      setResetStatus('error');
+      setMessage('Terjadi kesalahan saat reset password');
     } finally {
       setLoading(false);
     }
   };
 
-  // Show loading screen while redirecting
-  if (redirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Berhasil! Mengalihkan ke dashboard...
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Mohon tunggu sebentar
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getStatusIcon = () => {
+    switch (resetStatus) {
+      case 'success':
+        return <CheckCircle className="h-16 w-16 text-green-500" />;
+      case 'error':
+        return <XCircle className="h-16 w-16 text-red-500" />;
+      default:
+        return null;
+    }
+  };
 
-  // Render different states
-  if (sessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {isMagicLink ? 'Memproses Magic Link...' : 'Memuat...'}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {isMagicLink 
-                    ? 'Mohon tunggu, sedang memverifikasi magic link Anda'
-                    : 'Mohon tunggu sebentar'
-                  }
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getStatusColor = () => {
+    switch (resetStatus) {
+      case 'success':
+        return 'text-green-600';
+      case 'error':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
 
-  if (!session) {
+  const getStatusBgColor = () => {
+    switch (resetStatus) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
+
+  const passwordValidation = validatePassword(newPassword);
+
+  if (resetStatus === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-red-500" />
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Session Tidak Valid
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {isMagicLink 
-                    ? 'Magic link tidak valid atau sudah kedaluwarsa. Silakan hubungi admin untuk mendapatkan magic link baru.'
-                    : 'Session untuk reset password tidak ditemukan. Silakan coba lagi dari awal.'
-                  }
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+            <h2 className="mt-6 text-xl font-semibold text-gray-900">
+              Reset Password Warga Berhasil
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className={`bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border-2 ${getStatusBgColor()}`}>
+            <div className="text-center">
+              {getStatusIcon()}
+              
+              <h3 className={`mt-4 text-lg font-medium ${getStatusColor()}`}>
+                Password Berhasil Direset!
+              </h3>
+              
+              <p className="mt-2 text-sm text-gray-600">
+                {message}
+              </p>
+
+              {userData && (
+                <div className="mt-4 p-4 bg-green-50 rounded-md border border-green-200">
+                  <p className="text-sm text-green-800">
+                    <strong>Email:</strong> {userData.email}
+                  </p>
+                  <p className="text-sm text-green-800 mt-1">
+                    <strong>Status:</strong> Password Updated
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6">
+                <p className="text-sm text-gray-500">
+                  Anda akan dialihkan ke halaman login warga dalam beberapa detik...
                 </p>
+                <button
+                  onClick={() => router.push('/user/auth')}
+                  className="mt-3 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                  Ke Login Warga
+                </button>
               </div>
-              <Button
-                onClick={() => {
-                  if (isMagicLink) {
-                    router.push('/user/auth');
-                  } else {
-                    router.push('/user/auth/forgot-password');
-                  }
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                {isMagicLink ? 'Kembali ke Login' : 'Coba Lagi'}
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-md mx-auto">
-        <Card className="border-0 shadow-none gap-10">
-          <CardHeader className="text-center mt-4">
-            <div className="flex items-center justify-center space-x-2 mb-8">
-              <Image src="/images/logo.png" alt="Logo" width={18} height={18} />
-              <h1 className="text-lg font-semibold">KomplekIn</h1>
-            </div>
-            <div className="flex items-center justify-center">
-              <Image
-                src="/images/illustration/reset-password.svg"
-                alt="Reset Password"
-                width={170}
-                height={200}
-              />
-            </div>
-            <CardTitle className="text-xl mt-10">
-              Buat Kata Sandi Baru
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              {tempVerified 
-                ? "Password sementara berhasil diverifikasi. Sekarang buat password baru yang aman untuk akun Anda."
-                : "Masukkan kata sandi baru Anda"
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4">
-            {/* Temporary Password Verification Success */}
-            {tempVerified && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Check className="h-4 w-4 text-green-600" />
-                  <h3 className="font-medium text-green-800">Verifikasi Berhasil!</h3>
-                </div>
-                <p className="text-sm text-green-700">
-                  Password sementara Anda telah berhasil diverifikasi. Silakan buat password baru yang aman untuk melanjutkan.
-                </p>
-              </div>
-            )}
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+          <h2 className="mt-6 text-xl font-semibold text-gray-900">
+            Reset Password Warga
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Masukkan password baru untuk akun warga Anda
+          </p>
+        </div>
+      </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-4 text-sm font-medium">
-              <div className="space-y-2">
-                <Label htmlFor="password">Kata Sandi Baru</Label>
-                <Input
-                  className="text-sm font-normal min-h-10"
-                  id="password"
-                  type="password"
-                  placeholder="Masukkan kata sandi baru"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {resetStatus === 'error' && (
+            <div className="mb-6 p-4 bg-red-50 rounded-md border border-red-200">
+              <div className="flex items-center">
+                <XCircle className="h-5 w-5 text-red-400 mr-2" />
+                <p className="text-sm text-red-800">{message}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleResetPassword} className="space-y-6">
+            <div>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                Password Baru
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type={showPassword ? 'text' : 'password'}
                   required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="Masukkan password baru"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Konfirmasi Kata Sandi</Label>
-                <Input
-                  className="text-sm font-normal min-h-10"
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Konfirmasi Password
+              </label>
+              <div className="mt-1 relative">
+                <input
                   id="confirmPassword"
-                  type="password"
-                  placeholder="Konfirmasi kata sandi baru"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                  required
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="Konfirmasi password baru"
                 />
-              </div>
-
-              <div className="flex flex-col gap-3 pt-4 text-sm font-medium">
-                <Button
-                  type="submit"
-                  className="w-full bg-foreground text-background hover:bg-foreground/90"
-                  disabled={loading}
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Mengubah...
-                    </>
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <>
-                      <KeyRound className="w-4 h-4" />
-                      Ubah Kata Sandi
-                    </>
+                    <Eye className="h-5 w-5 text-gray-400" />
                   )}
-                </Button>
+                </button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+
+            {/* Password Requirements */}
+            <div className="bg-gray-50 p-4 rounded-md">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Kriteria Password:</h4>
+              <div className="space-y-1 text-xs">
+                <div className={`flex items-center ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.minLength ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 8 karakter
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasUpperCase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasUpperCase ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 huruf besar
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasLowerCase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasLowerCase ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 huruf kecil
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasNumbers ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasNumbers ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 angka
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasSpecialChar ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 karakter khusus
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading || !passwordValidation.isValid || newPassword !== confirmPassword}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Memproses...' : 'Reset Password'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.push('/user/auth')}
+              className="text-sm text-green-600 hover:text-green-500"
+            >
+              Kembali ke Login
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            © 2025 KomplekIn. Sistem Manajemen Komplek Modern.
+          </p>
+        </div>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ResetPasswordContent />
-    </Suspense>
   );
 }

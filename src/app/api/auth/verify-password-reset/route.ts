@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
     // Validasi environment variables
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -16,22 +16,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Admin service not configured' }, { status: 500 });
     }
 
-    // Ambil query parameters
-    const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
-    const purpose = searchParams.get('purpose');
+    const { token, purpose, newPassword } = await request.json();
 
     // Validasi parameter yang diperlukan
-    if (!token || !purpose) {
+    if (!token || !purpose || !newPassword) {
       return NextResponse.json({ 
-        error: 'Missing required parameters: token and purpose' 
+        error: 'Missing required parameters: token, purpose, and newPassword' 
       }, { status: 400 });
     }
 
     // Validasi purpose
-    if (purpose !== 'email_verification') {
+    if (purpose !== 'password_reset') {
       return NextResponse.json({ 
         error: 'Invalid purpose parameter' 
+      }, { status: 400 });
+    }
+
+    // Validasi password strength
+    if (newPassword.length < 8) {
+      return NextResponse.json({ 
+        error: 'Password must be at least 8 characters long' 
       }, { status: 400 });
     }
 
@@ -43,7 +47,7 @@ export async function GET(request: Request) {
       .from('user_tokens')
       .select('*, user_permissions(user_id)')
       .eq('token', hashedToken)
-      .eq('purpose', 'email_verification')
+      .eq('purpose', 'password_reset')
       .is('consumed_at', null)
       .gt('expires_at', new Date().toISOString())
       .single();
@@ -51,11 +55,11 @@ export async function GET(request: Request) {
     if (tokenError || !tokenData) {
       console.error('Token validation error:', tokenError);
       return NextResponse.json({ 
-        error: 'Invalid or expired verification token' 
+        error: 'Invalid or expired reset token' 
       }, { status: 400 });
     }
 
-    // Token ditemukan dan valid, sekarang update user profile
+    // Token ditemukan dan valid, sekarang update password user
     // Ambil user_id dari user_permissions
     const userId = tokenData.user_permissions?.user_id;
     
@@ -66,15 +70,15 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    const { error: profileError } = await supabaseAdmin
-      .from('user_permissions')
-      .update({ is_email_verified: true })
-      .eq('id', tokenData.user_id);
+    const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { password: newPassword }
+    );
 
-    if (profileError) {
-      console.error('Error updating user profile:', profileError);
+    if (passwordError) {
+      console.error('Error updating user password:', passwordError);
       return NextResponse.json({ 
-        error: 'Failed to verify user profile' 
+        error: 'Failed to update user password' 
       }, { status: 500 });
     }
 
@@ -86,8 +90,8 @@ export async function GET(request: Request) {
 
     if (consumeError) {
       console.error('Error marking token as consumed:', consumeError);
-      // Tidak return error karena profile sudah berhasil diupdate
-      console.warn('Token consumed_at update failed, but profile verification succeeded');
+      // Tidak return error karena password sudah berhasil diupdate
+      console.warn('Token consumed_at update failed, but password update succeeded');
     }
 
     // Ambil informasi user untuk response
@@ -97,23 +101,22 @@ export async function GET(request: Request) {
 
     if (userError) {
       console.error('Error fetching user data:', userError);
-      // Tidak return error karena verifikasi sudah berhasil
+      // Tidak return error karena password update sudah berhasil
     }
 
-    console.log('Admin email verification successful for user:', userId);
+    console.log('Password reset successful for user:', userId);
 
     return NextResponse.json({
       success: true,
-      message: 'Email verification successful',
+      message: 'Password reset successful',
       user: userData?.user ? {
         id: userData.user.id,
-        email: userData.user.email,
-        verified: true
+        email: userData.user.email
       } : null
     });
 
   } catch (error) {
-    console.error('Unexpected error in admin verification API:', error);
+    console.error('Unexpected error in password reset verification API:', error);
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Unknown error occurred' 
     }, { status: 500 });

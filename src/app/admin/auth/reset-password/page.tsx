@@ -1,265 +1,347 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
-import { KeyRound, Loader2, Command } from "lucide-react";
-import { authService } from "@/services/auth";
-import { Session } from "@supabase/supabase-js";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Eye, EyeOff, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+
+interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+  error?: string;
+  user?: {
+    id: string;
+    email: string;
+  };
+}
 
 export default function AdminResetPasswordPage() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [token, setToken] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
-  const [session, setSession] = useState<Session | null>(null);
+  const [resetStatus, setResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    let mounted = true;
-    let retryCount = 0;
-    const maxRetries = 10;
+    // Ambil token dan purpose dari URL
+    const urlToken = searchParams.get('token');
+    const urlPurpose = searchParams.get('purpose');
+    
+    if (urlToken && urlPurpose) {
+      setToken(urlToken);
+      setPurpose(urlPurpose);
+    }
+  }, [searchParams]);
 
-    // Check if there's already an existing session for password recovery
-    const checkExistingSession = async () => {
-      try {
-        const { data: { session } } = await authService.getClient().auth.getSession();
-        if (session && mounted) {
-          setSession(session);
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error('Error checking session:', error);
-        return false;
-      }
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return {
+      minLength,
+      hasUpperCase,
+      hasLowerCase,
+      hasNumbers,
+      hasSpecialChar,
+      isValid: minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar
     };
+  };
 
-    // Retry logic for session detection
-    const retrySessionCheck = async () => {
-      const sessionFound = await checkExistingSession();
-      
-      if (!sessionFound && retryCount < maxRetries && mounted) {
-        retryCount++;
-        setTimeout(retrySessionCheck, 500); // Wait 500ms before retry
-      } else if (mounted) {
-        // Stop loading after max retries or session found
-        setSessionLoading(false);
-      }
-    };
-
-    // Initial check
-    retrySessionCheck();
-
-    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
-      if (mounted) {
-        // This listener is crucial for catching the PASSWORD_RECOVERY event
-        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-          setSession(session);
-          setSessionLoading(false);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
-  }, []);
-
-  // Show loading screen while checking for session
-  if (sessionLoading) {
-    return (
-      <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center space-y-4">
-            <Command className="w-12 h-12 mx-auto text-primary" />
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Memuat...</h3>
-              <p className="text-sm text-muted-foreground">Memeriksa sesi reset password...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== confirmPassword) {
-      toast.error("Kata sandi tidak cocok.");
+    if (!token || !purpose) {
+      setResetStatus('error');
+      setMessage('Token reset password tidak valid');
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Kata sandi harus minimal 6 karakter.");
+    if (newPassword !== confirmPassword) {
+      setResetStatus('error');
+      setMessage('Password dan konfirmasi password tidak cocok');
+      return;
+    }
+
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      setResetStatus('error');
+      setMessage('Password tidak memenuhi kriteria keamanan');
       return;
     }
 
     setLoading(true);
+    setResetStatus('idle');
 
     try {
-      const { error } = await authService.getClient().auth.updateUser({
-        password: password
+      const response = await fetch('/api/auth/verify-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          purpose,
+          newPassword
+        })
       });
 
-      if (error) {
-        toast.error("Gagal mengubah kata sandi. Silakan coba lagi.");
-      } else {
-        // Clear password recovery mode flags
-        localStorage.removeItem('password_recovery_mode');
-        localStorage.removeItem('password_recovery_timestamp');
+      const data: ResetPasswordResponse = await response.json();
+
+      if (data.success) {
+        setResetStatus('success');
+        setMessage(data.message);
+        setUserData(data.user);
         
-        toast.success("Kata sandi admin berhasil diubah! Mengalihkan ke dashboard...");
-        
-        setRedirecting(true);
-        
-        // Redirect to admin dashboard
+        // Redirect ke login admin setelah 3 detik
         setTimeout(() => {
-          router.push('/admin/dashboard');
-        }, 1500);
+          router.push('/admin/auth');
+        }, 3000);
+      } else {
+        setResetStatus('error');
+        setMessage(data.error || 'Reset password gagal');
       }
-    } catch {
-      toast.error("Terjadi kesalahan yang tidak terduga.");
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setResetStatus('error');
+      setMessage('Terjadi kesalahan saat reset password');
     } finally {
       setLoading(false);
     }
   };
 
-  // Show loading screen while redirecting
-  if (redirecting) {
-    return (
-      <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center space-y-4">
-            <Command className="w-12 h-12 mx-auto text-primary" />
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Berhasil!</h3>
-              <p className="text-sm text-muted-foreground">Mengalihkan ke dashboard admin...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const getStatusIcon = () => {
+    switch (resetStatus) {
+      case 'success':
+        return <CheckCircle className="h-16 w-16 text-green-500" />;
+      case 'error':
+        return <XCircle className="h-16 w-16 text-red-500" />;
+      default:
+        return null;
+    }
+  };
 
-  // Show message if no session is available for password recovery
-  if (!session) {
+  const getStatusColor = () => {
+    switch (resetStatus) {
+      case 'success':
+        return 'text-green-600';
+      case 'error':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  const getStatusBgColor = () => {
+    switch (resetStatus) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'error':
+        return 'bg-red-50 border-red-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
+  };
+
+  const passwordValidation = validatePassword(newPassword);
+
+  if (resetStatus === 'success') {
     return (
-      <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-background rounded-full flex items-center justify-center">
-              <KeyRound className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Sesi Tidak Valid</h3>
-              <p className="text-sm text-muted-foreground">
-                Silakan klik link reset password dari email admin Anda untuk melanjutkan.
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+            <h2 className="mt-6 text-xl font-semibold text-gray-900">
+              Reset Password Admin Berhasil
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className={`bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border-2 ${getStatusBgColor()}`}>
+            <div className="text-center">
+              {getStatusIcon()}
+              
+              <h3 className={`mt-4 text-lg font-medium ${getStatusColor()}`}>
+                Password Berhasil Direset!
+              </h3>
+              
+              <p className="mt-2 text-sm text-gray-600">
+                {message}
               </p>
+
+              {userData && (
+                <div className="mt-4 p-4 bg-green-50 rounded-md border border-green-200">
+                  <p className="text-sm text-green-800">
+                    <strong>Email:</strong> {userData.email}
+                  </p>
+                  <p className="text-sm text-green-800 mt-1">
+                    <strong>Status:</strong> Password Updated
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6">
+                <p className="text-sm text-gray-500">
+                  Anda akan dialihkan ke halaman login admin dalam beberapa detik...
+                </p>
+                <button
+                  onClick={() => router.push('/admin/auth')}
+                  className="mt-3 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Ke Login Admin
+                </button>
+              </div>
             </div>
-            <Button 
-              onClick={() => router.push('/admin/auth/forgot-password')}
-              className="w-full"
-            >
-              Kembali ke Lupa Password
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-md">
-        <Card className="overflow-hidden">
-          <CardHeader className="text-center space-y-4">
-            <div className="flex items-center justify-center space-x-2">
-              <Command className="w-6 h-6" />
-              <h1 className="text-xl font-semibold">KomplekIn Admin</h1>
-            </div>
-            
-            <div className="flex items-center justify-center">
-              <Image
-                src="/images/illustration/reset-password.svg"
-                alt="Reset Password"
-                width={120}
-                height={140}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <CardTitle className="text-xl">Buat Kata Sandi Admin Baru</CardTitle>
-              <CardDescription className="text-sm">
-                Masukkan kata sandi baru untuk akun admin Anda
-              </CardDescription>
-            </div>
-          </CardHeader>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+          <h2 className="mt-6 text-xl font-semibold text-gray-900">
+            Reset Password Admin
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Masukkan password baru untuk akun admin Anda
+          </p>
+        </div>
+      </div>
 
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Kata Sandi Baru</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Masukkan kata sandi baru"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                />
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {resetStatus === 'error' && (
+            <div className="mb-6 p-4 bg-red-50 rounded-md border border-red-200">
+              <div className="flex items-center">
+                <XCircle className="h-5 w-5 text-red-400 mr-2" />
+                <p className="text-sm text-red-800">{message}</p>
               </div>
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Konfirmasi Kata Sandi</Label>
-                <Input
+          <form onSubmit={handleResetPassword} className="space-y-6">
+            <div>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                Password Baru
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Masukkan password baru"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Konfirmasi Password
+              </label>
+              <div className="mt-1 relative">
+                <input
                   id="confirmPassword"
-                  type="password"
-                  placeholder="Konfirmasi kata sandi baru"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
-                  required
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Konfirmasi password baru"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               </div>
+            </div>
 
-              <Button
+            {/* Password Requirements */}
+            <div className="bg-gray-50 p-4 rounded-md">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Kriteria Password:</h4>
+              <div className="space-y-1 text-xs">
+                <div className={`flex items-center ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.minLength ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 8 karakter
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasUpperCase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasUpperCase ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 huruf besar
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasLowerCase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasLowerCase ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 huruf kecil
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasNumbers ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasNumbers ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 angka
+                </div>
+                <div className={`flex items-center ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-gray-500'}`}>
+                  <CheckCircle className={`h-3 w-3 mr-2 ${passwordValidation.hasSpecialChar ? 'text-green-500' : 'text-gray-400'}`} />
+                  Minimal 1 karakter khusus
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button
                 type="submit"
-                className="w-full"
-                disabled={loading}
+                disabled={loading || !passwordValidation.isValid || newPassword !== confirmPassword}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Mengubah...
-                  </>
-                ) : (
-                  <>
-                    <KeyRound className="w-4 h-4" />
-                    Ubah Kata Sandi
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                {loading ? 'Memproses...' : 'Reset Password'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.push('/admin/auth')}
+              className="text-sm text-blue-600 hover:text-blue-500"
+            >
+              Kembali ke Login
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            © 2025 KomplekIn. Sistem Manajemen Komplek Modern.
+          </p>
+        </div>
       </div>
     </div>
   );
