@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 
@@ -14,7 +14,7 @@ interface ResetPasswordResponse {
   };
 }
 
-export default function UserResetPasswordPage() {
+function UserResetPasswordPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [token, setToken] = useState('');
@@ -26,7 +26,10 @@ export default function UserResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [resetStatus, setResetStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<{
+    id: string;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     // Ambil token dan purpose dari URL
@@ -97,7 +100,7 @@ export default function UserResetPasswordPage() {
       if (data.success) {
         setResetStatus('success');
         setMessage(data.message);
-        setUserData(data.user);
+        setUserData(data.user || null);
         
         // Redirect ke login user setelah 3 detik
         setTimeout(() => {
@@ -344,5 +347,24 @@ export default function UserResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UserResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+            <h2 className="mt-6 text-xl font-semibold text-gray-900">
+              Loading...
+            </h2>
+          </div>
+        </div>
+      </div>
+    }>
+      <UserResetPasswordPageContent />
+    </Suspense>
   );
 }

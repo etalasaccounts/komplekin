@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
@@ -15,12 +15,16 @@ interface VerificationResponse {
   };
 }
 
-export default function AdminVerificationPage() {
+function AdminVerificationPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<{
+    id: string;
+    email: string;
+    verified: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -46,7 +50,7 @@ export default function AdminVerificationPage() {
         if (data.success) {
           setVerificationStatus('success');
           setMessage(data.message);
-          setUserData(data.user);
+          setUserData(data.user || null);
           
           // Redirect ke dashboard admin setelah 3 detik
           setTimeout(() => {
@@ -179,5 +183,24 @@ export default function AdminVerificationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminVerificationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">KomplekIn</h1>
+            <h2 className="mt-6 text-xl font-semibold text-gray-900">
+              Loading...
+            </h2>
+          </div>
+        </div>
+      </div>
+    }>
+      <AdminVerificationPageContent />
+    </Suspense>
   );
 }
