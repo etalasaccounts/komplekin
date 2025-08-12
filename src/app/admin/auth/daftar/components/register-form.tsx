@@ -223,6 +223,49 @@ export function RegisterForm({
 
       console.log("Permission created:", permissionData);
 
+      // Step 5: generate token
+      const responseToken = await fetch('/api/admin/generate-email-verification-token', {
+        method: 'POST',
+        body: JSON.stringify({ userPermissionId: permissionData.id })
+      });
+
+      if (!responseToken.ok) {
+        const errorData = await responseToken.json();
+        console.error("Token generation error:", errorData);
+        toast.error(`Gagal membuat token: ${errorData.message}`);
+
+        // Rollback: hapus cluster dan profile yang sudah dibuat
+        await supabase.from('clusters').delete().eq('id', clusterId);
+        await supabase.from('profiles').delete().eq('id', profileId);
+        await supabase.from('user_permissions').delete().eq('id', permissionData.id);
+        await supabase.auth.signOut();
+        return;
+      }
+
+      const { data: tokenData } = await responseToken.json();
+      const confirmationUrl = tokenData.confirmationUrl;
+
+      // Step 5: Kirim email konfirmasi
+      console.log("Step 5: Sending confirmation email...");
+      const response = await fetch('/api/send-email/confirmation', {
+        method: 'POST',
+        body: JSON.stringify({ userName: personalInfo.namapengguna, email: personalInfo.email, confirmationUrl: confirmationUrl })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Email sending error:", errorData);
+        toast.error(`Gagal mengirim email: ${errorData.message}`);
+
+        // Rollback: hapus cluster dan profile yang sudah dibuat
+        await supabase.from('clusters').delete().eq('id', clusterId);
+        await supabase.from('profiles').delete().eq('id', profileId);
+        await supabase.from('user_permissions').delete().eq('id', permissionData.id);
+        await supabase.auth.signOut();
+        return;
+      }
+
+      await supabase.auth.signOut();
       // Success! 
       toast.success("Pendaftaran admin berhasil! Silakan cek email Anda dan klik link konfirmasi untuk langsung ke dashboard admin.");
       
