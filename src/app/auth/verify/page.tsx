@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-export default function AuthVerifyPage() {
+ function AuthVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tempPassword, setTempPassword] = useState("");
@@ -401,5 +401,13 @@ export default function AuthVerifyPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function AuthVerifyPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthVerifyContent />
+    </Suspense>
   );
 }

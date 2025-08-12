@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Edit, X, Search, Plus } from "lucide-react";
+import { Eye, Edit, X, Search, Plus, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -14,122 +14,162 @@ import {
   TableBody,
 } from "@/components/ui/table";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-  PaginationNext,
-} from "@/components/ui/pagination";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { useState } from "react";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { SingleDatePicker } from "@/components/input/singleDatePicker";
+import { useState, useEffect, useCallback } from "react";
 import { PreviewImage } from "@/components/modal/previewImage";
-import { ChooseFile } from "@/components/input/chooseFile";
-import Image from "next/image";
 import FilterComponent, {
   FilterState,
 } from "@/components/filter/filterComponent";
-type PengeluaranItem = {
-  id: number;
-  tanggal: string;
-  pengeluaran: string;
-  kategori: string;
-  nominal: string;
-  metode: string;
-  buktiPembayaran: string;
-  keterangan: string;
-};
+import { AccountType, Ledger, LedgerType } from "@/types/ledger";
+import { useLedger } from "@/hooks/useLedger";
+import PaginationComponent from "../../transaksi-warga/components/PaginationComponent";
+import CreateExpenseDrawer from "./CreateExpenseDrawer";
+import { ledgerService } from "@/services/ledgerService";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserPermission } from "@/hooks/useUserPermission";
+import { UserPermissions } from "@/types/user_permissions";
+import Image from "next/image";
+import { ExpenseForm } from "./CreateExpenseDrawer";
 
-export default function Pengeluaran() {
+
+interface PengeluaranProps {
+  profile: { id: string; fullname: string; email: string } | null;
+}
+
+export default function Pengeluaran({ profile }: PengeluaranProps)  {
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [transferReceiptModalOpen, setTransferReceiptModalOpen] =
-    useState(false);
-  const [selectedUser, setSelectedUser] = useState<PengeluaranItem | null>(
-    null
-  );
+  const [transferReceiptModalOpen, setTransferReceiptModalOpen] = useState(false);
+  const [selectedLedger, setSelectedLedger] = useState<Ledger | null>(null);
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<PengeluaranItem | null>(
-    null
-  );
+  const [editingExpense, setEditingExpense] = useState<Ledger | null>(null);
+  const { ledgers, loading, fetchLedgers } = useLedger();
+  const { clusterId } = useAuth();
+  const { getUserPermissionByProfileId } = useUserPermission();
   const [filters, setFilters] = useState<FilterState>({
     dateFrom: undefined,
     dateTo: undefined,
     status: "",
   });
-
-  const [expenseForm, setExpenseForm] = useState({
-    tanggal: undefined as Date | undefined,
-    kategori: "",
-    keterangan: "",
-    nominal: "",
-    dibayarkanOleh: "",
-    metodeBayar: "",
-    buktiPembayaran: null as File | null,
+  const [userPermission, setUserPermission] = useState<UserPermissions>({
+    id: "",
+    profile_id: "",
+    role: "",
+    created_at: "",
+    updated_at: "",
+    user_id: "",
+    cluster_id: "",
+    user_status: "",
+    profile: {
+      id: "",
+      fullname: "",
+      email: "",
+      no_telp: "",
+      address: "",
+      house_type: "",
+      house_number: "",
+      ownership_status: "",
+      head_of_family: "",
+      emergency_job: "",
+      moving_date: "",
+      citizen_status: "",
+      created_at: "",
+      updated_at: "",
+      file_ktp: "",
+      file_kk: "",
+      emergency_telp: "",
+      work: "",
+    },
   });
 
-  // Determine if we're in edit mode
-  const isEditMode = editingExpense !== null;
+  const getUserPermission = useCallback(async () => {
+    if (profile?.id) {
+      const userPermission = await getUserPermissionByProfileId(profile.id);
+      setUserPermission(userPermission);
+    }
+  }, [profile?.id]);
 
-  // Sample data for Pengeluaran (Expense)
-  const pengeluaranData: PengeluaranItem[] = [
-    {
-      id: 1,
-      tanggal: "2025-07-06",
-      pengeluaran: "Mathew Alexander",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Bayar gaji satpam",
-    },
-    {
-      id: 2,
-      tanggal: "2025-07-06",
-      pengeluaran: "William Kim",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Bayar gaji satpam",
-    },
-    {
-      id: 3,
-      tanggal: "2025-07-06",
-      pengeluaran: "Jackon Lee",
-      kategori: "Iuran RT",
-      nominal: "Rp120.000",
-      metode: "Transfer",
-      buktiPembayaran: "Lihat Bukti Transfer",
-      keterangan: "Bayar gaji satpam",
-    },
-  ];
+  // Ambil user permission saat komponen mount atau profile berubah
+  useEffect(() => {
+    getUserPermission();
+  }, [getUserPermission]);
 
-  const handleViewDetail = (item: PengeluaranItem) => {
-    setSelectedUser(item);
+  // Reset pagination ketika search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Filter dan search state
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+    dateFrom: undefined,
+    dateTo: undefined,
+    status: "",
+  });
+  
+  // Filter data berdasarkan search term dan applied filters
+  const getFilteredLedgers = () => {
+    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.EXPENSE);
+    
+    // Search filter - search di semua kolom kecuali tanggal dan bukti bayar
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(ledger => {
+        const searchableFields = [
+          ledger.invoice?.user_permission?.profile.fullname || '',
+          ledger.coa?.name || '',
+          ledger.amount?.toString() || '',
+          ledger.invoice?.payment_method || '',
+          ledger.description || '',
+        ];
+        
+        return searchableFields.some(field => 
+          field.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    // Date filter
+    if (appliedFilters.dateFrom) {
+      filtered = filtered.filter(ledger => {
+        const ledgerDate = new Date(ledger.date);
+        return ledgerDate >= appliedFilters.dateFrom!;
+      });
+    }
+    
+    if (appliedFilters.dateTo) {
+      filtered = filtered.filter(ledger => {
+        const ledgerDate = new Date(ledger.date);
+        return ledgerDate <= appliedFilters.dateTo!;
+      });
+    }
+    
+    return filtered;
+  };
+  
+  const filteredLedgers = getFilteredLedgers();
+  const totalItems = filteredLedgers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentLedgers = filteredLedgers.slice(startIndex, endIndex);
+
+  const handleViewDetail = (item: Ledger) => {
+    setSelectedLedger(item);
     setDetailModalOpen(true);
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters(filters);
+    setCurrentPage(1); // Reset ke halaman pertama ketika filter diterapkan
   };
 
   const handleResetFilters = () => {
@@ -138,79 +178,69 @@ export default function Pengeluaran() {
       dateTo: undefined,
       status: "",
     });
+    setAppliedFilters({
+      dateFrom: undefined,
+      dateTo: undefined,
+      status: "",
+    });
+    setCurrentPage(1); // Reset ke halaman pertama ketika filter direset
   };
 
   const handleCreateExpense = () => {
     setEditingExpense(null);
-    // Reset form for new expense
-    setExpenseForm({
-      tanggal: undefined as Date | undefined,
-      kategori: "",
-      keterangan: "",
-      nominal: "",
-      dibayarkanOleh: "",
-      metodeBayar: "",
-      buktiPembayaran: null,
-    });
     setExpenseSheetOpen(true);
   };
 
-  const handleEditExpense = (item: PengeluaranItem) => {
+  const handleEditExpense = (item: Ledger) => {
     setEditingExpense(item);
-    // Pre-fill the form with existing data
-    setExpenseForm({
-      tanggal: new Date(item.tanggal),
-      kategori: item.kategori,
-      keterangan: item.keterangan,
-      nominal: item.nominal.replace("Rp", "").replace(".", ""),
-      dibayarkanOleh: item.pengeluaran,
-      metodeBayar: item.metode.toLowerCase(),
-      buktiPembayaran: null,
-    });
     setExpenseSheetOpen(true);
   };
 
-  const handleSubmitExpense = () => {
-    if (isEditMode) {
-      // Handle form update here
-      console.log(
-        "Updating expense:",
-        expenseForm,
-        "for item:",
-        editingExpense
-      );
-    } else {
-      // Handle form creation here
-      console.log("Creating expense:", expenseForm);
-    }
+  const createLedger = async (expenseData: ExpenseForm): Promise<Ledger> => {
+    try {
+      const ledgerData: Partial<Ledger> & { receipt?: string | File } = {
+        date: expenseData.tanggal,
+        description: expenseData.keterangan,
+        amount: parseFloat(expenseData.nominal),
+        account_type: AccountType.EXPENSE,
+        coa_id: "c1a4073d-5b8e-4bc4-adf0-290b58194d2f",
+        cluster_id: clusterId || "",
+        user_id: userPermission.id,
+        ledger_type: LedgerType.DEBIT,
+        receipt: expenseData.buktiPembayaran as string, // This can be File or string
+      };
 
-    setExpenseSheetOpen(false);
-    setEditingExpense(null);
-    // Reset form
-    setExpenseForm({
-      tanggal: undefined as Date | undefined,
-      kategori: "",
-      keterangan: "",
-      nominal: "",
-      dibayarkanOleh: "",
-      metodeBayar: "",
-      buktiPembayaran: null,
-    });
+      const createdLedger = await ledgerService.createLedger(ledgerData as Ledger & { receipt?: string | File });
+      toast.success("Pengeluaran berhasil dibuat");
+      await fetchLedgers(); // Refresh data
+      return createdLedger;
+    } catch (error) {
+      console.error('Error creating ledger:', error);
+      const errorMessage = error instanceof Error ? error.message : "Gagal membuat pengeluaran";
+      toast.error(errorMessage);
+      throw error;
+    }
   };
 
-  const handleSheetClose = () => {
-    setExpenseSheetOpen(false);
-    setEditingExpense(null);
-    // Reset form when closing
-    setExpenseForm({
-      tanggal: undefined as Date | undefined,
-      kategori: "",
-      keterangan: "",
-      nominal: "",
-      dibayarkanOleh: "",
-      metodeBayar: "",
-      buktiPembayaran: null,
-    });
+  const updateLedger = async (id: string, expenseData: ExpenseForm): Promise<Ledger> => {
+    try {
+      const ledgerData: Partial<Ledger> & { receipt?: string | File } = {
+        date: expenseData.tanggal,
+        description: expenseData.keterangan,
+        amount: parseFloat(expenseData.nominal),
+        receipt: expenseData.buktiPembayaran as string, // This can be File or string
+      };
+
+      const updatedLedger = await ledgerService.updateLedger(id, ledgerData as Ledger & { receipt?: string | File });
+      toast.success("Pengeluaran berhasil diupdate");
+      await fetchLedgers(); // Refresh data
+      return updatedLedger;
+    } catch (error) {
+      console.error('Error updating ledger:', error);
+      const errorMessage = error instanceof Error ? error.message : "Gagal mengupdate pengeluaran";
+      toast.error(errorMessage);
+      throw error;
+    }
   };
 
   return (
@@ -232,7 +262,7 @@ export default function Pengeluaran() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Cari berdasarkan nama, nomor rumah, dll"
+                  placeholder="Cari berdasarkan nama, kategori, nominal, dll"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 w-80"
@@ -241,21 +271,9 @@ export default function Pengeluaran() {
               <FilterComponent
                 filters={filters}
                 setFilters={(filters) => setFilters(filters)}
-                handleApplyFilters={() => {}}
+                handleApplyFilters={handleApplyFilters}
                 handleResetFilters={handleResetFilters}
               />
-              <Sheet
-                open={expenseSheetOpen}
-                onOpenChange={() => {
-                  if (expenseSheetOpen) {
-                    setExpenseSheetOpen(false);
-                    handleSheetClose();
-                  } else {
-                    setExpenseSheetOpen(true);
-                  }
-                }}
-              >
-                <SheetTrigger asChild>
                   <Button
                     size="sm"
                     className="bg-black text-white hover:bg-black/90"
@@ -264,203 +282,16 @@ export default function Pengeluaran() {
                     <Plus className="h-4 w-4 mr-2" />
                     Tambah Pengeluaran
                   </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[400px] sm:w-[500px]">
-                  <SheetHeader className="pb-6">
-                    <div className="flex items-center justify-between">
-                      <SheetTitle className="text-xl font-bold">
-                        {isEditMode ? "Edit Pengeluaran" : "Tambah Pengeluaran"}
-                      </SheetTitle>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {isEditMode
-                        ? "Edit detail pengeluaran untuk memperbarui transaksi kas keluar dari keuangan RT."
-                        : "Isi detail pengeluaran untuk mencatat transaksi kas keluar dari keuangan RT."}
-                    </p>
-                  </SheetHeader>
-
-                  <div className="space-y-6 px-4">
-                    {/* Date Field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="tanggal" className="text-sm font-medium">
-                        Tanggal *
-                      </Label>
-
-                      <SingleDatePicker
-                        id="tanggal"
-                        value={expenseForm.tanggal}
-                        onChange={(date) => {
-                          setExpenseForm({
-                            ...expenseForm,
-                            tanggal: date,
-                          });
-                        }}
-                        buttonClassName="w-full"
-                      />
-                    </div>
-
-                    {/* Category Field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="kategori" className="text-sm font-medium">
-                        Kategori *
-                      </Label>
-                      <Select
-                        value={expenseForm.kategori}
-                        onValueChange={(value) =>
-                          setExpenseForm({ ...expenseForm, kategori: value })
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue
-                            placeholder={
-                              isEditMode ? "Pilih kategori" : "Iuran"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Iuran RT">Iuran RT</SelectItem>
-                          <SelectItem value="Keamanan">Keamanan</SelectItem>
-                          <SelectItem value="Kebersihan">Kebersihan</SelectItem>
-                          <SelectItem value="Perbaikan">Perbaikan</SelectItem>
-                          <SelectItem value="Lainnya">Lainnya</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Description Field */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="keterangan"
-                        className="text-sm font-medium"
-                      >
-                        Keterangan *
-                      </Label>
-                      <Input
-                        id="keterangan"
-                        placeholder={
-                          isEditMode
-                            ? "Deskripsi pengeluaran"
-                            : "Mathew Alexander"
-                        }
-                        value={expenseForm.keterangan}
-                        onChange={(e) =>
-                          setExpenseForm({
-                            ...expenseForm,
-                            keterangan: e.target.value,
-                          })
-                        }
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Amount Field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="nominal" className="text-sm font-medium">
-                        Nominal *
-                      </Label>
-                      <Input
-                        id="nominal"
-                        placeholder={isEditMode ? "120000" : "1660906378"}
-                        value={expenseForm.nominal}
-                        onChange={(e) =>
-                          setExpenseForm({
-                            ...expenseForm,
-                            nominal: e.target.value,
-                          })
-                        }
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Paid By Field */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="dibayarkanOleh"
-                        className="text-sm font-medium"
-                      >
-                        Dibayarkan Oleh *
-                      </Label>
-                      <Input
-                        id="dibayarkanOleh"
-                        placeholder={
-                          isEditMode ? "Nama pembayar" : "1660906378"
-                        }
-                        value={expenseForm.dibayarkanOleh}
-                        onChange={(e) =>
-                          setExpenseForm({
-                            ...expenseForm,
-                            dibayarkanOleh: e.target.value,
-                          })
-                        }
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Payment Method Field */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="metodeBayar"
-                        className="text-sm font-medium"
-                      >
-                        Metode Bayar *
-                      </Label>
-                      <Select
-                        value={expenseForm.metodeBayar}
-                        onValueChange={(value) =>
-                          setExpenseForm({ ...expenseForm, metodeBayar: value })
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue
-                            placeholder={isEditMode ? "Pilih metode" : "Iuran"}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="transfer">Transfer</SelectItem>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="e-wallet">E-Wallet</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* File Upload Field */}
-                    <div className="space-y-2">
-                      <ChooseFile
-                        onChange={(file) => {
-                          setExpenseForm({
-                            ...expenseForm,
-                            buktiPembayaran: file,
-                          });
-                        }}
-                      />
-                    </div>
-
-                    {/* Submit Button */}
-                    <div className="pt-6 flex justify-end">
-                      <Button
-                        onClick={handleSubmitExpense}
-                        className="w-fit bg-black text-white hover:bg-black/90"
-                      >
-                        {isEditMode ? (
-                          <>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Update Pengeluaran
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Buat Pengeluaran
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : (
+            <>
           <Table>
             <TableHeader>
               <TableRow>
@@ -472,43 +303,40 @@ export default function Pengeluaran() {
                 <TableHead>Keterangan</TableHead>
                 <TableHead>Nominal</TableHead>
                 <TableHead>Dibayarkan Oleh</TableHead>
-                <TableHead>Metode</TableHead>
                 <TableHead>Bukti Pembayaran</TableHead>
+                    <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pengeluaranData.map((item) => (
+                  {currentLedgers.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <input type="checkbox" className="rounded" />
                   </TableCell>
-                  <TableCell className="font-medium">{item.tanggal}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
+                      </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
                       className="text-xs font-semibold rounded-full"
                     >
-                      {item.kategori}
+                          {item.coa?.name || '-'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{item.keterangan}</TableCell>
-                  <TableCell className="font-medium">{item.nominal}</TableCell>
-                  <TableCell>{item.pengeluaran}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-semibold rounded-full"
-                    >
-                      {item.metode}
-                    </Badge>
-                  </TableCell>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell className="font-medium">{item.amount}</TableCell>
+                      <TableCell>{item.user_permission?.profile.fullname || '-'}</TableCell>
                   <TableCell>
                     <Button
                       variant="link"
                       className="p-0 h-auto text-black underline"
-                      onClick={() => setTransferReceiptModalOpen(true)}
+                      onClick={() => {
+                        setSelectedLedger(item)
+                        setTransferReceiptModalOpen(true)
+                      }}
                     >
-                      {item.buktiPembayaran}
+                          Lihat Bukti Transfer
                     </Button>
                   </TableCell>
                   <TableCell className="max-w-[50px]">
@@ -535,46 +363,20 @@ export default function Pengeluaran() {
           </Table>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-6">
-            <p className="text-sm text-muted-foreground">
-              Menampilkan 8 dari 112 List Warga
-            </p>
-            <div className="w-fit">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious href="#" />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#" isActive>
-                      1
-                    </PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">2</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">3</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">8</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">9</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink href="#">10</PaginationLink>
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext href="#" />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <div className="mt-6">
+                <PaginationComponent
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  onPageChange={(page) => setCurrentPage(page)}
+                  itemLabel="Pengeluaran"
+                />
             </div>
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -596,7 +398,7 @@ export default function Pengeluaran() {
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto pt-0 p-6">
-            {selectedUser && (
+            {selectedLedger && (
               <div className="grid grid-cols-2 gap-8">
                 {/* Left Column - Expense Details */}
                 <div className="space-y-6">
@@ -604,16 +406,14 @@ export default function Pengeluaran() {
                     <div>
                       <label className="text-sm text-gray-500">Tanggal</label>
                       <p className="text-base font-medium text-black">
-                        {new Date(selectedUser.tanggal).toLocaleDateString(
-                          "id-ID"
-                        )}
+                        {selectedLedger.date ? new Date(selectedLedger.date).toLocaleDateString("id-ID") : '-'}
                       </p>
                     </div>
 
                     <div>
                       <label className="text-sm text-gray-500">Kategori</label>
                       <p className="text-base font-medium text-black">
-                        {selectedUser.kategori}
+                        {selectedLedger.coa?.name || '-'}
                       </p>
                     </div>
 
@@ -622,14 +422,14 @@ export default function Pengeluaran() {
                         Keterangan
                       </label>
                       <p className="text-base font-medium text-black">
-                        {selectedUser.keterangan}
+                        {selectedLedger.description}
                       </p>
                     </div>
 
                     <div>
                       <label className="text-sm text-gray-500">Nominal</label>
                       <p className="text-base font-medium text-black">
-                        {selectedUser.nominal}
+                        {selectedLedger.amount}
                       </p>
                     </div>
                   </div>
@@ -642,14 +442,7 @@ export default function Pengeluaran() {
                       Dibayarkan oleh
                     </label>
                     <p className="text-base font-medium text-black">
-                      {selectedUser.pengeluaran}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-500">Metode</label>
-                    <p className="text-base font-medium text-black">
-                      {selectedUser.metode}
+                      {selectedLedger?.user_permission?.profile.fullname || '-'}
                     </p>
                   </div>
                   <div>
@@ -657,10 +450,11 @@ export default function Pengeluaran() {
                     <div className="mt-2">
                       <div className="w-full h-80 relative rounded-lg overflow-hidden bg-gray-50 border">
                         <Image
-                          src="/images/bukti-pembayaran.png"
+                          src={selectedLedger?.receipt}
                           alt="Bukti Pembayaran"
-                          fill
-                          className="object-contain"
+                          className="w-full h-full object-contain"
+                          width={100}
+                          height={100}
                         />
                       </div>
                     </div>
@@ -671,21 +465,25 @@ export default function Pengeluaran() {
           </div>
         </DialogContent>
       </Dialog>
+
       {/* Preview Image Modal */}
       <PreviewImage
         open={transferReceiptModalOpen}
         onOpenChange={setTransferReceiptModalOpen}
         title="Bukti Transfer Bank"
-        imageSrc={
-          selectedUser?.buktiPembayaran === "Lihat Bukti Transfer"
-            ? "/images/bukti-pembayaran.png"
-            : undefined
-        }
-        imageAlt={`Bukti Transfer Bank - ${
-          selectedUser?.pengeluaran || "Payment"
-        }`}
+        imageSrc={selectedLedger?.receipt}
+        imageAlt={`Bukti Transfer Bank - ${selectedLedger?.invoice?.user_permission?.profile.fullname || "Payment"}`}
       />
-      {/* Edit Expense Sheet - REMOVED, using single sheet above */}
+
+      {/* Create/Edit Expense Drawer */}
+      <CreateExpenseDrawer
+        open={expenseSheetOpen}
+        onOpenChange={setExpenseSheetOpen}
+        editingExpense={editingExpense}
+        createLedger={createLedger}
+        updateLedger={updateLedger}
+        userPermission={userPermission}
+      />
     </div>
   );
 }

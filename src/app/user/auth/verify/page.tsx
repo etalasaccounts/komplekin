@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -18,7 +18,7 @@ import { authService } from "@/services/auth";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-export default function VerifyTempPasswordPage() {
+function VerifyTempPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tempPassword, setTempPassword] = useState("");
@@ -355,5 +355,13 @@ export default function VerifyTempPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function VerifyTempPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyTempPasswordContent />
+    </Suspense>
   );
 }

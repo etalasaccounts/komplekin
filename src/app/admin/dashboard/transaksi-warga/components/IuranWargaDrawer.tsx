@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useIuran } from "@/hooks/useIuran"
 import { useUserPermission } from "@/hooks/useUserPermission"
 import { CreateIuranRequest, UpdateIuranRequest, Iuran } from "@/types/iuran"
@@ -60,7 +60,7 @@ export default function IuranWargaDrawer({
         [userPermissions, clusterId]
     );
 
-    const populateEditForm = async () => {
+    const populateEditForm = useCallback(async () => {
         if (editMode && editingIuran) {
             try {
                 const profileNames = userPermissionsByCluster
@@ -81,11 +81,11 @@ export default function IuranWargaDrawer({
                 console.error("Error populating edit form:", error);
             }
         }
-    };
+    }, [editMode, editingIuran, userPermissionsByCluster]);
 
     useEffect(() => {
         populateEditForm();
-    }, [editMode, editingIuran, userPermissionsByCluster]);
+    }, [populateEditForm]);
 
     const handleCreateIuran = async () => {
         if (!newPaymentForm.name.length || !newPaymentForm.dueDate.trim() || !newPaymentForm.amount || !newPaymentForm.nama_iuran || !newPaymentForm.startDate || !newPaymentForm.endDate) {
