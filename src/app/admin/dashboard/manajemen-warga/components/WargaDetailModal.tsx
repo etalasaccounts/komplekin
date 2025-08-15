@@ -319,7 +319,6 @@ export default function WargaDetailModal({
       setFotoKTPFile(null);
       setFotoKKFile(null);
 
-      
       // Refresh data to show updated information
       if (refetch) {
         setTimeout(() => {
