@@ -117,7 +117,7 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
   
   // Filter data berdasarkan search term dan applied filters
   const getFilteredLedgers = () => {
-    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.EXPENSE);
+    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.EXPENSE && ledger.cluster_id === clusterId);
     
     // Search filter - search di semua kolom kecuali tanggal dan bukti bayar
     if (searchTerm.trim()) {
@@ -167,8 +167,8 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
     setDetailModalOpen(true);
   };
 
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters);
+  const handleApplyFilters = (newFilters: FilterState) => {
+    setAppliedFilters(newFilters);
     setCurrentPage(1); // Reset ke halaman pertama ketika filter diterapkan
   };
 
@@ -273,6 +273,7 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
                 setFilters={(filters) => setFilters(filters)}
                 handleApplyFilters={handleApplyFilters}
                 handleResetFilters={handleResetFilters}
+                hasUnappliedChanges={JSON.stringify(filters) !== JSON.stringify(appliedFilters)}
               />
                   <Button
                     size="sm"
