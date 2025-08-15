@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
       to: [email],
-      subject: `Pengingat Tagihan #${invoiceNumber} - KomplekIn`,
+      subject: `Pengingat Tagihan - KomplekIn`,
       html: InvoiceReminderEmailTemplate({ userName, invoiceNumber, amount, dueDate }),
     });
 
