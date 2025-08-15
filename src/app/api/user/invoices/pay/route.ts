@@ -125,10 +125,15 @@ export async function POST(request: NextRequest) {
     const newAmountPaid = (invoice.amount_paid || 0) + paymentAmountNum;
     const billAmount = invoice.bill_amount;
 
-    let invoiceStatus = "Kurang bayar";
+    // Determine invoice status based on payment amount vs bill amount
+    let invoiceStatus = "Kurang Bayar"; // Default to partial payment
     if (newAmountPaid >= billAmount) {
       invoiceStatus = "Lunas";
     }
+
+    console.log(
+      `Payment calculation: Amount paid: ${newAmountPaid}, Bill amount: ${billAmount}, Status: ${invoiceStatus}`
+    );
 
     const { error: updateError } = await supabaseAdmin
       .from("invoices")

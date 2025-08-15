@@ -6,7 +6,7 @@ export interface ProfileData {
   email: string;
   no_telp: string;
   address: string;
-  house_type: string;
+  house_number: string;
   ownership_status: string;
   photo?: string;
   citizen_status: string;

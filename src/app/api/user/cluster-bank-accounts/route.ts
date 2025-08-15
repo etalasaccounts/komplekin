@@ -45,10 +45,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all cluster bank accounts
+    // Get user_id from user_permissions table to find cluster_id
+    const { data: userPermissions, error: permissionsError } =
+      await supabaseAdmin
+        .from("user_permissions")
+        .select("cluster_id")
+        .eq("user_id", user.id)
+        .single();
+
+    if (permissionsError || !userPermissions) {
+      console.error("Error fetching user permissions:", permissionsError);
+      return NextResponse.json(
+        { success: false, error: "User permissions not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch cluster bank accounts filtered by user's cluster_id
     const { data: bankAccounts, error: bankAccountsError } = await supabaseAdmin
       .from("cluster_bank_account")
       .select("*")
+      .eq("cluster_id", userPermissions.cluster_id)
       .order("bank_name", { ascending: true });
 
     if (bankAccountsError) {

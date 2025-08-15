@@ -11,7 +11,7 @@ export interface OriginalInvoiceData {
   payment_method: string | null;
   receipt: string | null;
   payment_purpose: string;
-  invoice_status: "Kurang bayar" | "Belum Bayar" | "Lunas";
+  invoice_status: "Kurang Bayar" | "Belum Bayar" | "Lunas";
   verification_status: "Belum dicek" | "Ditolak" | "Terverifikasi";
   created_at: string;
   updated_at: string;
