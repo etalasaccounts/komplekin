@@ -10,6 +10,7 @@ import { Invoice, InvoiceStatus, VerificationStatus } from "@/types/invoice";
 import { useProfiles } from "@/hooks/useProfiles"
 import { useUserPermission } from "@/hooks/useUserPermission"
 import { toast } from "sonner"
+import { useAuth } from "@/hooks/useAuth"
 
 type ManualPaymentForm = {
   name: string;
@@ -43,8 +44,8 @@ export default function ManualPaymentSheet({
   createManualPayment,
 }: ManualPaymentSheetProps) {
   const { profiles } = useProfiles();
-  const { getUserPermissionByProfileId } = useUserPermission();
-  
+  const { getUserPermissionByProfileId, userPermissions } = useUserPermission();
+  const { clusterId } = useAuth();
   const handleSubmit = async () => {
     if (form.name === "" || form.period === "" || form.date === undefined || form.paidAmount === "" || form.paymentMethod === "" || form.proofPayment === null) {
       toast.error("Harap isi semua field yang dibutuhkan")
@@ -112,9 +113,9 @@ export default function ManualPaymentSheet({
                 <SelectValue placeholder="Pilih Warga" />
               </SelectTrigger>
               <SelectContent>
-                {profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.fullname}>
-                    {profile.fullname}
+                {userPermissions.filter(userPermission => userPermission.cluster_id === clusterId).map((userPermission) => (
+                  <SelectItem key={userPermission.id} value={userPermission.profile.fullname}>
+                    {userPermission.profile.fullname}
                   </SelectItem>
                 ))}
               </SelectContent>

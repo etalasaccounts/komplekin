@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     // Unpaid invoices hanya termasuk yang belum ada pembayaran sama sekali
     const unpaidInvoices = invoices.filter(
-      (invoice) => invoice.invoice_status === "Belum Bayar"
+      (invoice) =>
+        invoice.invoice_status === "Belum Bayar"
     );
 
     const paidInvoices = invoices.filter(

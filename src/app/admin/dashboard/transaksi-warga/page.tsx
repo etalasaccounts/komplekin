@@ -18,6 +18,7 @@ import { InvoiceStatus, VerificationStatus } from "@/types/invoice";
 import { toast } from "sonner";
 import IuranContainer from "./components/IuranContainer";
 import IuranWargaDrawer from "./components/IuranWargaDrawer";
+import { useAuth } from "@/hooks/useAuth";
 
 const paymentStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
@@ -52,6 +53,10 @@ export default function TransaksiWargaPage() {
   });
 
   const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
+  const { clusterId } = useAuth();
+
+  const invoicesByCluster = invoices.filter((invoice) => invoice.cluster_id === clusterId);
+  const paidInvoicesByCluster = paidInvoices.filter((invoice) => invoice.cluster_id === clusterId);
   
   const { iuran: iuranList } = useIuran();
 
@@ -92,11 +97,11 @@ export default function TransaksiWargaPage() {
   const filteredInvoices = useMemo(() => {
     console.log('Filtering invoices with:', {
       appliedFilters,
-      totalInvoices: invoices.length,
+      totalInvoices: invoicesByCluster.length,
       iuranFilter: appliedFilters.iuran
     });
     
-    return invoices.filter((invoice) => {
+    return invoicesByCluster.filter((invoice) => {
       if (appliedFilters.dateFrom && invoice.payment_date) {
         const paymentDate = new Date(invoice.payment_date);
         if (paymentDate < appliedFilters.dateFrom) return false;
@@ -128,10 +133,10 @@ export default function TransaksiWargaPage() {
 
       return true;
     });
-  }, [invoices, appliedFilters]);
+  }, [invoicesByCluster, appliedFilters]);
 
   const filteredPaidInvoices = useMemo(() => {
-    return paidInvoices.filter((invoice) => {
+    return paidInvoicesByCluster.filter((invoice) => {
       if (appliedFilters.dateFrom && invoice.payment_date) {
         const paymentDate = new Date(invoice.payment_date);
         if (paymentDate < appliedFilters.dateFrom) return false;
@@ -164,7 +169,7 @@ export default function TransaksiWargaPage() {
 
       return true;
     });
-  }, [paidInvoices, appliedFilters]);
+  }, [paidInvoicesByCluster, appliedFilters]);
 
   const handleApplyFilters = (newFilters: FilterState) => {
     setAppliedFilters(newFilters);

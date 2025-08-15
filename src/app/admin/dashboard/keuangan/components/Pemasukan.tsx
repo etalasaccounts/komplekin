@@ -22,8 +22,10 @@ import { AccountType, Ledger } from "@/types/ledger";
 import { useLedger } from "@/hooks/useLedger";
 import DetailLedgerModal from "./DetailLedgerModal";
 import PaginationComponent from "../../transaksi-warga/components/PaginationComponent";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Pemasukan() {
+  const { clusterId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [transferReceiptModalOpen, setTransferReceiptModalOpen] =
@@ -54,7 +56,7 @@ export default function Pemasukan() {
   
   // Filter data berdasarkan search term dan applied filters
   const getFilteredLedgers = () => {
-    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.REVENUE);
+    let filtered = ledgers.filter(ledger => ledger.account_type === AccountType.REVENUE && ledger.invoice.cluster_id === clusterId);
     
     // Search filter - search di semua kolom kecuali tanggal dan bukti bayar
     if (searchTerm.trim()) {
@@ -104,8 +106,8 @@ export default function Pemasukan() {
     setDetailModalOpen(true);
   };
 
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters);
+  const handleApplyFilters = (newFilters: FilterState) => {
+    setAppliedFilters(newFilters);
     setCurrentPage(1); // Reset ke halaman pertama ketika filter diterapkan
   };
 
@@ -153,6 +155,7 @@ export default function Pemasukan() {
                 setFilters={(filters) => setFilters(filters)}
                 handleApplyFilters={handleApplyFilters}
                 handleResetFilters={handleResetFilters}
+                hasUnappliedChanges={JSON.stringify(filters) !== JSON.stringify(appliedFilters)}
               />
             </div>
           </div>

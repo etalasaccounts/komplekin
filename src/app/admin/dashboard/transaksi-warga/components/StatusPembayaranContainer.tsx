@@ -76,11 +76,50 @@ export default function StatusPembayaran({
     setDetailModalOpen(true);
   };
 
-  const handleReminder = () => {
-    toast.success("Notifikasi Terkirim", {
-      description: "Warga telah menerima pengingat untuk membayar tagihan.",
-      duration: 3000,
-    });
+  const handleReminder = async (invoice: Invoice) => {
+    try {
+      // Show loading toast
+      const loadingToast = toast.loading("Mengirim reminder...", {
+        duration: Infinity,
+      });
+
+      const response = await fetch('/api/send-email/invoice-reminder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userName: invoice.user_permission?.profile?.fullname || 'Warga',
+          invoiceNumber: invoice.id,
+          amount: invoice.bill_amount?.toLocaleString('id-ID') || '0',
+          dueDate: invoice.due_date,
+          email: invoice.user_permission?.profile?.email,
+        }),
+      });
+
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      if (response.ok) {
+        toast.success("Reminder berhasil dikirim", {
+          description: `Email reminder telah dikirim ke ${invoice.user_permission?.profile?.fullname}`,
+          duration: 3000,
+        });
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to send reminder:', errorData);
+        toast.error("Gagal mengirim reminder", {
+          description: "Terjadi kesalahan saat mengirim email",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleReminder:', error);
+      toast.error("Terjadi kesalahan", {
+        description: "Gagal mengirim reminder",
+        duration: 3000,
+      });
+    }
   };
 
   React.useEffect(() => {
@@ -92,16 +131,16 @@ export default function StatusPembayaran({
       <StatusPembayaranSkeleton />
     ) : (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-lg font-semibold text-foreground">
-            Table Invoice Bulanan
-          </h2>
-          <p className="text-xs font-semibold border border-[#E4E4E7] rounded-full px-2 py-1">
-          Bulan {new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
-          </p>
+              <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <h2 className="text-lg font-semibold text-foreground">
+              Table Invoice Bulanan
+            </h2>
+            <p className="text-xs font-semibold border border-[#E4E4E7] rounded-full px-2 py-1">
+            Bulan {new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
+            </p>
+          </div>
         </div>
-      </div>
 
       <div className="rounded-md border bg-card relative z-0">
         <Table>
@@ -124,9 +163,6 @@ export default function StatusPembayaran({
               </TableHead>
               <TableHead className="text-muted-foreground text-sm font-medium">
                 Nomor Rumah
-              </TableHead>
-              <TableHead className="text-muted-foreground text-sm font-medium">
-                Tipe Rumah
               </TableHead>
               <TableHead className="text-muted-foreground text-sm font-medium">
                 Jumlah Bayar              
@@ -157,9 +193,8 @@ export default function StatusPembayaran({
                   <TableCell className="font-medium">
                     {invoice.user_permission?.profile?.fullname}
                   </TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.no_telp || '-'}</TableCell>
+                  <TableCell>{invoice.user_permission?.profile?.email || '-'}</TableCell>
                   <TableCell>{invoice.user_permission?.profile?.house_number || '-'}</TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.house_type || '-'}</TableCell>
                 <TableCell>{invoice.amount_paid || '-'}</TableCell>
                 <TableCell>{invoice.due_date}</TableCell>
                 <TableCell>{invoice.payment_date || '-'}</TableCell>
@@ -192,7 +227,7 @@ export default function StatusPembayaran({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleReminder()}
+                        onClick={() => handleReminder(invoice)}
                       >
                         <Bell className="h-4 w-4" />
                       </Button>

@@ -52,7 +52,7 @@ export async function GET() {
         bill_amount: 150000,
         due_date: "2025-01-31",
         payment_purpose: "Iuran Bulanan Januari 2025",
-        invoice_status: "Belum bayar",
+        invoice_status: "Belum Bayar",
         verification_status: "Belum dicek",
         amount_paid: null,
         payment_date: null,
