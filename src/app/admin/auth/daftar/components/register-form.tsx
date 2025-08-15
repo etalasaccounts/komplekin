@@ -223,6 +223,7 @@ export function RegisterForm({
 
       console.log("Permission created:", permissionData);
 
+
       // Step 5: generate token
       const responseToken = await fetch('/api/admin/generate-email-verification-token', {
         method: 'POST',

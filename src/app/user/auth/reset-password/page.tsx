@@ -31,6 +31,13 @@ function UserResetPasswordPageContent() {
     email: string;
   } | null>(null);
 
+  // Magic link detection from URL params
+  const isMagicLink = searchParams.get('magic_link') === 'true';
+  const isNewUser = searchParams.get('new_user') === 'true';
+  const checkHash = searchParams.get('check_hash') === 'true';
+  const tempVerified = searchParams.get('temp_verified') === 'true';
+  const error = searchParams.get('error');
+
   useEffect(() => {
     // Ambil token dan purpose dari URL
     const urlToken = searchParams.get('token');
