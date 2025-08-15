@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface PreviewImageProps {
   open: boolean;
@@ -16,6 +17,13 @@ interface PreviewImageProps {
   imageSrc?: string | File;
   imageAlt?: string;
   className?: string;
+  showActions?: boolean;
+  onApprove?: () => void;
+  onReject?: () => void;
+  approveLabel?: string;
+  rejectLabel?: string;
+  approveLoading?: boolean;
+  rejectLoading?: boolean;
 }
 
 export function PreviewImage({
@@ -25,6 +33,13 @@ export function PreviewImage({
   imageSrc,
   imageAlt = "Preview image",
   className,
+  showActions = false,
+  onApprove,
+  onReject,
+  approveLabel = "Terima",
+  rejectLabel = "Tolak",
+  approveLoading = false,
+  rejectLoading = false,
 }: PreviewImageProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -96,6 +111,33 @@ export function PreviewImage({
             )}
           </div>
         </div>
+
+        {/* Action Buttons */}
+        {showActions && (
+          <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+            <Button
+              variant="outline"
+              onClick={onReject}
+              disabled={rejectLoading}
+              className="min-w-[100px]"
+            >
+              {rejectLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2" />
+              ) : null}
+              {rejectLabel}
+            </Button>
+            <Button
+              onClick={onApprove}
+              disabled={approveLoading}
+              className="min-w-[100px] bg-green-600 hover:bg-green-700"
+            >
+              {approveLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : null}
+              {approveLabel}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

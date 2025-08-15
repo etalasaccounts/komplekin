@@ -17,7 +17,6 @@ import { Check, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PreviewImage } from "@/components/modal/previewImage";
 import ManualPaymentSheet from "./ManualPaymentSheet";
-import VerificationSheet from "./VerificationSheet";
 import RejectConfirmationDialog from "./RejectConfirmationDialog";
 import { Invoice, InvoiceStatus, VerificationStatus } from "@/types/invoice";
 
@@ -44,7 +43,6 @@ export default function VerifikasiPembayaranContainer({
 }: VerifikasiPembayaranContainerProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [verificationSheetOpen, setVerificationSheetOpen] = useState(false);
   const [manualPaymentSheetOpen, setManualPaymentSheetOpen] = useState(false);
   const [transferReceiptModalOpen, setTransferReceiptModalOpen] =
     useState(false);
@@ -65,11 +63,6 @@ export default function VerifikasiPembayaranContainer({
   });
   const [rejectReason, setRejectReason] = useState("");
   const itemsPerPage = 10;
-  const [verificationForm, setVerificationForm] = useState({
-    tanggalBayar: undefined as Date | undefined,
-    jumlahBayar: "",
-    buktiPembayaran: null as File | null,
-  });
 
   // Reset to first page when search term changes
   React.useEffect(() => {
@@ -123,7 +116,7 @@ export default function VerifikasiPembayaranContainer({
 
   const handleVerificationClick = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    setVerificationSheetOpen(true);
+    setTransferReceiptModalOpen(true);
   };
 
   const handleApprovePayment = async () => {
@@ -135,14 +128,14 @@ export default function VerifikasiPembayaranContainer({
         description: `Pembayaran dari ${updatedInvoice.user_permission?.profile?.fullname} telah disetujui dan diverifikasi.`,
         duration: 3000,
       });
-      setVerificationSheetOpen(false);
+      setTransferReceiptModalOpen(false);
       setSelectedInvoice(null);
     }
   };
 
   const handleRejectPayment = () => {
     setRejectDialogOpen(true);
-    setVerificationSheetOpen(false);
+    setTransferReceiptModalOpen(false);
   };
 
   const handleConfirmReject = async () => {
@@ -155,7 +148,7 @@ export default function VerifikasiPembayaranContainer({
           duration: 3000,
         });
         setRejectDialogOpen(false);
-        setVerificationSheetOpen(false);
+        setTransferReceiptModalOpen(false);
         setSelectedInvoice(null);
         setRejectReason("");
       }
@@ -173,15 +166,7 @@ export default function VerifikasiPembayaranContainer({
     }));
   };
 
-  const updateVerificationForm = (
-    field: string,
-    value: string | Date | File | null | undefined
-  ) => {
-    setVerificationForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+
 
   const handleProofPaymentClick = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -344,10 +329,10 @@ export default function VerifikasiPembayaranContainer({
                 Metode
               </TableHead>
               <TableHead className="text-muted-foreground font-medium">
-                Bukti Bayar
+                Status
               </TableHead>
               <TableHead className="text-muted-foreground font-medium">
-                Status
+                Bukti Bayar
               </TableHead>
               <TableHead className="text-muted-foreground font-medium text-center"></TableHead>
             </TableRow>
@@ -390,6 +375,7 @@ export default function VerifikasiPembayaranContainer({
                   </span>
                   }
                 </TableCell>
+                <TableCell>{getStatusBadge(item.verification_status as string)}</TableCell>
                 <TableCell>
                   {item.invoice_status === InvoiceStatus.PAID 
                   ? 
@@ -406,18 +392,6 @@ export default function VerifikasiPembayaranContainer({
                   </span>
                   }
                   
-                </TableCell>
-                <TableCell>{getStatusBadge(item.verification_status as string)}</TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    variant="link"
-                    className={`h-auto p-0 font-normal text-[#178C4E]`}
-                    size="sm"
-                    onClick={() => handleVerificationClick(item)}
-                  >
-                    <Check className={`h-4 w-4 text-[#178C4E]`} />
-                    Verifikasi
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -446,6 +420,11 @@ export default function VerifikasiPembayaranContainer({
           selectedInvoice?.receipt
         }
         imageAlt={`Bukti Transfer Bank - ${selectedInvoice?.user_permission?.profile?.fullname || "Payment"}`}
+        showActions={true && selectedInvoice?.verification_status === VerificationStatus.NOT_YET_CHECKED}
+        onApprove={handleApprovePayment}
+        onReject={handleRejectPayment}
+        approveLabel="Terima Pembayaran"
+        rejectLabel="Tolak Pembayaran"
       />
 
       {/* Manual Payment Sheet */}
@@ -459,16 +438,7 @@ export default function VerifikasiPembayaranContainer({
         createManualPayment={createManualPayment}
       />
 
-      {/* Verification Sheet */}
-      <VerificationSheet
-        open={verificationSheetOpen}
-        onOpenChange={setVerificationSheetOpen}
-        selectedInvoice={selectedInvoice}
-        form={verificationForm}
-        updateForm={updateVerificationForm}
-        onApprove={handleApprovePayment}
-        onReject={handleRejectPayment}
-      />
+
 
       {/* Reject Confirmation Dialog */}
       <RejectConfirmationDialog
