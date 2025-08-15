@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 
 export interface ClusterBankAccount {
   id: string;
+  cluster_id: string;
   account_name: string;
   account_number: string;
   bank_name: string;

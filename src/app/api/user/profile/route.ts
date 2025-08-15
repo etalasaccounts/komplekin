@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             email,
             no_telp,
             address,
-            house_type,
+            house_number,
             ownership_status,
             photo,
             citizen_status,
@@ -142,7 +142,7 @@ export async function PUT(request: NextRequest) {
     const no_telp = formData.get("no_telp") as string;
     const email = formData.get("email") as string;
     const address = formData.get("address") as string;
-    const house_type = formData.get("house_type") as string;
+    const house_number = formData.get("house_number") as string;
     const ownership_status = formData.get("ownership_status") as string;
     const photo = formData.get("photo") as File | null;
 
@@ -213,7 +213,7 @@ export async function PUT(request: NextRequest) {
       no_telp: string;
       email: string;
       address: string;
-      house_type: string;
+      house_number: string;
       ownership_status: string;
       updated_at: string;
       photo?: string;
@@ -222,7 +222,7 @@ export async function PUT(request: NextRequest) {
       no_telp,
       email,
       address,
-      house_type,
+      house_number,
       ownership_status,
       updated_at: new Date().toISOString(),
     };

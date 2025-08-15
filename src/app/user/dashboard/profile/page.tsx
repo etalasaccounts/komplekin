@@ -36,7 +36,7 @@ export default function ProfilePage() {
     nomorHP: "",
     email: "",
     alamatRumah: "",
-    tipeRumah: "",
+    nomorRumah: "",
     statusKepemilikan: "",
   });
 
@@ -48,7 +48,7 @@ export default function ProfilePage() {
         nomorHP: profile.no_telp || "",
         email: profile.email || "",
         alamatRumah: profile.address || "",
-        tipeRumah: profile.house_type || "",
+        nomorRumah: profile.house_number || "",
         statusKepemilikan: profile.ownership_status || "",
       });
     }
@@ -82,7 +82,7 @@ export default function ProfilePage() {
         formData.append("no_telp", profileData.nomorHP);
         formData.append("email", profileData.email);
         formData.append("address", profileData.alamatRumah);
-        formData.append("house_type", profileData.tipeRumah);
+        formData.append("house_number", profileData.nomorRumah);
         formData.append("ownership_status", profileData.statusKepemilikan);
 
         const success = await updateProfile(formData);
@@ -125,7 +125,7 @@ export default function ProfilePage() {
       formData.append("no_telp", profileData.nomorHP);
       formData.append("email", profileData.email);
       formData.append("address", profileData.alamatRumah);
-      formData.append("house_type", profileData.tipeRumah);
+      formData.append("house_number", profileData.nomorRumah);
       formData.append("ownership_status", profileData.statusKepemilikan);
 
       const success = await updateProfile(formData);
@@ -268,14 +268,14 @@ export default function ProfilePage() {
               </div>
 
               {/* Nomor HP */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="text-sm font-medium">Nomor HP Aktif *</Label>
                 <Input
                   value={profileData.nomorHP}
                   onChange={(e) => handleInputChange("nomorHP", e.target.value)}
                   className="w-full text-sm"
                 />
-              </div>
+              </div> */}
 
               {/* Email */}
               <div className="space-y-2">
@@ -295,7 +295,7 @@ export default function ProfilePage() {
 
             <div className="space-y-4">
               {/* Alamat Rumah */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label className="text-sm font-medium">Alamat Rumah</Label>
                 <Input
                   value={profileData.alamatRumah}
@@ -304,15 +304,15 @@ export default function ProfilePage() {
                   }
                   className="w-full text-sm"
                 />
-              </div>
+              </div> */}
 
-              {/* Tipe Rumah */}
+              {/* Nomor Rumah */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Tipe Rumah</Label>
+                <Label className="text-sm font-medium">Nomor Rumah</Label>
                 <Input
-                  value={profileData.tipeRumah}
+                  value={profileData.nomorRumah}
                   onChange={(e) =>
-                    handleInputChange("tipeRumah", e.target.value)
+                    handleInputChange("nomorRumah", e.target.value)
                   }
                   className="w-full text-sm"
                 />
@@ -335,8 +335,10 @@ export default function ProfilePage() {
                   <SelectContent>
                     <SelectItem value="Sewa">Sewa</SelectItem>
                     <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
+                    <SelectItem value="Milik Orang Tua">
+                      Milik Orang Tua
+                    </SelectItem>
                     <SelectItem value="Kontrak">Kontrak</SelectItem>
-                    <SelectItem value="Kos">Kos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

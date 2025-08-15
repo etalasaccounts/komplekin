@@ -42,6 +42,7 @@ export default function IuranBulananPage() {
     { value: "belum bayar", label: "Belum Bayar" },
     { value: "kurang bayar", label: "Kurang Bayar" },
     { value: "menunggu verifikasi", label: "Menunggu Verifikasi" },
+    { value: "ditolak", label: "Ditolak" },
   ];
 
   const {
@@ -89,20 +90,20 @@ export default function IuranBulananPage() {
     .filter((item) => {
       let matchesFilter = true;
 
-      // Status filter
+      // Status filter - menggunakan includes() untuk menangani status yang kompleks
       if (filters.status && filters.status !== "all") {
         switch (filters.status) {
           case "belum bayar":
-            matchesFilter = item.status === "Belum Bayar";
+            matchesFilter = item.status.includes("Belum Bayar");
             break;
           case "kurang bayar":
-            matchesFilter = item.status === "Kurang bayar";
+            matchesFilter = item.status.includes("Kurang Bayar");
             break;
           case "menunggu verifikasi":
-            // Check if invoice_status = "Lunas" AND verification_status = "Belum dicek"
-            matchesFilter =
-              item.originalData.invoice_status === "Lunas" &&
-              item.originalData.verification_status === "Belum dicek";
+            matchesFilter = item.status.includes("Menunggu Verifikasi");
+            break;
+          case "ditolak":
+            matchesFilter = item.status.includes("Ditolak");
             break;
           default:
             // For any other value, show all
@@ -134,19 +135,20 @@ export default function IuranBulananPage() {
       .filter((item) => {
         let matchesFilter = true;
 
-        // Status filter
+        // Status filter - menggunakan includes() seperti di filteredInvoices
         if (newFilters.status && newFilters.status !== "all") {
           switch (newFilters.status) {
             case "belum bayar":
-              matchesFilter = item.status === "Belum Bayar";
+              matchesFilter = item.status.includes("Belum Bayar");
               break;
             case "kurang bayar":
-              matchesFilter = item.status === "Kurang bayar";
+              matchesFilter = item.status.includes("Kurang Bayar");
               break;
             case "menunggu verifikasi":
-              matchesFilter =
-                item.originalData.invoice_status === "Lunas" &&
-                item.originalData.verification_status === "Belum dicek";
+              matchesFilter = item.status.includes("Menunggu Verifikasi");
+              break;
+            case "ditolak":
+              matchesFilter = item.status.includes("Ditolak");
               break;
             default:
               matchesFilter = true;
@@ -255,17 +257,18 @@ export default function IuranBulananPage() {
                 </div>
                 <p className="text-2xl font-semibold">{item.nominal}</p>
                 <div className="flex items-center justify-end mt-4">
-                  {item.status === "Menunggu Verifikasi" && (
-                    <Button
-                      className="text-sm font-medium rounded-lg"
-                      onClick={() => handleViewDetail(item)}
-                    >
-                      <FileText className="w-4 h-4" />
-                      Lihat Detail
-                    </Button>
-                  )}
+                  {!item.status.includes("Belum Bayar") &&
+                    !item.status.includes("Terlambat") && (
+                      <Button
+                        className="text-sm font-medium rounded-lg"
+                        onClick={() => handleViewDetail(item)}
+                      >
+                        <FileText className="w-4 h-4" />
+                        Lihat Detail
+                      </Button>
+                    )}
                   {(item.status.includes("Terlambat") ||
-                    item.status === "Belum bayar") && (
+                    item.status === "Belum Bayar") && (
                     <Button
                       className="text-sm font-medium rounded-lg"
                       onClick={() => handlePayment(item)}

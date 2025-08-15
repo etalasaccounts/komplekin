@@ -93,6 +93,14 @@ export async function GET(request: NextRequest) {
         } else {
           status = "Ditolak";
         }
+      } else if (invoice.invoice_status === "Kurang Bayar") {
+        if (invoice.verification_status === "Belum dicek") {
+          status = "Kurang Bayar - Menunggu Verifikasi";
+        } else if (invoice.verification_status === "Ditolak") {
+          status = "Kurang Bayar - Ditolak";
+        } else {
+          status = "Kurang Bayar";
+        }
       } else if (isOverdue) {
         status = `Terlambat ${daysDiff} Hari`;
       } else {

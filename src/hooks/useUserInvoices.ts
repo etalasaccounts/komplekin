@@ -11,7 +11,7 @@ interface Invoice {
   payment_method: string | null;
   receipt: string | null;
   payment_purpose: string;
-  invoice_status: "Kurang bayar" | "Belum Bayar" | "Lunas";
+  invoice_status: "Kurang Bayar" | "Belum Bayar" | "Lunas";
   verification_status: "Belum dicek" | "Ditolak" | "Terverifikasi";
 }
 
@@ -19,6 +19,7 @@ interface InvoiceStatistics {
   total: number;
   unpaid: number;
   paid: number;
+  partiallyPaid: number;
   overdue: number;
   totalUnpaidAmount: number;
 }
@@ -37,6 +38,7 @@ export const useUserInvoices = (): UseUserInvoicesReturn => {
     total: 0,
     unpaid: 0,
     paid: 0,
+    partiallyPaid: 0,
     overdue: 0,
     totalUnpaidAmount: 0,
   });

@@ -22,9 +22,9 @@ export interface Invoice {
 }
 
 export enum InvoiceStatus {
-  UNPAID = "Belum bayar",
+  UNPAID = "Belum Bayar",
   PAID = "Lunas",
-  PARTIAL_PAID = "Kurang bayar",
+  PARTIAL_PAID = "Kurang Bayar",
 }
 
 export enum VerificationStatus {

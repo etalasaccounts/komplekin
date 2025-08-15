@@ -76,16 +76,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate statistics
+    // Unpaid invoices hanya termasuk yang belum ada pembayaran sama sekali
     const unpaidInvoices = invoices.filter(
-      (invoice) =>
-        invoice.invoice_status === "Belum bayar" ||
-        invoice.invoice_status === "Kurang bayar"
+      (invoice) => invoice.invoice_status === "Belum Bayar"
     );
 
     const paidInvoices = invoices.filter(
       (invoice) =>
         invoice.invoice_status === "Lunas" &&
         invoice.verification_status === "Terverifikasi"
+    );
+
+    // Invoices dengan pembayaran parsial
+    const partiallyPaidInvoices = invoices.filter(
+      (invoice) => invoice.invoice_status === "Kurang Bayar"
     );
 
     // Find overdue invoices (past due date and not paid)
@@ -102,12 +106,19 @@ export async function GET(request: NextRequest) {
           total: invoices.length,
           unpaid: unpaidInvoices.length,
           paid: paidInvoices.length,
+          partiallyPaid: partiallyPaidInvoices.length,
           overdue: overdueInvoices.length,
-          totalUnpaidAmount: unpaidInvoices.reduce(
-            (sum, invoice) =>
-              sum + (invoice.bill_amount - (invoice.amount_paid || 0)),
-            0
-          ),
+          totalUnpaidAmount: invoices
+            .filter(
+              (invoice) =>
+                invoice.invoice_status === "Belum Bayar" ||
+                invoice.invoice_status === "Kurang Bayar"
+            )
+            .reduce(
+              (sum, invoice) =>
+                sum + (invoice.bill_amount - (invoice.amount_paid || 0)),
+              0
+            ),
         },
       },
     });

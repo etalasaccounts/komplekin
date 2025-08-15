@@ -113,6 +113,26 @@ export default function Pembayaran({
     }
   }, [paymentStep, paymentDetails]);
 
+  // Function to check if payment amount is less than bill amount
+  const isPaymentLessThanBill = () => {
+    if (!paymentForm.jumlahBayar || !paymentForm.totalTagihan) return false;
+
+    const paymentAmount = parseFloat(
+      paymentForm.jumlahBayar
+        .replace("Rp", "")
+        .replace(/\./g, "")
+        .replace(/,/g, "")
+    );
+    const billAmount = parseFloat(
+      paymentForm.totalTagihan
+        .replace("Rp", "")
+        .replace(/\./g, "")
+        .replace(/,/g, "")
+    );
+
+    return paymentAmount < billAmount && paymentAmount > 0;
+  };
+
   // Reset form and step when modal opens
   const handleModalOpen = (isOpen: boolean) => {
     onOpenChange(isOpen);
@@ -345,9 +365,19 @@ export default function Pembayaran({
                     jumlahBayar: e.target.value,
                   })
                 }
-                className="text-sm"
+                className={`text-sm ${
+                  isPaymentLessThanBill()
+                    ? "border-orange-500 focus:border-orange-500 focus:ring-orange-500"
+                    : ""
+                }`}
                 placeholder="Rp100.000"
               />
+              {isPaymentLessThanBill() && (
+                <p className="text-xs text-orange-600 flex items-center gap-1">
+                  ⚠️ Jumlah bayar kurang dari total tagihan. Status akan menjadi
+                  &quot;Kurang Bayar&quot;
+                </p>
+              )}
             </div>
 
             {/* Buttons */}
