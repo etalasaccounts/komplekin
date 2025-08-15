@@ -25,6 +25,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json(
+        { error: 'File harus berupa gambar (JPG, PNG, GIF, dll)' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: 'Ukuran file terlalu besar. Maksimal 5MB' },
+        { status: 400 }
+      );
+    }
+
     // Generate unique filename
     const randomUUID = crypto.randomUUID();
     const fileExtension = file.name.split('.').pop();

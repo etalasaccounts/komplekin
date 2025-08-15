@@ -115,6 +115,11 @@ export const useAuth = () => {
           setLoading(false)
           return { success: false, error: 'User tidak memiliki role yang valid' }
         }
+
+        if (!userPermissions.is_email_verified) {
+          setLoading(false)
+          return { success: false, error: 'Email belum terverifikasi' }
+        }
         
         const redirectPath = userPermissions.role === 'admin' ? '/admin/dashboard' : '/user/dashboard'
         setLoading(false)

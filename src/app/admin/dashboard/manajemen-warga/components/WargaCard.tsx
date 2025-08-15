@@ -52,7 +52,7 @@ const getStatusVariant = (status: string, role: string) => {
   }
 };
 
-const ActionMenu = ({ status, originalId, role, refetch }: { status: string; originalId?: string; role: string; refetch?: () => void }) => {
+const ActionMenu = ({ status, originalId, id,  role, refetch }: { status: string; originalId?: string; id?: number; role: string; refetch?: () => void }) => {
   const currentPath = "/admin/dashboard/manajemen-warga";
   const statusLowerCase = status.toLowerCase();
   const roleLowerCase = role.toLowerCase();
@@ -122,7 +122,7 @@ const ActionMenu = ({ status, originalId, role, refetch }: { status: string; ori
         
         {/* Edit Data Warga - Always available */}
         <DropdownMenuItem asChild>
-          <Link href={`${currentPath}?modal=view&id=${wargaId}&edit=true`} className="cursor-pointer">
+          <Link href={`${currentPath}?modal=view&id=${id}&edit=true`} className="cursor-pointer">
             Edit Data Warga
           </Link>
         </DropdownMenuItem>
@@ -172,7 +172,7 @@ export default function WargaCard({
         <Badge className={`${getStatusVariant(status, role)}`}>
           {role.toLowerCase().includes('admin') ? 'Admin' : status}
         </Badge>
-        <ActionMenu status={status} originalId={originalId} role={role} refetch={refetch} />
+        <ActionMenu status={status} originalId={originalId} id={id} role={role} refetch={refetch} />
       </div>
 
       <div className="flex flex-col items-center text-center space-y-2">

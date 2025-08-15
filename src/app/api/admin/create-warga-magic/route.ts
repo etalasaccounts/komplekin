@@ -22,7 +22,7 @@ export interface CreateWargaMagicData {
   address?: string
   houseType?: string
   houseNumber?: string
-  ownershipStatus?: 'sewa' | 'milik-sendiri' | 'milik-orang-tua' | 'unknown'
+  ownershipStatus?: 'Sewa' | 'Milik Sendiri' | 'Milik Orang Tua'
   headOfFamily?: string
   emergencyJob?: string
   movingDate?: string // Format: YYYY-MM-DD
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       address = '',
       houseType = '',
       houseNumber = '',
-      ownershipStatus = 'unknown',
+      ownershipStatus = '',
       headOfFamily = '',
       emergencyJob = '',
       movingDate,

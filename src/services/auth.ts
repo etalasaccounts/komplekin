@@ -189,13 +189,36 @@ export const authService = {
     return supabase.auth.onAuthStateChange(callback);
   },
 
-  // Reset password
+  // Reset password with custom token verification
   async resetPassword(email: string, isAdmin = false) {
-    const supabase = this.getClient();
-    const nextParam = isAdmin ? "?next=admin" : "?next=user";
-    return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback${nextParam}`,
-    });
+    try {
+      const response = await fetch('/api/auth/send-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, isAdmin })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { 
+          data: null, 
+          error: { message: result.error || 'Failed to send password reset email' } 
+        };
+      }
+
+      return { 
+        data: { message: result.message }, 
+        error: null 
+      };
+    } catch (error) {
+      return {
+        data: null,
+        error: { 
+          message: error instanceof Error ? error.message : 'Unknown error occurred' 
+        }
+      };
+    }
   },
 
   // Update user

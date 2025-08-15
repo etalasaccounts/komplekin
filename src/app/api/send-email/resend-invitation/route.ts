@@ -302,46 +302,10 @@ const TemporaryPasswordEmailTemplate = ({
   `;
 };
 
-// Generate WhatsApp message template
-const generateWhatsAppMessage = (userName: string, email: string, temporaryPassword: string, magicLink: string, clusterName: string, role: string) => {
-  return `
-*Selamat Datang di KomplekIn!*
-
-Halo *${userName}*, akun KomplekIn Anda telah dibuat oleh admin ${clusterName}.
-
-*Detail Akun:*
-- Email: ${email}
-- Password Sementara: *${temporaryPassword}*
-- Role: ${role}
-
-*Link Verifikasi:*
-${magicLink || 'Tidak tersedia'}
-
-*Cara Login:*
-1. Klik link verifikasi di atas
-2. Masukkan password sementara
-3. Buat password baru yang aman
-4. Mulai gunakan aplikasi
-
-PENTING: Link berlaku 24 jam. Segera ganti password setelah login pertama.
-
-Selamat bergabung di komunitas digital komplek!
-  `.trim();
-};
-
 export async function POST(request: Request) {
   try {
     const { userName, email, temporaryPassword, magicLink, clusterName, role } = await request.json();
 
-    // Debug logging
-    console.log('Attempting to send invitation email to:', email);
-    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
-    console.log('RESEND_FROM_EMAIL:', process.env.RESEND_FROM_EMAIL);
-
-    // Generate WhatsApp message for all scenarios
-    const whatsappMessage = generateWhatsAppMessage(userName, email, temporaryPassword, magicLink, clusterName, role);
-
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json({ 
@@ -350,7 +314,6 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Validate required fields
     if (!userName || !temporaryPassword || !magicLink) {
       return NextResponse.json({ 
         success: false, 
@@ -358,17 +321,14 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check if Resend is properly configured
     if (!process.env.RESEND_API_KEY) {
       console.log(`Development mode: No Resend API key, simulating email send to ${email}`);
       
-      // Return success but don't actually send email
       return NextResponse.json({ 
         success: true, 
         development: true,
         message: `Email simulation successful to ${email} - No API key configured`,
         note: 'Configure RESEND_API_KEY to send actual emails',
-        whatsappMessage,
         data: {
           id: 'dev-mock-' + Date.now(),
           email: email
@@ -376,22 +336,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check if this is a test email that should be sent to verified address
-    const isTestEmail = !email.endsWith('@etalas.com');
-
     try {
-      // For testing, if email is not @etalas.com, send to n@etalas.com but keep original email in template
-      const actualToEmail = isTestEmail ? ['n@etalas.com'] : [email];
-      
-      console.log(`Sending email to: ${actualToEmail[0]} (original: ${email})`);
-      
       const { data, error } = await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL || 'KomplekIn <onboarding@resend.dev>',
-        to: actualToEmail,
-        subject: `[${isTestEmail ? 'TEST' : ''}] Selamat Datang di KomplekIn - Akun Warga Baru`,
+        to: [email],
+        subject: `Selamat Datang di KomplekIn - Akun Warga Baru`,
         html: TemporaryPasswordEmailTemplate({ 
           userName, 
-          email, // Keep original email in template
+          email,
           temporaryPassword, 
           magicLink, 
           clusterName: clusterName || 'Komplek Anda', 
@@ -404,32 +356,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ 
           success: false, 
           error: error.message || 'Failed to send email',
-          whatsappMessage,
           details: error
         }, { status: 500 });
       }
 
       console.log('Invitation email sent successfully:', data);
-      
-      const responseMessage = isTestEmail 
-        ? `Email sent successfully to n@etalas.com (test mode for ${email})`
-        : 'Email sent successfully';
-      
+
       return NextResponse.json({ 
         success: true, 
         data,
-        whatsappMessage,
-        isTestEmail,
-        originalEmail: email,
-        actualEmail: actualToEmail[0],
-        message: responseMessage
+        message: 'Email sent successfully'
       });
     } catch (resendError) {
       console.error('Resend service error:', resendError);
       return NextResponse.json({ 
         success: false, 
         error: 'Email service error',
-        whatsappMessage,
         details: resendError instanceof Error ? resendError.message : 'Unknown resend error'
       }, { status: 500 });
     }
@@ -438,7 +380,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
-      whatsappMessage: 'WhatsApp message not available due to unexpected error',
       details: error
     }, { status: 500 });
   }
