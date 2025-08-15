@@ -4,11 +4,7 @@ import { FileText, Plus, Save } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { MultiSelect } from "@/components/ui/multi-select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { MonthYearPicker } from "@/components/ui/month-year-picker"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useIuran } from "@/hooks/useIuran"
 import { useUserPermission } from "@/hooks/useUserPermission"
@@ -48,9 +44,9 @@ export default function IuranWargaDrawer({
     const [isCreating, setIsCreating] = useState(false);
     const [newPaymentForm, setNewPaymentForm] = useState<NewPaymentForm>({
         name: [],
-        dueDate: "",
-        amount: "",
-        nama_iuran: "",
+        dueDate: "5",
+        amount: "250000",
+        nama_iuran: "Iuran",
         startDate: undefined,
         endDate: undefined
       });
@@ -264,13 +260,14 @@ export default function IuranWargaDrawer({
                       }))}
                       selected={newPaymentForm.name}
                       onChange={(selected) => updateNewPaymentForm("name", selected)}
-                      placeholder={"Pilih Warga"} 
+                      placeholder={"Pilih Warga"}
+                      showSelectAll={true}
                     />
                   </div>
 
-                  {/* Pembayaran */}
+                  {/* Nama Iuran */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Pembayaran *</Label>
+                  <Label className="text-sm font-medium">Nama Iuran *</Label>
                   <Input
                     id="nama_iuran"
                     value={newPaymentForm.nama_iuran}
@@ -296,72 +293,26 @@ export default function IuranWargaDrawer({
 
                   <div className="space-y-2">
                     <Label htmlFor="startDate" className="text-sm font-medium">
-                      Tanggal Mulai Iuran *
+                      Bulan & Tahun Mulai Iuran *
                     </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !newPaymentForm.startDate && "text-muted-foreground"
-                          )}
-                          disabled={editMode}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {newPaymentForm.startDate ? (
-                            format(newPaymentForm.startDate, "PPP")
-                          ) : (
-                            <span>Pilih tanggal mulai</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      {!editMode && (
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={newPaymentForm.startDate || undefined}
-                            onSelect={(date) => updateNewPaymentForm("startDate", date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      )}
-                    </Popover>
+                    <MonthYearPicker
+                      value={newPaymentForm.startDate}
+                      onChange={(date) => updateNewPaymentForm("startDate", date)}
+                      placeholder="Pilih bulan & tahun mulai"
+                      disabled={editMode}
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="endDate" className="text-sm font-medium">
-                      Tanggal Akhir Iuran *
+                      Bulan & Tahun Akhir Iuran *
                     </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !newPaymentForm.endDate && "text-muted-foreground"
-                          )}
-                          disabled={editMode}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {newPaymentForm.endDate ? (
-                            format(newPaymentForm.endDate, "PPP")
-                          ) : (
-                            <span>Pilih tanggal akhir</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      {!editMode && (
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={newPaymentForm.endDate || undefined}
-                            onSelect={(date) => updateNewPaymentForm("endDate", date)}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      )}
-                    </Popover>
+                    <MonthYearPicker
+                      value={newPaymentForm.endDate}
+                      onChange={(date) => updateNewPaymentForm("endDate", date)}
+                      placeholder="Pilih bulan & tahun akhir"
+                      disabled={editMode}
+                    />
                   </div>
 
                   <div className="space-y-2">
