@@ -41,7 +41,7 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-const ActionMenu = ({ originalId, refetch }: { originalId?: string; refetch?: () => void }) => {
+const ActionMenu = ({ originalId, profileId, status, refetch }: { originalId?: string; profileId?: string; status?: string; refetch?: () => void }) => {
   const { updateRole, updateCitizenStatus, deleteWarga } = useWargaActions();
 
   const handleMakeAdmin = async () => {
@@ -60,14 +60,12 @@ const ActionMenu = ({ originalId, refetch }: { originalId?: string; refetch?: ()
   };
 
   const handleMarkAsPindah = async () => {
-    if (!originalId) {
-      toast.error('ID warga tidak ditemukan');
+    if (!profileId) {
+      toast.error('Profile ID tidak ditemukan');
       return;
     }
     try {
-      // Note: updateCitizenStatus needs profileId, not user permission ID
-      // This might need to be fixed based on actual implementation
-      await updateCitizenStatus(originalId, 'Pindah');
+      await updateCitizenStatus(profileId, 'Pindah');
       toast.success('Status warga berhasil diubah menjadi Pindah');
       if (refetch) refetch();
     } catch (error) {
@@ -82,14 +80,18 @@ const ActionMenu = ({ originalId, refetch }: { originalId?: string; refetch?: ()
       return;
     }
     try {
-      await deleteWarga(originalId, false); // soft delete
-      toast.success('Warga berhasil dihapus');
+      // Gunakan hard delete untuk menghapus semua data (user_permissions, profiles, auth.users)
+      await deleteWarga(originalId, true);
+      toast.success('Warga berhasil dihapus secara permanen');
       if (refetch) refetch();
     } catch (error) {
       console.error('Error deleting warga:', error);
       toast.error('Gagal menghapus warga');
     }
   };
+
+  // Check if status is already "Pindah"
+  const isPindah = status?.toLowerCase() === 'pindah';
 
   return (
     <DropdownMenu>
@@ -101,7 +103,9 @@ const ActionMenu = ({ originalId, refetch }: { originalId?: string; refetch?: ()
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleMakeAdmin}>Jadikan Admin</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleMarkAsPindah}>Warga Pindah</DropdownMenuItem>
+        {!isPindah && (
+          <DropdownMenuItem onClick={handleMarkAsPindah}>Warga Pindah</DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={handleDeleteWarga} className="text-red-600">Hapus Warga</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -114,9 +118,7 @@ interface StatusWargaTableProps {
 }
 
 export default function StatusWargaTable({ statusWargaData, refetch }: StatusWargaTableProps) {
-  // Debug: Log data yang diterima
-  console.log('StatusWargaTable received data:', statusWargaData);
-  console.log('StatusWargaTable data count:', statusWargaData.length);
+
 
   return (
     <div className="border rounded-lg">
@@ -156,7 +158,7 @@ export default function StatusWargaTable({ statusWargaData, refetch }: StatusWar
               </TableCell>
               <TableCell>{getStatusBadge(item.status)}</TableCell>
               <TableCell>
-                <ActionMenu originalId={item.originalId} refetch={refetch} />
+                <ActionMenu originalId={item.originalId} profileId={item.profileId} status={item.status} refetch={refetch} />
               </TableCell>
             </TableRow>
           ))}

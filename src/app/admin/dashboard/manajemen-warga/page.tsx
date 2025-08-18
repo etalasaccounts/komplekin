@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense, useMemo } from "react";
+import React, { useState, Suspense, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,40 +46,48 @@ const mapWargaDataToComponent = (wargaData: WargaWithProfile[]): (WargaData & { 
     id: index + 1, // Use sequential number for display purposes
     originalId: item.id, // Keep original UUID for database operations
     profileId: item.profile_id, // Add profileId for updates
-    nama: item.profile.fullname,
-    alamat: item.profile.address,
-    kontak: item.profile.no_telp,
-    statusKepemilikan: item.profile.ownership_status,
+    nama: item.profile.fullname || '',
+    alamat: item.profile.address || '',
+    kontak: item.profile.no_telp || '',
+    statusKepemilikan: item.profile.ownership_status || '',
     tanggalTinggal: formatDate(item.profile.moving_date),
     tanggalDaftar: formatDate(item.profile.created_at),
     status: mapStatusToComponent(item.user_status, item.role, item.profile.citizen_status),
     role: mapRoleToComponent(item.role),
-    email: item.profile.email,
-    tipeRumah: item.profile.house_type,
-    kepalaKeluarga: item.profile.head_of_family,
-    kontakDarurat: item.profile.emergency_telp,
-    pekerjaan: item.profile.work || item.profile.emergency_job,
-    fotoKTP: item.profile.file_ktp,
-    fotoKK: item.profile.file_kk,
+    email: item.profile.email || '',
+    tipeRumah: item.profile.house_type || '',
+    kepalaKeluarga: item.profile.head_of_family || '',
+    kontakDarurat: item.profile.emergency_telp || '',
+    pekerjaan: item.profile.work || item.profile.emergency_job || '',
+    fotoKTP: item.profile.file_ktp || '',
+    fotoKK: item.profile.file_kk || '',
   }));
 };
 
-// Helper function untuk format tanggal
+// Helper function untuk format tanggal (fixed untuk menghindari hydration mismatch)
 const formatDate = (dateString: string): string => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Gunakan format manual untuk menghindari perbedaan locale antara server/client
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
 };
 
 // Helper function untuk mapping status
 const mapStatusToComponent = (
-  userStatus: string, 
-  role: string, 
-  citizenStatus: string
+  userStatus: string | null, 
+  role: string | null, 
+  citizenStatus: string | null
 ): "Perlu Persetujuan" | "Ditolak" | "Aktif" | "Pindah" | "Warga Baru" => {
   // Prioritas: user_status dari user_permissions table
   if (userStatus === 'Inactive') return "Ditolak";
@@ -95,7 +103,7 @@ const mapStatusToComponent = (
 };
 
 // Helper function untuk mapping role
-const mapRoleToComponent = (role: string): string => {
+const mapRoleToComponent = (role: string | null): string => {
   switch (role) {
     case 'admin':
       return 'Admin Komplek';
@@ -116,27 +124,24 @@ function ManajemenWarga() {
   // Ambil tab aktif dari URL parameter, default ke "daftar-warga"
   const activeTab = searchParams.get('tab') || 'daftar-warga';
   
+  // Ambil search dan filter dari URL parameters
+  const searchQuery = searchParams.get('search') || '';
+  const statusFilter = searchParams.get('status') || '';
+  
   // Ambil data warga dari database
   const { warga: rawWargaData, loading, error, refetch } = useWarga();
 
   // Convert data untuk komponen
   const pendaftaranData = useMemo(() => {
-    const mappedData = mapWargaDataToComponent(rawWargaData);
-    
-    // Sort descending berdasarkan tanggal daftar (terbaru di atas)
-    const sortedData = mappedData.sort((a, b) => {
-      const dateA = new Date(a.tanggalDaftar?.split('/').reverse().join('-') || '1970-01-01');
-      const dateB = new Date(b.tanggalDaftar?.split('/').reverse().join('-') || '1970-01-01');
+    // Sort raw data berdasarkan created_at descending (terbaru di atas)
+    const sortedRawData = [...rawWargaData].sort((a, b) => {
+      const dateA = new Date(a.profile.created_at || '1970-01-01');
+      const dateB = new Date(b.profile.created_at || '1970-01-01');
       return dateB.getTime() - dateA.getTime();
     });
     
-    // Debug: Log untuk troubleshooting
-    console.log('Raw warga data from database:', rawWargaData);
-    console.log('Mapped data for components:', mappedData);
-    console.log('Sorted data (descending):', sortedData);
-    console.log('Total data count:', sortedData.length);
-    
-    return sortedData;
+    const mappedData = mapWargaDataToComponent(sortedRawData);
+    return mappedData;
   }, [rawWargaData]);
 
   const modal = searchParams.get('modal');
@@ -163,6 +168,92 @@ function ManajemenWarga() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+
+  // Handle search dengan debounce
+  const [searchInput, setSearchInput] = useState(searchQuery);
+
+  // Sync searchInput dengan URL parameter
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const currentParams = new URLSearchParams(searchParams);
+      if (searchInput.trim()) {
+        currentParams.set('search', searchInput.trim());
+      } else {
+        currentParams.delete('search');
+      }
+      currentParams.delete('page'); // Reset page when searching
+      router.push(`/admin/dashboard/manajemen-warga?${currentParams.toString()}`);
+      setCurrentPage(1);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchInput, searchParams, router]);
+
+  const handleSearch = (query: string) => {
+    setSearchInput(query);
+  };
+
+  // Handle status filter
+  const handleStatusFilter = (status: string) => {
+    const currentParams = new URLSearchParams(searchParams);
+    if (status && status !== 'all') {
+      currentParams.set('status', status);
+    } else {
+      currentParams.delete('status');
+    }
+    currentParams.delete('page'); // Reset page when filtering
+    router.push(`/admin/dashboard/manajemen-warga?${currentParams.toString()}`);
+    setCurrentPage(1);
+  };
+
+  // Filter data berdasarkan search dan status
+  const filteredData = useMemo(() => {
+    let filtered = pendaftaranData;
+
+    // Filter berdasarkan search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(warga => 
+        (warga.nama?.toLowerCase() || '').includes(query) ||
+        (warga.alamat?.toLowerCase() || '').includes(query) ||
+        (warga.kontak || '').includes(query) ||
+        (warga.tipeRumah?.toLowerCase() || '').includes(query) ||
+        (warga.email?.toLowerCase() || '').includes(query)
+      );
+    }
+
+    // Filter berdasarkan status (hanya jika ada status filter yang spesifik)
+    if (statusFilter && statusFilter !== 'all') {
+      // Map status filter ke status yang sesuai
+      let targetStatuses: string[] = [];
+      switch (statusFilter.toLowerCase()) {
+        case 'aktif':
+          targetStatuses = ['Aktif'];
+          break;
+        case 'pindah':
+          targetStatuses = ['Pindah'];
+          break;
+        case 'admin':
+          targetStatuses = ['Admin'];
+          break;
+        case 'warga baru':
+          targetStatuses = ['Warga Baru'];
+          break;
+        default:
+          targetStatuses = [statusFilter];
+      }
+      
+      filtered = filtered.filter(warga => 
+        targetStatuses.includes(warga.status || '')
+      );
+    }
+
+    return filtered;
+  }, [pendaftaranData, searchQuery, statusFilter]);
 
   const handleTabChange = (tab: string) => {
     // Prevent access to hidden pendaftaran tab
@@ -200,7 +291,8 @@ function ManajemenWarga() {
 
     switch (activeTab) {
       case "daftar-warga":
-        const daftarWarga = pendaftaranData.filter(w => 
+        // Filter untuk daftar warga (hanya yang aktif, warga baru, pindah)
+        const daftarWarga = filteredData.filter(w => 
           w.status === "Aktif" || w.status === "Warga Baru" || w.status === "Pindah"
         );
         const paginatedDaftarWarga = getCurrentPageData(daftarWarga);
@@ -215,7 +307,7 @@ function ManajemenWarga() {
         );
       // Temporarily hidden - case "pendaftaran"
       case "pendaftaran-warga":
-        const pendaftaranWarga = pendaftaranData.filter(w => 
+        const pendaftaranWarga = filteredData.filter(w => 
           w.status === "Perlu Persetujuan" || w.status === "Ditolak"
         );
         const paginatedPendaftaranWarga = getCurrentPageData(pendaftaranWarga);
@@ -230,7 +322,7 @@ function ManajemenWarga() {
         );
       case "status-warga":
         // Show all warga for status management (no filtering)
-        const statusWargaData = pendaftaranData;
+        const statusWargaData = filteredData;
         const paginatedStatusWarga = getCurrentPageData(statusWargaData);
         return (
           <div className="space-y-4">
@@ -299,6 +391,8 @@ function ManajemenWarga() {
             <Input
               placeholder="Cari berdasarkan nama, nomor rumah, dll"
               className="pl-10 w-80"
+              value={searchInput}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
           <DropdownMenu>
@@ -311,9 +405,30 @@ function ManajemenWarga() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Status Warga</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>Aktif</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Pindah</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Admin</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem 
+                checked={!statusFilter || statusFilter === 'all'}
+                onCheckedChange={() => handleStatusFilter('all')}
+              >
+                Semua
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem 
+                checked={statusFilter === 'aktif'}
+                onCheckedChange={() => handleStatusFilter('aktif')}
+              >
+                Aktif
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem 
+                checked={statusFilter === 'pindah'}
+                onCheckedChange={() => handleStatusFilter('pindah')}
+              >
+                Pindah
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem 
+                checked={statusFilter === 'admin'}
+                onCheckedChange={() => handleStatusFilter('admin')}
+              >
+                Admin
+              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <AddWargaDrawer refetch={refetch} />
@@ -329,17 +444,18 @@ function ManajemenWarga() {
         
         switch (activeTab) {
           case "daftar-warga":
-            currentData = pendaftaranData.filter(w => w.status === "Aktif" || w.status === "Warga Baru" || w.status === "Pindah");
+            // Gunakan data yang sudah difilter di renderContent
+            currentData = filteredData.filter(w => w.status === "Aktif" || w.status === "Warga Baru" || w.status === "Pindah");
             break;
           // Temporarily hidden - case "pendaftaran"
           case "pendaftaran-warga":
-            currentData = pendaftaranData.filter(w => w.status === "Perlu Persetujuan" || w.status === "Ditolak");
+            currentData = filteredData.filter(w => w.status === "Perlu Persetujuan" || w.status === "Ditolak");
             break;
           case "status-warga":
-            currentData = pendaftaranData; // Show all warga for status management
+            currentData = filteredData; // Show all warga for status management
             break;
           default:
-            currentData = pendaftaranData;
+            currentData = filteredData;
         }
         
         totalItems = currentData.length;
@@ -455,8 +571,7 @@ function ManajemenWarga() {
               handleCloseModal();
             }
           }}
-          onConfirm={(alasan) => {
-            console.log('Tolak dengan alasan:', alasan);
+          onConfirm={() => {
             handleCloseModal();
           }}
         />
@@ -468,7 +583,7 @@ function ManajemenWarga() {
             }
           }}
           onConfirm={() => {
-            console.log('Hapus warga');
+
             handleCloseModal();
           }}
         />

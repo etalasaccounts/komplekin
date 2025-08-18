@@ -35,10 +35,17 @@ function AdminResetPasswordPageContent() {
     // Ambil token dan purpose dari URL
     const urlToken = searchParams.get('token');
     const urlPurpose = searchParams.get('purpose');
+    const forceReset = searchParams.get('force_reset') === 'true';
     
     if (urlToken && urlPurpose) {
       setToken(urlToken);
       setPurpose(urlPurpose);
+    }
+    
+    // Jika force_reset=true, user sudah login dan perlu ganti password
+    if (forceReset) {
+      setPurpose('force_reset');
+      // Tidak perlu token karena user sudah login
     }
   }, [searchParams]);
 
@@ -62,7 +69,8 @@ function AdminResetPasswordPageContent() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token || !purpose) {
+    // Jika force_reset, tidak perlu token
+    if (purpose !== 'force_reset' && (!token || !purpose)) {
       setResetStatus('error');
       setMessage('Token reset password tidak valid');
       return;
@@ -102,9 +110,15 @@ function AdminResetPasswordPageContent() {
         setMessage(data.message);
         setUserData(data.user || null);
         
-        // Redirect ke login admin setelah 3 detik
+        // Redirect berdasarkan purpose
         setTimeout(() => {
-          router.push('/admin/auth');
+          if (purpose === 'force_reset') {
+            // Redirect ke dashboard admin setelah force reset
+            router.push('/admin/dashboard');
+          } else {
+            // Redirect ke login admin setelah regular reset
+            router.push('/admin/auth');
+          }
         }, 3000);
       } else {
         setResetStatus('error');

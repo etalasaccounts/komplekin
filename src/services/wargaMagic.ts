@@ -32,7 +32,6 @@ export interface CreateWargaMagicResult {
       permissions: string[]
     }
     temporaryPassword: string
-    magicLink: string | null
     emailTemplate: {
       subject: string
       greeting: string
@@ -50,7 +49,6 @@ export interface CreateWargaMagicResult {
         email: string
         temporaryPassword: string
       }
-      magicLink: string | null
       footer: string
     }
   }
@@ -148,9 +146,7 @@ export const wargaMagicService = {
       role: result.data.role,
       roleInfo: result.data.roleInfo,
       temporaryPassword: result.data.temporaryPassword,
-      magicLink: result.data.magicLink,
       userId: result.data.userId,
-      hasValidMagicLink: !!result.data.magicLink,
       emailTemplate: result.data.emailTemplate
     }
   },

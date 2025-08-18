@@ -24,6 +24,7 @@ import { toast } from "sonner";
 interface WargaCardProps {
   id: number;
   originalId?: string;
+  profileId?: string; // Add profileId for updateCitizenStatus
   status: string;
   nama: string;
   role: string;
@@ -31,6 +32,7 @@ interface WargaCardProps {
   alamat: string;
   tipeRumah: string;
   tanggalDaftar: string;
+  photo?: string; // Foto profile dari database
   refetch?: () => void;
 }
 
@@ -52,7 +54,7 @@ const getStatusVariant = (status: string, role: string) => {
   }
 };
 
-const ActionMenu = ({ status, originalId, id,  role, refetch }: { status: string; originalId?: string; id?: number; role: string; refetch?: () => void }) => {
+const ActionMenu = ({ status, originalId, profileId, id, role, refetch }: { status: string; originalId?: string; profileId?: string; id?: number; role: string; refetch?: () => void }) => {
   const currentPath = "/admin/dashboard/manajemen-warga";
   const statusLowerCase = status.toLowerCase();
   const roleLowerCase = role.toLowerCase();
@@ -80,8 +82,9 @@ const ActionMenu = ({ status, originalId, id,  role, refetch }: { status: string
       return;
     }
     try {
-      await deleteWarga(originalId);
-      toast.success('Warga berhasil dihapus');
+      // Gunakan hard delete untuk menghapus semua data (user_permissions, profiles, auth.users)
+      await deleteWarga(originalId, true);
+      toast.success('Warga berhasil dihapus secara permanen');
       if (refetch) refetch();
     } catch (error) {
       console.error('Error deleting warga:', error);
@@ -90,14 +93,12 @@ const ActionMenu = ({ status, originalId, id,  role, refetch }: { status: string
   };
 
   const handleMarkAsPindah = async () => {
-    if (!originalId) {
-      toast.error('ID warga tidak ditemukan');
+    if (!profileId) {
+      toast.error('Profile ID tidak ditemukan');
       return;
     }
     try {
-      // Note: updateCitizenStatus needs profileId, not user permission ID
-      // This might need to be fixed based on actual implementation
-      await updateCitizenStatus(originalId, 'Pindah');
+      await updateCitizenStatus(profileId, 'Pindah');
       toast.success('Status warga berhasil diubah menjadi Pindah');
       if (refetch) refetch();
     } catch (error) {
@@ -156,6 +157,7 @@ const ActionMenu = ({ status, originalId, id,  role, refetch }: { status: string
 export default function WargaCard({
   id,
   originalId,
+  profileId,
   status,
   nama,
   role,
@@ -163,6 +165,7 @@ export default function WargaCard({
   alamat,
   tipeRumah,
   tanggalDaftar,
+  photo,
   refetch,
 }: WargaCardProps): React.ReactElement {
 
@@ -172,13 +175,17 @@ export default function WargaCard({
         <Badge className={`${getStatusVariant(status, role)}`}>
           {role.toLowerCase().includes('admin') ? 'Admin' : status}
         </Badge>
-        <ActionMenu status={status} originalId={originalId} id={id} role={role} refetch={refetch} />
+        <ActionMenu status={status} originalId={originalId} profileId={profileId} id={id} role={role} refetch={refetch} />
       </div>
 
       <div className="flex flex-col items-center text-center space-y-2">
         <Avatar className="h-20 w-20">
-          <AvatarImage src={`https://picsum.photos/200/500?random=${id}`} alt={nama} />
-          <AvatarFallback>{nama.charAt(0)}</AvatarFallback>
+          {photo ? (
+            <AvatarImage src={photo} alt={nama} />
+          ) : null}
+          <AvatarFallback className="bg-gray-200 text-gray-700 text-2xl font-semibold">
+            {nama.charAt(0).toUpperCase()}
+          </AvatarFallback>
         </Avatar>
         <div>
           <h3 className="font-semibold text-base">{nama}</h3>
@@ -191,7 +198,7 @@ export default function WargaCard({
           <Phone className="h-4 w-4 mr-2" />
           <span>{kontak}</span>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center" hidden>
           <MapPin className="h-4 w-4 mr-2" />
           <span>{alamat}</span>
         </div>

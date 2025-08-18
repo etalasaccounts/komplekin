@@ -220,7 +220,7 @@ export const useWargaActions = () => {
     }
   };
 
-  const updateCitizenStatus = async (profileId: string, citizenStatus: 'Warga baru' | 'Pindah') => {
+  const updateCitizenStatus = async (profileId: string, citizenStatus: 'Warga baru' | 'Pindah' | 'Admin') => {
     try {
       await wargaService.updateCitizenStatus(profileId, citizenStatus);
     } catch (error) {

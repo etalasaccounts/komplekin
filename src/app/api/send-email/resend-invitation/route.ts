@@ -80,7 +80,7 @@ const TemporaryPasswordEmailTemplate = ({
           .button { 
             display: inline-block; 
             background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%); 
-            color: white; 
+            color: #ffffff; 
             padding: 16px 32px; 
             text-decoration: none; 
             border-radius: 8px; 
@@ -304,7 +304,7 @@ const TemporaryPasswordEmailTemplate = ({
 
 export async function POST(request: Request) {
   try {
-    const { userName, email, temporaryPassword, magicLink, clusterName, role } = await request.json();
+    const { userName, email, temporaryPassword, clusterName, role } = await request.json();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -314,11 +314,72 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    if (!userName || !temporaryPassword || !magicLink) {
+    if (!userName || !temporaryPassword) {
       return NextResponse.json({ 
         success: false, 
         error: 'Missing required fields' 
       }, { status: 400 });
+    }
+
+    // Generate magic link using Supabase Admin
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Generate magic link for email verification
+    const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify`
+      }
+    });
+
+    if (verifyError) {
+      console.error('Failed to generate verification link:', verifyError);
+      return NextResponse.json({ 
+        success: false, 
+        error: `Failed to generate verification link: ${verifyError.message}` 
+      }, { status: 500 });
+    }
+
+    // Extract token from the action_link
+    const actionLink = verifyData.properties?.action_link;
+    if (!actionLink) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'No action link generated' 
+      }, { status: 500 });
+    }
+
+    // Parse the URL to extract token
+    let magicLink = '';
+    try {
+      const url = new URL(actionLink);
+      // First try to get token from query parameters
+      let token = url.searchParams.get('token');
+      
+      // If not in query params, try to extract from hash
+      if (!token && url.hash) {
+        const hashParams = new URLSearchParams(url.hash.substring(1));
+        token = hashParams.get('access_token');
+      }
+      
+      // If still no token, try token_hash
+      if (!token) {
+        token = url.searchParams.get('token_hash');
+      }
+      
+      if (token) {
+        magicLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?token=${token}`;
+      } else {
+        magicLink = actionLink;
+      }
+    } catch (parseError) {
+      console.error('Error parsing action link:', parseError);
+      magicLink = actionLink;
     }
 
     if (!process.env.RESEND_API_KEY) {

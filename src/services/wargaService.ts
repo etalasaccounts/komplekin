@@ -138,8 +138,8 @@ export const wargaService = {
     if (error) throw error;
   },
 
-  // Update citizen status
-  async updateCitizenStatus(profileId: string, citizenStatus: 'Warga baru' | 'Pindah'): Promise<void> {
+  // Update citizen status  
+  async updateCitizenStatus(profileId: string, citizenStatus: 'Warga baru' | 'Pindah' | 'Admin'): Promise<void> {
     const { error } = await supabase
       .from("profiles")
       .update({ citizen_status: citizenStatus })
@@ -181,11 +181,71 @@ export const wargaService = {
 
   // Hard delete warga record (untuk yang benar-benar perlu dihapus)
   async hardDeleteWarga(userPermissionId: string): Promise<void> {
-    const { error } = await supabase
+    // Pertama, ambil data user_permissions untuk mendapatkan user_id dan profile_id
+    const { data: userPermission, error: fetchError } = await supabase
       .from("user_permissions")
-      .delete()
-      .eq('id', userPermissionId);
-    
-    if (error) throw error;
+      .select('user_id, profile_id')
+      .eq('id', userPermissionId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch user permission: ${fetchError.message}`);
+    }
+
+    if (!userPermission) {
+      throw new Error('User permission not found');
+    }
+
+    try {
+      // 1. Hapus dari user_permissions terlebih dahulu
+      const { error: permissionError } = await supabase
+        .from("user_permissions")
+        .delete()
+        .eq('id', userPermissionId);
+      
+      if (permissionError) {
+        throw new Error(`Failed to delete user permission: ${permissionError.message}`);
+      }
+
+      // 2. Hapus dari profiles jika ada profile_id
+      if (userPermission.profile_id) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .delete()
+          .eq('id', userPermission.profile_id);
+        
+        if (profileError) {
+          console.error('Failed to delete profile:', profileError.message);
+          // Jangan throw error untuk profile karena mungkin sudah dihapus atau tidak ada
+        }
+      }
+
+      // 3. Hapus dari auth.users jika ada user_id (menggunakan API route)
+      if (userPermission.user_id) {
+        try {
+          const response = await fetch('/api/admin/delete-auth-user', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: userPermission.user_id }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to delete auth user via API:', errorData.error);
+            // Jangan throw error untuk auth user karena data utama sudah dihapus
+          } else {
+            await response.json(); // Parse response
+          }
+        } catch (authError) {
+          console.error('Network error calling delete auth user API:', authError);
+          // Jangan throw error untuk auth user karena data utama sudah dihapus
+        }
+      }
+
+    } catch (error) {
+      throw error;
+    }
   }
 };

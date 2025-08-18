@@ -62,7 +62,21 @@ const Header = () => {
           <div className="flex items-center space-x-2">
             {/* Logo */}
             <div className="flex items-center space-x-2 border-r border-[#E4E4E7] py-2 pr-4">
-              <Image src="/images/logo.png" alt="Logo" width={24} height={24} />
+              <div className="w-6 h-6 flex items-center justify-center">
+                <Image 
+                  src="/images/logo.png" 
+                  alt="Logo" 
+                  width={24} 
+                  height={24}
+                  onError={(e) => {
+                    console.error('Logo failed to load:', e);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  priority
+                  unoptimized
+                  className="object-contain"
+                />
+              </div>
               <span className="text-lg font-semibold">KomplekIn</span>
             </div>
 

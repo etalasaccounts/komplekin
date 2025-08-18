@@ -14,23 +14,25 @@ export default function UserDashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is in password recovery mode
-    const isPasswordRecoveryMode = localStorage.getItem('password_recovery_mode');
-    const recoveryTimestamp = localStorage.getItem('password_recovery_timestamp');
-    
-    if (isPasswordRecoveryMode === 'true' && recoveryTimestamp) {
-      const timestamp = parseInt(recoveryTimestamp);
-      const now = Date.now();
-      const hoursDiff = (now - timestamp) / (1000 * 3600);
+    // Check if user is in password recovery mode (hanya di client-side)
+    if (typeof window !== 'undefined') {
+      const isPasswordRecoveryMode = localStorage.getItem('password_recovery_mode');
+      const recoveryTimestamp = localStorage.getItem('password_recovery_timestamp');
       
-      // If recovery mode was set within last 24 hours, redirect to reset password
-      if (hoursDiff < 24) {
-        router.push('/user/auth/reset-password');
-        return;
-      } else {
-        // Clear expired recovery mode
-        localStorage.removeItem('password_recovery_mode');
-        localStorage.removeItem('password_recovery_timestamp');
+      if (isPasswordRecoveryMode === 'true' && recoveryTimestamp) {
+        const timestamp = parseInt(recoveryTimestamp);
+        const now = Date.now();
+        const hoursDiff = (now - timestamp) / (1000 * 3600);
+        
+        // If recovery mode was set within last 24 hours, redirect to reset password
+        if (hoursDiff < 24) {
+          router.push('/user/auth/reset-password');
+          return;
+        } else {
+          // Clear expired recovery mode
+          localStorage.removeItem('password_recovery_mode');
+          localStorage.removeItem('password_recovery_timestamp');
+        }
       }
     }
 

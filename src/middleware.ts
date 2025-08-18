@@ -155,6 +155,17 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (user && (pathname.startsWith('/user/auth') || pathname.startsWith('/admin/auth'))) {
+    // Allow access to reset-password with force_reset=true
+    if (pathname.includes('/reset-password')) {
+      const url = new URL(request.url)
+      const forceReset = url.searchParams.get('force_reset')
+      
+      // If force_reset=true, allow access to reset password page
+      if (forceReset === 'true') {
+        return response
+      }
+    }
+    
     // Simple redirect: if accessing admin auth, go to admin dashboard, else user dashboard
     if (pathname.startsWith('/admin/auth')) {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
