@@ -54,7 +54,7 @@ function AdminVerificationPageContent() {
           
           // Redirect ke dashboard admin setelah 3 detik
           setTimeout(() => {
-            router.push('/admin/dashboard');
+            router.push('/admin/dashboard/manajemen-warga');
           }, 3000);
         } else {
           setVerificationStatus('error');
@@ -152,7 +152,7 @@ function AdminVerificationPageContent() {
                   Anda akan dialihkan ke dashboard admin dalam beberapa detik...
                 </p>
                 <button
-                  onClick={() => router.push('/admin/dashboard')}
+                  onClick={() => router.push('/admin/dashboard/manajemen-warga')}
                   className="mt-3 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Ke Dashboard Admin

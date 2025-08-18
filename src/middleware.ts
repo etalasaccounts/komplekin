@@ -166,9 +166,9 @@ export async function middleware(request: NextRequest) {
       }
     }
     
-    // Simple redirect: if accessing admin auth, go to admin dashboard, else user dashboard
+    // Simple redirect: if accessing admin auth, go to admin manajemen warga, else user dashboard
     if (pathname.startsWith('/admin/auth')) {
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      return NextResponse.redirect(new URL('/admin/dashboard/manajemen-warga', request.url))
     } else {
       return NextResponse.redirect(new URL('/user/dashboard', request.url))
     }

@@ -325,7 +325,7 @@ export const authService = {
         }
 
         const redirectPath =
-          userRole === "admin" ? "/admin/dashboard" : "/user/dashboard";
+          userRole === "admin" ? "/admin/dashboard/manajemen-warga" : "/user/dashboard";
         onSuccess?.(redirectPath);
         return { success: true, redirectPath, role: userRole };
       }

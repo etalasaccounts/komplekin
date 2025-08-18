@@ -121,7 +121,7 @@ export const useAuth = () => {
           return { success: false, error: 'Email belum terverifikasi' }
         }
         
-        const redirectPath = userPermissions.role === 'admin' ? '/admin/dashboard' : '/user/dashboard'
+        const redirectPath = userPermissions.role === 'admin' ? '/admin/dashboard/manajemen-warga' : '/user/dashboard'
         setLoading(false)
         return { success: true, redirectPath }
       }

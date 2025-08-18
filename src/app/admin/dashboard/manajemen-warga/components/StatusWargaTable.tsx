@@ -1,7 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -23,6 +24,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { WargaData } from './WargaDetailModal';
 import { useWargaActions } from "@/hooks/useWarga";
 import { toast } from "sonner";
+import HapusWargaModal from './HapusWargaModal';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -115,55 +117,166 @@ const ActionMenu = ({ originalId, profileId, status, refetch }: { originalId?: s
 interface StatusWargaTableProps {
   statusWargaData: (WargaData & { id: number })[];
   refetch?: () => void;
+  totalCount?: number; // Tambahkan prop untuk total count
 }
 
-export default function StatusWargaTable({ statusWargaData, refetch }: StatusWargaTableProps) {
+export default function StatusWargaTable({ statusWargaData, refetch, totalCount }: StatusWargaTableProps) {
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { deleteWarga } = useWargaActions();
+  const searchParams = useSearchParams();
 
+  // Fungsi untuk membuat URL dengan parameter yang ada dan menambahkan parameter baru
+  const createUrlWithParams = (newParams: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    // Tambahkan parameter baru
+    Object.entries(newParams).forEach(([key, value]) => {
+      params.set(key, value);
+    });
+    
+    return `/admin/dashboard/manajemen-warga?${params.toString()}`;
+  };
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItems(statusWargaData.map(item => item.id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  // Handle individual item selection
+  const handleItemSelect = (itemId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  // Handle delete all selected
+  const handleDeleteAll = () => {
+    if (selectedItems.length === 0) {
+      toast.error('Pilih warga yang akan dihapus terlebih dahulu');
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAll = async () => {
+    try {
+      // Delete each selected item
+      for (const itemId of selectedItems) {
+        const item = statusWargaData.find(data => data.id === itemId);
+        if (item?.originalId) {
+          await deleteWarga(item.originalId, true);
+        }
+      }
+      
+      toast.success(`${selectedItems.length} warga berhasil dihapus`);
+      setSelectedItems([]);
+      setShowDeleteModal(false);
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('Error deleting multiple warga:', error);
+      toast.error('Gagal menghapus beberapa warga');
+    }
+  };
+
+  const isAllSelected = statusWargaData.length > 0 && selectedItems.length === statusWargaData.length;
+  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < statusWargaData.length;
 
   return (
-    <div className="border rounded-lg">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]">
-              <Checkbox />
-            </TableHead>
-            <TableHead>Nama Lengkap</TableHead>
-            <TableHead>Alamat Rumah</TableHead>
-            <TableHead>Nomor HP</TableHead>
-            <TableHead>Status Tinggal</TableHead>
-            <TableHead>Tanggal Tinggal</TableHead>
-            <TableHead>Tanggal Daftar</TableHead>
-            <TableHead>Dokumen</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {statusWargaData.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                <Checkbox />
-              </TableCell>
-              <TableCell className="font-medium">{item.nama}</TableCell>
-              <TableCell>{item.alamat}</TableCell>
-              <TableCell>{item.kontak}</TableCell>
-              <TableCell>{item.statusKepemilikan}</TableCell>
-              <TableCell>{item.tanggalTinggal}</TableCell>
-              <TableCell>{item.tanggalDaftar}</TableCell>
-              <TableCell>
-                 <Link href={`/admin/dashboard/manajemen-warga?modal=dokumen&id=${item.id}`}>
-                    <Button variant="link" className="p-0">Lihat Dokumen</Button>
-                 </Link>
-              </TableCell>
-              <TableCell>{getStatusBadge(item.status)}</TableCell>
-              <TableCell>
-                <ActionMenu originalId={item.originalId} profileId={item.profileId} status={item.status} refetch={refetch} />
-              </TableCell>
+    <>
+      <div className="border rounded-lg">
+        {/* Header with title, total count, selected count, and delete all button */}
+        <div className="p-4 border-b bg-gray-50">
+          {/* Title row */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Status Warga</h2>
+              <Badge variant="secondary" className="text-sm">
+                {totalCount || statusWargaData.length} Warga
+              </Badge>
+            </div>
+            {selectedItems.length > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={handleDeleteAll}
+                className=" cursor-pointer"
+              >
+                Delete All ({selectedItems.length})
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox 
+                  checked={isAllSelected}
+                  onCheckedChange={handleSelectAll}
+                  ref={(el) => {
+                    if (el) {
+                      (el as HTMLInputElement).indeterminate = isIndeterminate;
+                    }
+                  }}
+                />
+              </TableHead>
+              <TableHead>Nama Lengkap</TableHead>
+              <TableHead hidden>Alamat Rumah</TableHead>
+              <TableHead>Nomor HP</TableHead>
+              <TableHead>Status Tinggal</TableHead>
+              <TableHead>Tanggal Tinggal</TableHead>
+              <TableHead>Tanggal Daftar</TableHead>
+              <TableHead>Dokumen</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {statusWargaData.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <Checkbox 
+                    checked={selectedItems.includes(item.id)}
+                    onCheckedChange={(checked) => handleItemSelect(item.id, checked as boolean)}
+                  />
+                </TableCell>
+                <TableCell className="font-medium">{item.nama}</TableCell>
+                <TableCell hidden >{item.alamat}</TableCell>
+                <TableCell>{item.kontak}</TableCell>
+                <TableCell>{item.statusKepemilikan}</TableCell>
+                <TableCell>{item.tanggalTinggal}</TableCell>
+                <TableCell>{item.tanggalDaftar}</TableCell>
+                <TableCell>
+                   <Link href={createUrlWithParams({ modal: 'dokumen', id: item.id.toString() })}>
+                      <Button variant="link" className="p-0">Lihat Dokumen</Button>
+                   </Link>
+                </TableCell>
+                <TableCell>{getStatusBadge(item.status)}</TableCell>
+                <TableCell>
+                  <ActionMenu originalId={item.originalId} profileId={item.profileId} status={item.status} refetch={refetch} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <HapusWargaModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        onConfirm={confirmDeleteAll}
+        title={`Hapus ${selectedItems.length} Warga yang Dipilih?`}
+        description={`Apakah Anda yakin ingin menghapus ${selectedItems.length} warga yang dipilih? Tindakan ini akan menghapus semua data warga dari sistem, termasuk histori pembayaran dan aktivitas lainnya. Jika dihapus progres tidak dapat dikembalikan.`}
+      />
+    </>
   );
 } 

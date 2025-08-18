@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
             if (role === 'admin' && next === 'admin') {
               redirectUrl = '/admin/auth/verify?new_user=true&magic_link=true'
             } else if (role === 'admin') {
-              redirectUrl = '/admin/dashboard'
+              redirectUrl = '/admin/dashboard/manajemen-warga'
             } else {
               redirectUrl = '/user/dashboard'
             }

@@ -40,7 +40,7 @@ export default function UserDashboardLayout({
       if (!user) {
         router.push('/user/auth');
       } else if (userRole === 'admin') {
-        router.push('/admin/dashboard');
+        router.push('/admin/dashboard/manajemen-warga');
       }
     }
   }, [user, userRole, loading, router]);

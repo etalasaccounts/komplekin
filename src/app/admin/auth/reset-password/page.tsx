@@ -114,7 +114,7 @@ function AdminResetPasswordPageContent() {
         setTimeout(() => {
           if (purpose === 'force_reset') {
             // Redirect ke dashboard admin setelah force reset
-            router.push('/admin/dashboard');
+            router.push('/admin/dashboard/manajemen-warga');
           } else {
             // Redirect ke login admin setelah regular reset
             router.push('/admin/auth');
