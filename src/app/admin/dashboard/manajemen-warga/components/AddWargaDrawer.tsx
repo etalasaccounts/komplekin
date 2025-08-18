@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { format } from "date-fns";
 import Drawer from "../../components/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ArrowRight, ArrowLeft, Send, Loader2 } from "lucide-react";
-import { SingleDatePicker } from "@/components/input/singleDatePicker";
-import { ChooseFile } from "@/components/input/chooseFile";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, ArrowRight, ArrowLeft, Send, Loader2, CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -40,9 +46,9 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // File upload states
-  const [fotoKTP, setFotoKTP] = useState<File | null>(null);
-  const [fotoKK, setFotoKK] = useState<File | null>(null);
+  // File upload states - dihapus karena field KTP dan KK dihapus
+  // const [fotoKTP, setFotoKTP] = useState<File | null>(null);
+  // const [fotoKK, setFotoKK] = useState<File | null>(null);
   
 
 
@@ -78,8 +84,8 @@ Klik untuk copy pesan WhatsApp`, {
     email: '',
     fullname: '',
     role: 'user', // Default role
-    noTelp: '', // HP Aktif
-    address: '',
+    noTelp: '', // HP Aktif - tetap ada untuk kompabilitas tapi tidak digunakan
+    // address: dihapus karena field dihapus
     houseType: '',
     houseNumber: '',
     ownershipStatus: 'unknown',
@@ -99,8 +105,8 @@ Klik untuk copy pesan WhatsApp`, {
         email: '',
         fullname: '',
         role: 'user',
-        noTelp: '',
-        address: '',
+        noTelp: '', // tetap ada untuk kompabilitas
+        // address: dihapus
         houseType: '',
         houseNumber: '',
         ownershipStatus: 'unknown',
@@ -110,8 +116,8 @@ Klik untuk copy pesan WhatsApp`, {
         citizenStatus: 'Warga Baru'
       });
       setTanggalTinggal(undefined);
-      setFotoKTP(null);
-      setFotoKK(null);
+      // setFotoKTP(null); - dihapus karena state dihapus
+      // setFotoKK(null); - dihapus karena state dihapus
     }
   };
 
@@ -129,13 +135,14 @@ Klik untuk copy pesan WhatsApp`, {
     }
 
     // Siapkan data untuk create warga dengan magic link
+    // Karena noTelp dan address di-hide/dihapus, tidak perlu dikirim dalam request
     const wargaData: CreateWargaMagicData = {
       email: formData.email!,
       fullname: formData.fullname!,
       clusterId: clusterId,
       role: formData.role || 'user',
-      noTelp: formData.noTelp || '',
-      address: formData.address || '',
+      // noTelp: dihapus karena field di-hide
+      // address: dihapus karena field dihapus
       houseType: formData.houseType || '',
       houseNumber: formData.houseNumber || '',
       ownershipStatus: formData.ownershipStatus || 'unknown',
@@ -308,7 +315,8 @@ Silakan gunakan kredensial di atas untuk login.
         />
       </div>
 
-      <div className="grid gap-2">
+      {/* Hidden HP field - code tetap ada tapi field di-hide */}
+      <div className="grid gap-2" style={{ display: 'none' }}>
         <Label htmlFor="hp">Nomor HP Aktif *</Label>
         <Input 
           id="hp" 
@@ -331,16 +339,7 @@ Silakan gunakan kredensial di atas untuk login.
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="alamat">Alamat Rumah *</Label>
-        <Input 
-          id="alamat" 
-          placeholder="Komplek Mahata Margonda No12 Blok A"
-          value={formData.address}
-          onChange={(e) => setFormData({...formData, address: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
+
 
       <div className="grid gap-2">
         <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
@@ -376,31 +375,9 @@ Silakan gunakan kredensial di atas untuk login.
   // Step 2: Documents & Additional Details  
   const Step2Form = (
     <div className="grid gap-4 pt-4">
-      <div className="grid gap-2">
-        <ChooseFile
-          label="Foto KTP"
-          id="foto-ktp"
-          accept="image/*"
-          value={fotoKTP}
-          onChange={setFotoKTP}
-          placeholder="Mathew Alexander"
-          disabled={isLoading}
-          maxSizeInMB={5}
-        />
-      </div>
 
-      <div className="grid gap-2">
-        <ChooseFile
-          label="Foto Kartu keluarga"
-          id="foto-kk"
-          accept="image/*"
-          value={fotoKK}
-          onChange={setFotoKK}
-          placeholder="Mathew Alexander"
-          disabled={isLoading}
-          maxSizeInMB={5}
-        />
-      </div>
+
+
 
       <div className="grid gap-2">
         <Label htmlFor="nama-kepala-keluarga">Nama Kepala Keluarga</Label>
@@ -426,14 +403,34 @@ Silakan gunakan kredensial di atas untuk login.
 
       <div className="grid gap-2">
         <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
-        <SingleDatePicker
-          id="tanggal-tinggal"
-          placeholder="20/06/2025"
-          value={tanggalTinggal}
-          onChange={setTanggalTinggal}
-          buttonClassName="w-full"
-          disabled={isLoading}
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full pl-3 text-left font-normal",
+                !tanggalTinggal && "text-muted-foreground"
+              )}
+              disabled={isLoading}
+            >
+              {tanggalTinggal ? (
+                format(tanggalTinggal, "PPP")
+              ) : (
+                <span>Pilih tanggal tinggal</span>
+              )}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={tanggalTinggal}
+              onSelect={setTanggalTinggal}
+              captionLayout="dropdown"
+              disabled={isLoading}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid gap-2 w-full">
