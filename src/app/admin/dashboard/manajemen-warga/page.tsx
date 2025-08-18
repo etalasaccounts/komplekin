@@ -151,7 +151,14 @@ function ManajemenWarga() {
   const selectedWarga = userId ? pendaftaranData.find(w => w.id === parseInt(userId)) : null;
 
   const handleCloseModal = () => {
-    router.push('/admin/dashboard/manajemen-warga');
+    // Buat URL baru dengan parameter yang ada, kecuali modal dan id
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.delete('modal');
+    currentParams.delete('id');
+    currentParams.delete('edit');
+    
+    const newUrl = `/admin/dashboard/manajemen-warga?${currentParams.toString()}`;
+    router.push(newUrl);
   };
 
   // Pagination logic
@@ -326,11 +333,7 @@ function ManajemenWarga() {
         const paginatedStatusWarga = getCurrentPageData(statusWargaData);
         return (
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold">Status Warga</h2>
-              <Badge variant="outline" className="bg-muted px-2 py-1 rounded-full">{statusWargaData.length} Warga</Badge>
-            </div>
-            <StatusWargaTable statusWargaData={paginatedStatusWarga} refetch={refetch} />
+            <StatusWargaTable statusWargaData={paginatedStatusWarga} refetch={refetch} totalCount={statusWargaData.length} />
           </div>
         );
       default:

@@ -3,7 +3,6 @@
 import {
   Bell,
   WalletCards,
-  Home,
   User,
   DollarSign,
   LogOut,
@@ -33,9 +32,9 @@ const Header = () => {
 
   const navigationItems = [
     {
-      name: "Dashboard",
-      path: "/admin/dashboard",
-      icon: <Home className="h-5 w-5" />,
+      name: "Manajemen Warga",
+      path: "/admin/dashboard/manajemen-warga",
+      icon: <User className="h-5 w-5" />,
     },
     {
       name: "Transaksi Warga",
@@ -46,11 +45,6 @@ const Header = () => {
       name: "Keuangan",
       path: "/admin/dashboard/keuangan",
       icon: <DollarSign className="h-5 w-5" />,
-    },
-    {
-      name: "Manajemen Warga",
-      path: "/admin/dashboard/manajemen-warga",
-      icon: <User className="h-5 w-5" />,
     },
   ];
 

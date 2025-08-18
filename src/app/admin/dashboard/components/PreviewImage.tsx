@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 import { ArrowLeft, XIcon } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Helper component for rendering an image with loading/error states
 const ImageWithState = ({
@@ -83,6 +84,19 @@ export function PreviewImage({
   kkSrc,
   className,
 }: PreviewImageProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleBack = () => {
+    // Buat URL baru dengan parameter yang ada, kecuali modal dan id
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.delete('modal');
+    currentParams.delete('id');
+    currentParams.delete('edit');
+    
+    const newUrl = `/admin/dashboard/manajemen-warga?${currentParams.toString()}`;
+    router.push(newUrl);
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -94,9 +108,12 @@ export function PreviewImage({
         <DialogHeader className="px-6 pt-6 pb-4 border-b relative flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-               <DialogClose className="p-1 rounded-md hover:bg-gray-200 transition-colors bg-[#E8E8E8]">
+               <button 
+                onClick={handleBack}
+                className="p-1 rounded-md hover:bg-gray-200 transition-colors bg-[#E8E8E8]"
+              >
                 <ArrowLeft className="h-5 w-5 text-gray-600" />
-              </DialogClose>
+              </button>
               <DialogTitle className="text-lg font-semibold text-gray-900">
                 {title}
               </DialogTitle>

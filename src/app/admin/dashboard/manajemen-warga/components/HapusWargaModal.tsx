@@ -18,9 +18,17 @@ interface HapusWargaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  title?: string;
+  description?: string;
 }
 
-export default function HapusWargaModal({ open, onOpenChange, onConfirm }: HapusWargaModalProps) {
+export default function HapusWargaModal({ 
+  open, 
+  onOpenChange, 
+  onConfirm, 
+  title = "Hapus Warga dari Database?", 
+  description = "Tindakan ini akan menghapus semua data warga dari sistem, termasuk histori pembayaran dan aktivitas lainnya. Jika dihapus progres tidak dapat dikembalikan."
+}: HapusWargaModalProps) {
   const handleConfirm = () => {
     onConfirm();
     onOpenChange(false);
@@ -30,9 +38,9 @@ export default function HapusWargaModal({ open, onOpenChange, onConfirm }: Hapus
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus Warga dari Database?</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            Tindakan ini akan menghapus semua data warga dari sistem, termasuk histori pembayaran dan aktivitas lainnya. Jika dihapus progres tidak dapat dikembalikan.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
