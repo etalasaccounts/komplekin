@@ -1,18 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Create admin client dengan service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
 export interface CreateWargaMagicData {
   email: string
   fullname: string
@@ -65,6 +53,23 @@ const mapCitizenStatusToDatabase = (frontendStatus: string): string => {
 
 export async function POST(request: NextRequest) {
   try {
+    // Inisialisasi Supabase Admin client di dalam handler agar error env tertangkap sebagai JSON
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Supabase URL atau Service Role Key tidak terkonfigurasi. Pastikan NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY tersedia.'
+        },
+        { status: 500 }
+      )
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
     // Parse request body
     const body: CreateWargaMagicData = await request.json()
     const {
@@ -261,7 +266,6 @@ export async function POST(request: NextRequest) {
         role: role,
         roleInfo: roleInfo,
         temporaryPassword: temporaryPassword,
-        magicLink: magicLinkResult?.properties?.action_link || null,
         emailTemplate: {
           subject: `Selamat Datang di KomplekIn - Akun Anda Telah Dibuat`,
           greeting: `Halo ${fullname},`,
@@ -284,7 +288,6 @@ export async function POST(request: NextRequest) {
             email: email,
             temporaryPassword: temporaryPassword
           },
-          magicLink: magicLinkResult?.properties?.action_link || null,
           footer: 'Jika Anda mengalami kendala, silakan hubungi administrator cluster.'
         }
       }

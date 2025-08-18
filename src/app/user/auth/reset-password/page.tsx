@@ -31,21 +31,23 @@ function UserResetPasswordPageContent() {
     email: string;
   } | null>(null);
 
-  // Magic link detection from URL params
-  const isMagicLink = searchParams.get('magic_link') === 'true';
-  const isNewUser = searchParams.get('new_user') === 'true';
-  const checkHash = searchParams.get('check_hash') === 'true';
-  const tempVerified = searchParams.get('temp_verified') === 'true';
-  const error = searchParams.get('error');
+
 
   useEffect(() => {
     // Ambil token dan purpose dari URL
     const urlToken = searchParams.get('token');
     const urlPurpose = searchParams.get('purpose');
+    const forceReset = searchParams.get('force_reset') === 'true';
     
     if (urlToken && urlPurpose) {
       setToken(urlToken);
       setPurpose(urlPurpose);
+    }
+    
+    // Jika force_reset=true, user sudah login dan perlu ganti password
+    if (forceReset) {
+      setPurpose('force_reset');
+      // Tidak perlu token karena user sudah login
     }
   }, [searchParams]);
 
@@ -69,7 +71,8 @@ function UserResetPasswordPageContent() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token || !purpose) {
+    // Jika force_reset, tidak perlu token
+    if (purpose !== 'force_reset' && (!token || !purpose)) {
       setResetStatus('error');
       setMessage('Token reset password tidak valid');
       return;
@@ -109,9 +112,15 @@ function UserResetPasswordPageContent() {
         setMessage(data.message);
         setUserData(data.user || null);
         
-        // Redirect ke login user setelah 3 detik
+        // Redirect berdasarkan purpose
         setTimeout(() => {
-          router.push('/user/auth');
+          if (purpose === 'force_reset') {
+            // Redirect ke dashboard user setelah force reset
+            router.push('/user/dashboard');
+          } else {
+            // Redirect ke login user setelah regular reset
+            router.push('/user/auth');
+          }
         }, 3000);
       } else {
         setResetStatus('error');

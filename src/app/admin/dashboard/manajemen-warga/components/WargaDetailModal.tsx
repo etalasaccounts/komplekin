@@ -17,17 +17,35 @@ import { toast } from "sonner";
 import { validateFileForUpload, urlToFile } from "@/lib/utils";
 
 const parseDateString = (dateString: string): Date | undefined => {
-  const parts = dateString.split('/');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
-    const year = parseInt(parts[2], 10);
-    const date = new Date(year, month, day);
-    // Check if the created date is valid
-    if (!isNaN(date.getTime())) {
-      return date;
+  if (!dateString) return undefined;
+  
+  // Handle different date formats
+  if (dateString.includes('/')) {
+    // Format DD/MM/YYYY
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const year = parseInt(parts[2], 10);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  } else if (dateString.includes('-')) {
+    // Format YYYY-MM-DD from database
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2], 10);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
     }
   }
+  
   return undefined;
 };
 
@@ -48,6 +66,7 @@ export interface WargaData {
   tanggalTinggal: string;
   fotoKTP?: string;
   fotoKK?: string;
+  photo?: string; // Foto profile dari database
   status: "Perlu Persetujuan" | "Ditolak" | "Aktif" | "Pindah" | "Warga Baru";
   tanggalDaftar?: string; // Tambahkan tanggalDaftar
 }
@@ -97,6 +116,7 @@ export default function WargaDetailModal({
     tanggalTinggal: wargaData.tanggalTinggal || '',
     fotoKTP: wargaData.fotoKTP || '',
     fotoKK: wargaData.fotoKK || '',
+    photo: wargaData.photo || '',
     status: wargaData.status || 'Perlu Persetujuan',
     tanggalDaftar: wargaData.tanggalDaftar || '',
   });
@@ -302,13 +322,15 @@ export default function WargaDetailModal({
         head_of_family: safeFormData.kepalaKeluarga.trim(),
         emergency_telp: safeFormData.kontakDarurat.trim(),
         work: safeFormData.pekerjaan.trim(),
-        moving_date: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : formData.tanggalTinggal,
+        moving_date: tanggalTinggal ? 
+          `${tanggalTinggal.getFullYear()}-${(tanggalTinggal.getMonth() + 1).toString().padStart(2, '0')}-${tanggalTinggal.getDate().toString().padStart(2, '0')}` 
+          : formData.tanggalTinggal,
         // Add photo URLs if they were uploaded
         file_ktp: formData.fotoKTP,
         file_kk: formData.fotoKK,
       };
 
-      console.log("Updating profile with ID:", profileId, "Data:", profileData);
+
 
       // Update profile in database
       await updateProfile(profileId, profileData);
@@ -349,7 +371,7 @@ export default function WargaDetailModal({
     setIsTolakModalOpen(true);
   };
 
-  const handleConfirmTolak = async (alasan: string) => {
+  const handleConfirmTolak = async () => {
     if (!warga.originalId) {
       toast.error('ID warga tidak ditemukan');
       console.error('Missing warga originalId:', warga.originalId);
@@ -365,7 +387,7 @@ export default function WargaDetailModal({
 
     setIsLoading(true);
     try {
-      console.log('Rejecting warga with originalId:', warga.originalId, 'Reason:', alasan);
+
       await updateStatus(warga.originalId, 'Inactive');
       toast.success(`Pendaftaran ${warga.nama} telah ditolak`);
       setIsTolakModalOpen(false);
@@ -404,7 +426,7 @@ export default function WargaDetailModal({
 
     setIsLoading(true);
     try {
-      console.log('Approving warga with originalId:', warga.originalId);
+
       await updateStatus(warga.originalId, 'Active');
       toast.success(`${warga.nama} telah diterima sebagai warga`);
       onOpenChange(false); // Close modal after action
@@ -442,9 +464,9 @@ export default function WargaDetailModal({
 
     setIsLoading(true);
     try {
-      console.log('Deleting warga with originalId:', warga.originalId);
-      await deleteWarga(warga.originalId);
-      toast.success(`Data ${warga.nama} berhasil dihapus`);
+      // Gunakan hard delete untuk menghapus semua data (user_permissions, profiles, auth.users)
+      await deleteWarga(warga.originalId, true);
+      toast.success(`Data ${warga.nama} berhasil dihapus secara permanen dari semua tabel`);
       setIsHapusModalOpen(false);
       onOpenChange(false); // Close modal after action
       if (refetch) refetch(); // Refresh to update data
@@ -490,7 +512,7 @@ export default function WargaDetailModal({
 
     setIsLoading(true);
     try {
-      console.log('Restoring access for:', { originalId: warga.originalId, profileId });
+
       
       // Update user status to Active
       await updateStatus(warga.originalId, 'Active');
@@ -680,7 +702,7 @@ export default function WargaDetailModal({
                         placeholder="Masukkan email"
                       />
                     </div>
-                    <div className="grid gap-2">
+                    <div className="grid gap-2" hidden>
                       <Label htmlFor="alamat">Alamat Rumah</Label>
                       <Input 
                         id="alamat" 
@@ -717,7 +739,7 @@ export default function WargaDetailModal({
                   </div>
                   {/* Right Column */}
                   <div className="space-y-4">
-                     <div className="grid gap-2">
+                     <div className="grid gap-2" hidden>
                         <Label htmlFor="foto-ktp">Foto KTP</Label>
                         <ChooseFile 
                           id="foto-ktp" 
@@ -728,7 +750,7 @@ export default function WargaDetailModal({
                           onView={handleViewFile}
                         />
                      </div>
-                     <div className="grid gap-2">
+                     <div className="grid gap-2" hidden>
                         <Label htmlFor="foto-kk">Foto Kartu Keluarga</Label>
                         <ChooseFile 
                           id="foto-kk" 
@@ -739,7 +761,7 @@ export default function WargaDetailModal({
                           onView={handleViewFile}
                         />
                      </div>
-                     <div className="grid gap-2">
+                     <div className="grid gap-2" hidden>
                         <Label htmlFor="hp-darurat">Nomor HP Darurat</Label>
                         <Input 
                           id="hp-darurat" 
@@ -785,13 +807,13 @@ export default function WargaDetailModal({
                     <div><p className="text-sm text-gray-500 mb-1">Nama Lengkap</p><p className="font-semibold text-lg">{warga.nama}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Nomor HP Aktif</p><p className="font-semibold">{warga.kontak}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Email</p><p className="font-semibold">{warga.email}</p></div>
-                    <div><p className="text-sm text-gray-500 mb-1">Alamat Rumah</p><p className="font-semibold">{warga.alamat}</p></div>
+                    <div hidden><p className="text-sm text-gray-500 mb-1">Alamat Rumah</p><p className="font-semibold">{warga.alamat}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Tipe Rumah</p><p className="font-semibold">{warga.tipeRumah}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Status Kepemilikan</p><p className="font-semibold">{warga.statusKepemilikan}</p></div>
                   </div>
                   {/* Right Column */}
                   <div className="space-y-6">
-                  <div>
+                  <div hidden>
                       <p className="text-sm text-gray-500 mb-2">Foto KTP</p>
                       {warga.fotoKTP ? (
                         <ChooseFile 
@@ -804,7 +826,7 @@ export default function WargaDetailModal({
                         />
                       ) : <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 h-32 flex items-center justify-center bg-gray-50 w-full max-w-sm"><p className="text-gray-400 text-sm">KTP Image Placeholder</p></div>}
                   </div>
-                  <div>
+                  <div hidden>
                       <p className="text-sm text-gray-500 mb-2">Foto KK</p>
                       {warga.fotoKK ? (
                         <ChooseFile 
@@ -818,7 +840,7 @@ export default function WargaDetailModal({
                       ) : <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 h-32 flex items-center justify-center bg-gray-50 w-full max-w-sm"><p className="text-gray-400 text-sm">KK Image Placeholder</p></div>}
                   </div>
                     <div><p className="text-sm text-gray-500 mb-1">Nama Kepala Keluarga</p><p className="font-semibold">{warga.kepalaKeluarga}</p></div>
-                    <div><p className="text-sm text-gray-500 mb-1">Nomor Darurat</p><p className="font-semibold">{warga.kontakDarurat}</p></div>
+                    <div hidden><p className="text-sm text-gray-500 mb-1">Nomor Darurat</p><p className="font-semibold">{warga.kontakDarurat}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Pekerjaan</p><p className="font-semibold">{warga.pekerjaan}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Tanggal Tinggal</p><p className="font-semibold">{warga.tanggalTinggal}</p></div>
                   </div>

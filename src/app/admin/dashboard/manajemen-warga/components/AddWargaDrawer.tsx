@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { format } from "date-fns";
 import Drawer from "../../components/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ArrowRight, ArrowLeft, Send, Loader2 } from "lucide-react";
-import { SingleDatePicker } from "@/components/input/singleDatePicker";
-import { ChooseFile } from "@/components/input/chooseFile";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, ArrowRight, ArrowLeft, Send, Loader2, CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -23,7 +29,6 @@ interface WargaCreationData {
   fullname: string;
   email: string;
   temporaryPassword: string;
-  magicLink: string | null;
   cluster?: string;
   roleInfo?: {
     title: string;
@@ -40,36 +45,24 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // File upload states
-  const [fotoKTP, setFotoKTP] = useState<File | null>(null);
-  const [fotoKK, setFotoKK] = useState<File | null>(null);
+  // File upload states - dihapus karena field KTP dan KK dihapus
+  // const [fotoKTP, setFotoKTP] = useState<File | null>(null);
+  // const [fotoKK, setFotoKK] = useState<File | null>(null);
   
 
 
   // Get cluster info from admin
   const { clusterId, clusterName, loading: clusterLoading } = useAuth();
 
-  // Helper function untuk handle email failure dengan WhatsApp fallback
-  const handleEmailFailureWithWhatsApp = (wargaData: WargaCreationData, whatsappMessage: string) => {
-    toast.warning(`Warga ${wargaData.fullname} berhasil dibuat!
-
-Email gagal dikirim
-Password: ${wargaData.temporaryPassword}
-
-Klik untuk copy pesan WhatsApp`, {
+  // Helper function untuk handle email failure
+  const handleEmailFailure = (wargaData: WargaCreationData) => {
+    toast.warning(`Warga ${wargaData.fullname} berhasil ditambahkan, tapi email tidak terkirim`, {
       style: {
-        background: '#fed7aa',
-        color: '#9a3412',
-        border: '1px solid #fb923c'
+        background: '#f59e0b',
+        color: 'white',
+        border: 'none'
       },
-      duration: 15000,
-      action: {
-        label: 'Copy WhatsApp',
-        onClick: () => {
-          navigator.clipboard.writeText(whatsappMessage);
-          toast.success('Pesan WhatsApp disalin! Paste ke chat warga', { duration: 3000 });
-        }
-      }
+      duration: 6000,
     });
   };
 
@@ -79,7 +72,7 @@ Klik untuk copy pesan WhatsApp`, {
     fullname: '',
     role: 'user', // Default role
     noTelp: '', // HP Aktif
-    address: '',
+    // address: dihapus karena field dihapus
     houseType: '',
     houseNumber: '',
     ownershipStatus: 'unknown',
@@ -100,7 +93,7 @@ Klik untuk copy pesan WhatsApp`, {
         fullname: '',
         role: 'user',
         noTelp: '',
-        address: '',
+        // address: dihapus
         houseType: '',
         houseNumber: '',
         ownershipStatus: 'unknown',
@@ -110,8 +103,8 @@ Klik untuk copy pesan WhatsApp`, {
         citizenStatus: 'Warga Baru'
       });
       setTanggalTinggal(undefined);
-      setFotoKTP(null);
-      setFotoKK(null);
+      // setFotoKTP(null); - dihapus karena state dihapus
+      // setFotoKK(null); - dihapus karena state dihapus
     }
   };
 
@@ -134,14 +127,16 @@ Klik untuk copy pesan WhatsApp`, {
       fullname: formData.fullname!,
       clusterId: clusterId,
       role: formData.role || 'user',
-      noTelp: formData.noTelp || '',
-      address: formData.address || '',
+      noTelp: formData.noTelp || '', // Kembalikan nomor HP
+      // address: tetap dihapus karena field dihapus
       houseType: formData.houseType || '',
       houseNumber: formData.houseNumber || '',
       ownershipStatus: formData.ownershipStatus || 'unknown',
       headOfFamily: formData.headOfFamily || '', 
       emergencyJob: formData.emergencyJob || '',
-      movingDate: tanggalTinggal ? tanggalTinggal.toISOString().split('T')[0] : undefined,
+      movingDate: tanggalTinggal ? 
+        `${tanggalTinggal.getFullYear()}-${(tanggalTinggal.getMonth() + 1).toString().padStart(2, '0')}-${tanggalTinggal.getDate().toString().padStart(2, '0')}` 
+        : undefined,
       citizenStatus: formData.citizenStatus || 'Warga Baru'
     };
 
@@ -168,81 +163,33 @@ Klik untuk copy pesan WhatsApp`, {
               userName: result.data.fullname,
               email: result.data.email,
               temporaryPassword: result.data.temporaryPassword,
-              magicLink: result.data.magicLink,
               clusterName: clusterName || 'Komplek Anda',
               role: result.data.roleInfo?.title || 'Warga'
             }),
           });
 
           const emailResult = await emailResponse.json();
-          console.log('Email API response:', emailResult);
+
           
           if (emailResult.success) {
-            if (emailResult.development) {
-              // Development mode - email disimulasikan dengan opsi WhatsApp
-              toast.success(`Warga ${result.data?.fullname} berhasil dibuat!
-
-Mode Development: Email disimulasikan
-Password: ${result.data?.temporaryPassword}
-
-Klik untuk copy pesan WhatsApp`, {
-                style: {
-                  background: '#dbeafe',
-                  color: '#1e40af',
-                  border: '1px solid #60a5fa'
-                },
-                duration: 15000,
-              });
-            } else {
-              // Email berhasil dikirim
-              const isTestMode = emailResult.isTestEmail;
-              const actualEmail = emailResult.actualEmail || result.data.email;
-              
-              const successMessage = isTestMode 
-                ? `Warga ${result.data.fullname} berhasil dibuat!
-
-MODE TEST: Email dikirim ke ${actualEmail}
-(Email asli warga: ${result.data.email})
-Password sementara ada di email test`
-                : `Warga ${result.data.fullname} berhasil dibuat!
-
-Email undangan telah dikirim ke ${result.data.email}
-Password sementara akan diterima via email
-Mohon periksa inbox dan folder spam`;
-
-              toast.success(successMessage, {
-                style: {
-                  background: isTestMode ? '#3b82f6' : '#22c55e',
-                  color: 'white',
-                  border: 'none'
-                },
-                duration: 10000,
-              });
-            }
+            // Email berhasil dikirim - toast sukses sederhana
+            toast.success(`Warga ${result.data.fullname} berhasil ditambahkan!`, {
+              style: {
+                background: '#22c55e',
+                color: 'white',
+                border: 'none'
+              },
+              duration: 5000,
+            });
           } else {
-            // Email gagal, tapi warga sudah dibuat - fallback ke WhatsApp
+            // Email gagal, tapi warga sudah dibuat
             console.error('Email failed:', emailResult);
-            handleEmailFailureWithWhatsApp(result.data, emailResult.whatsappMessage || 'WhatsApp message not available');
+            handleEmailFailure(result.data);
           }
         } catch (emailError) {
-          // Error saat kirim email - fallback ke WhatsApp dengan generic message
+          // Error saat kirim email
           console.error('Email service error:', emailError);
-          const fallbackMessage = `
-*Selamat Datang di KomplekIn!*
-
-Halo *${result.data.fullname}*, akun KomplekIn Anda telah dibuat.
-
-*Detail Akun:*
-- Email: ${result.data.email}
-- Password Sementara: *${result.data.temporaryPassword}*
-
-*Link Verifikasi:*
-${result.data.magicLink || 'Tidak tersedia'}
-
-Silakan gunakan kredensial di atas untuk login.
-          `.trim();
-          
-          handleEmailFailureWithWhatsApp(result.data, fallbackMessage);
+          handleEmailFailure(result.data);
         }
         
         // Refresh data untuk menampilkan data terbaru tanpa reload halaman
@@ -317,6 +264,9 @@ Silakan gunakan kredensial di atas untuk login.
           onChange={(e) => setFormData({...formData, noTelp: e.target.value})}
           disabled={isLoading}
         />
+        <p className="text-xs text-gray-500">
+          Nomor yang digunakan untuk kontak dan notifikasi
+        </p>
       </div>
 
       <div className="grid gap-2">
@@ -331,16 +281,7 @@ Silakan gunakan kredensial di atas untuk login.
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="alamat">Alamat Rumah *</Label>
-        <Input 
-          id="alamat" 
-          placeholder="Komplek Mahata Margonda No12 Blok A"
-          value={formData.address}
-          onChange={(e) => setFormData({...formData, address: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
+
 
       <div className="grid gap-2">
         <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
@@ -364,9 +305,9 @@ Silakan gunakan kredensial di atas untuk login.
             <SelectValue placeholder="Pilih status kepemilikan" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="sewa">Sewa</SelectItem>
-            <SelectItem value="milik-sendiri">Milik Sendiri</SelectItem>
-            <SelectItem value="milik-orang-tua">Milik Orang Tua</SelectItem>
+            <SelectItem value="Sewa">Sewa</SelectItem>
+            <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
+            <SelectItem value="Milik Orang Tua">Milik Orang Tua</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -376,31 +317,9 @@ Silakan gunakan kredensial di atas untuk login.
   // Step 2: Documents & Additional Details  
   const Step2Form = (
     <div className="grid gap-4 pt-4">
-      <div className="grid gap-2">
-        <ChooseFile
-          label="Foto KTP"
-          id="foto-ktp"
-          accept="image/*"
-          value={fotoKTP}
-          onChange={setFotoKTP}
-          placeholder="Mathew Alexander"
-          disabled={isLoading}
-          maxSizeInMB={5}
-        />
-      </div>
 
-      <div className="grid gap-2">
-        <ChooseFile
-          label="Foto Kartu keluarga"
-          id="foto-kk"
-          accept="image/*"
-          value={fotoKK}
-          onChange={setFotoKK}
-          placeholder="Mathew Alexander"
-          disabled={isLoading}
-          maxSizeInMB={5}
-        />
-      </div>
+
+
 
       <div className="grid gap-2">
         <Label htmlFor="nama-kepala-keluarga">Nama Kepala Keluarga</Label>
@@ -426,14 +345,34 @@ Silakan gunakan kredensial di atas untuk login.
 
       <div className="grid gap-2">
         <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
-        <SingleDatePicker
-          id="tanggal-tinggal"
-          placeholder="20/06/2025"
-          value={tanggalTinggal}
-          onChange={setTanggalTinggal}
-          buttonClassName="w-full"
-          disabled={isLoading}
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full pl-3 text-left font-normal",
+                !tanggalTinggal && "text-muted-foreground"
+              )}
+              disabled={isLoading}
+            >
+              {tanggalTinggal ? (
+                format(tanggalTinggal, "PPP")
+              ) : (
+                <span>Pilih tanggal tinggal</span>
+              )}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={tanggalTinggal}
+              onSelect={setTanggalTinggal}
+              captionLayout="dropdown"
+              disabled={isLoading}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid gap-2 w-full">

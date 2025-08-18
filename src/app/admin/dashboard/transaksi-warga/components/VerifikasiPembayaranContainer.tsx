@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import PaginationComponent from "./PaginationComponent";
-import { Check, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PreviewImage } from "@/components/modal/previewImage";
 import ManualPaymentSheet from "./ManualPaymentSheet";
@@ -114,10 +114,7 @@ export default function VerifikasiPembayaranContainer({
     }
   };
 
-  const handleVerificationClick = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setTransferReceiptModalOpen(true);
-  };
+
 
   const handleApprovePayment = async () => {
     const invoice = selectedInvoice!;

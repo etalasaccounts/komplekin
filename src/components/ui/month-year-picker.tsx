@@ -6,7 +6,7 @@ import { format } from "date-fns"
 import { id } from "date-fns/locale"
 
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+
 import {
   Popover,
   PopoverContent,
@@ -85,16 +85,7 @@ export function MonthYearPicker({
     }
   }
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedMonth(date.getMonth().toString())
-      setSelectedYear(date.getFullYear().toString())
-      // Set to first day of the month
-      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1)
-      onChange(firstDayOfMonth)
-    }
-    setOpen(false)
-  }
+
 
   return (
     <div className={cn("space-y-2", className)}>
