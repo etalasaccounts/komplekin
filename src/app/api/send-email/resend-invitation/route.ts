@@ -253,7 +253,7 @@ const TemporaryPasswordEmailTemplate = ({
                 <div class="step-number">1. Verifikasi Email</div>
                 <p>Klik tombol di bawah untuk memverifikasi email Anda dan masuk ke sistem:</p>
                 <div class="button-container">
-                  <a href="${magicLink}" class="button">Verifikasi & Masuk KomplekIn</a>
+                  <a href="${magicLink}" class="button" style="text-decoration: none; color: white;">Verifikasi & Masuk KomplekIn</a>
                 </div>
               </div>
 

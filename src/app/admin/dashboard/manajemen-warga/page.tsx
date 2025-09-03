@@ -55,7 +55,7 @@ const mapWargaDataToComponent = (wargaData: WargaWithProfile[]): (WargaData & { 
     status: mapStatusToComponent(item.user_status, item.role, item.profile.citizen_status),
     role: mapRoleToComponent(item.role),
     email: item.profile.email || '',
-    tipeRumah: item.profile.house_type || '',
+    nomorRumah: item.profile.house_number || '',
     kepalaKeluarga: item.profile.head_of_family || '',
     kontakDarurat: item.profile.emergency_telp || '',
     pekerjaan: item.profile.work || item.profile.emergency_job || '',
@@ -228,7 +228,7 @@ function ManajemenWarga() {
         (warga.nama?.toLowerCase() || '').includes(query) ||
         (warga.alamat?.toLowerCase() || '').includes(query) ||
         (warga.kontak || '').includes(query) ||
-        (warga.tipeRumah?.toLowerCase() || '').includes(query) ||
+        (warga.nomorRumah?.toLowerCase() || '').includes(query) ||
         (warga.email?.toLowerCase() || '').includes(query)
       );
     }

@@ -39,7 +39,7 @@ const ConfirmEmailTemplate = ({ userName, confirmationUrl }: ConfirmEmailTemplat
             <h3 style="margin: 0 0 15px 0; color: #1f2937;">Konfirmasi Email</h3>
             <p style="margin: 0 0 15px 0;">Klik tombol di bawah ini untuk mengkonfirmasi alamat email Anda:</p>
             <div style="text-align: center;">
-              <a href="${confirmationUrl}" class="button">Konfirmasi Email</a>
+              <a href="${confirmationUrl}" class="button" style="text-decoration: none; color: white;">Konfirmasi Email</a>
             </div>
           </div>
 
