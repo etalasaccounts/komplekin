@@ -203,7 +203,6 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
         description: expenseData.keterangan,
         amount: parseFloat(expenseData.nominal),
         account_type: AccountType.EXPENSE,
-        coa_id: "c1a4073d-5b8e-4bc4-adf0-290b58194d2f",
         cluster_id: clusterId || "",
         user_id: userPermission.id,
         ledger_type: LedgerType.DEBIT,

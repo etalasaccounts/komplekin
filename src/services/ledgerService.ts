@@ -75,11 +75,21 @@ export const ledgerService = {
         receiptUrl = await this.uploadFileToBucket(ledgerData.receipt as File);
       }
 
+      const {data: coaData, error: coaError} = await supabase.from("chart_of_accounts").insert({
+        name: "Pengeluaran",
+        account_type: ledgerData.account_type,
+      })
+      .select()
+      .single()
+
+      if (coaError) throw coaError;
+
       const { data, error } = await supabase
         .from("ledgers")
         .insert({
           ...ledgerData,
-          receipt: receiptUrl
+          receipt: receiptUrl,
+          coa_id: coaData.id,
         })
         .select()
         .single();

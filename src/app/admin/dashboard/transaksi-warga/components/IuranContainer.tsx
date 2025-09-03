@@ -1,19 +1,34 @@
 "use client"
 
 import { useState } from "react"
-import { useIuran } from "@/hooks/useIuran"
-import { Iuran, UpdateIuranRequest } from "@/types/iuran"
+import { Iuran, UpdateIuranRequest, CreateIuranRequest } from "@/types/iuran"
+import { UserPermissions } from "@/types/user_permissions"
 import IuranTable from "./IuranTable"
 import IuranWargaDrawer from "./IuranWargaDrawer"
-import { useAuth } from "@/hooks/useAuth"
 
-export default function IuranContainer() {
+type IuranContainerProps = {
+  iuranList: Iuran[];
+  iuranLoading: boolean;
+  updateIuran: (id: string, data: UpdateIuranRequest) => Promise<Iuran | null>;
+  clusterId: string | null;
+  createIuran: (data: CreateIuranRequest) => Promise<Iuran | null>;
+  userPermissions: UserPermissions[];
+  iuranError: string | null;
+}
+
+export default function IuranContainer({ 
+  iuranList, 
+  iuranLoading, 
+  updateIuran, 
+  clusterId,
+  createIuran,
+  userPermissions,
+  iuranError
+}: IuranContainerProps) {
   const [selectedIuran, setSelectedIuran] = useState<Iuran | null>(null)
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   
-  const { iuran, loading, updateIuran } = useIuran()
-  const { clusterId } = useAuth()
-  const iuranPerCluster = iuran.filter((iuran) => iuran.cluster_id === clusterId)
+  const iuranPerCluster = iuranList.filter((iuran) => iuran.cluster_id === clusterId)
 
   const handleEdit = (iuran: Iuran) => {
     setSelectedIuran(iuran)
@@ -31,7 +46,7 @@ export default function IuranContainer() {
       </div>
       <IuranTable
         iuran={iuranPerCluster}
-        loading={loading}
+        loading={iuranLoading}
         onEdit={handleEdit}
       />
 
@@ -43,6 +58,10 @@ export default function IuranContainer() {
         setCreateSheetOpen={setIsEditDrawerOpen}
         onUpdate={handleUpdate}
         createInvoice={async () => null} // Placeholder function
+        createIuran={createIuran}
+        userPermissions={userPermissions}
+        clusterId={clusterId}
+        iuranError={iuranError}
       />
     </div>
   )

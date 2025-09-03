@@ -45,11 +45,20 @@ export const invoiceService = {
     if (error) throw error;
 
     if (invoice.verification_status === VerificationStatus.VERIFIED) {
+      const {data: coaData, error: coaError} = await supabase.from("chart_of_accounts").insert({
+        name: "Pemasukan",
+        account_type: "Revenue",
+      })
+      .select()
+      .single()
+
+      if (coaError) throw coaError;
+
       const {error: ledgerError} = await supabase.from("ledgers").insert({
         user_id: invoice.user_id,
         cluster_id: invoice.cluster_id,
         invoice_id: invoice.id,
-        coa_id: "c1a4073d-5b8e-4bc4-adf0-290b58194d2f",
+        coa_id: coaData.id,
         ledger_type: "Credit",
         account_type: "Revenue",
         description: `Pembayaran iuran bulan ${invoice.due_date.split(" ")[0]}`,
@@ -117,11 +126,20 @@ export const invoiceService = {
         .single();
       if (error) throw error;
 
+      const {data: coaData, error: coaError} = await supabase.from("chart_of_accounts").insert({
+        name: "Pemasukan",
+        account_type: "Revenue",
+      })
+      .select()
+      .single()
+
+      if (coaError) throw coaError;
+
       const {error: ledgerError} = await supabase.from("ledgers").insert({
         user_id: invoice.user_id,
         cluster_id: invoice.cluster_id,
         invoice_id: invoice.id,
-        coa_id: "c1a4073d-5b8e-4bc4-adf0-290b58194d2f",
+        coa_id: coaData.id,
         ledger_type: "Credit",
         account_type: "Revenue",
         description: `Pembayaran manual untuk ${invoice.payment_purpose}`,
