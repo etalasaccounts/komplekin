@@ -107,9 +107,9 @@ export const useAuth = () => {
         return { success: false, error: 'Email atau password salah' }
       }
 
-      if (data.user) {
+      // if (data.user) {
         // Get role from database instead of user_metadata
-        const userPermissions = await authService.getUserPermissions(data.user.id)
+        const userPermissions = await authService.getUserPermissions(data.user?.id || '')
         
         if (!userPermissions?.role) {
           setLoading(false)
@@ -124,10 +124,8 @@ export const useAuth = () => {
         const redirectPath = userPermissions.role === 'admin' ? '/admin/dashboard/manajemen-warga' : '/user/dashboard'
         setLoading(false)
         return { success: true, redirectPath }
-      }
+      // }
 
-      setLoading(false)
-      return { success: false, error: 'Login gagal' }
     } catch {
       setLoading(false)
       return { success: false, error: 'Terjadi kesalahan saat login' }

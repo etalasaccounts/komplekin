@@ -147,11 +147,11 @@ export async function PUT(request: NextRequest) {
     const photo = formData.get("photo") as File | null;
 
     // Validation
-    if (!fullname || !no_telp || !email) {
+    if (!fullname || !email) {
       return NextResponse.json(
         {
           success: false,
-          error: "Nama lengkap, nomor HP, dan email wajib diisi",
+          error: "Nama lengkap dan email wajib diisi",
         },
         { status: 400 }
       );

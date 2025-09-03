@@ -24,6 +24,21 @@ import Image from "next/image";
 import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 
+// Helper function to convert ownership status from database format to UI format
+const convertOwnershipStatusFromDB = (dbValue: string): string => {
+  const mapping: { [key: string]: string } = {
+    'Sewa': 'sewa',
+    'Milik Sendiri': 'milik-sendiri',
+    'Milik Orang Tua': 'milik-orang-tua',
+    'Kontrak': 'kontrak',
+    'sewa': 'sewa',
+    'milik-sendiri': 'milik-sendiri',
+    'milik-orang-tua': 'milik-orang-tua',
+    'kontrak': 'kontrak'
+  };
+  return mapping[dbValue] || 'milik-sendiri';
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const { profile, loading, error, updateProfile, updating } = useProfile();
@@ -37,7 +52,7 @@ export default function ProfilePage() {
     email: "",
     alamatRumah: "",
     nomorRumah: "",
-    statusKepemilikan: "",
+    statusKepemilikan: "milik-sendiri",
   });
 
   // Update profileData when profile is loaded
@@ -49,7 +64,7 @@ export default function ProfilePage() {
         email: profile.email || "",
         alamatRumah: profile.address || "",
         nomorRumah: profile.house_number || "",
-        statusKepemilikan: profile.ownership_status || "",
+        statusKepemilikan: convertOwnershipStatusFromDB(profile.ownership_status),
       });
     }
   }, [profile]);
@@ -333,12 +348,12 @@ export default function ProfilePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Sewa">Sewa</SelectItem>
-                    <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
-                    <SelectItem value="Milik Orang Tua">
+                    <SelectItem value="sewa">Sewa</SelectItem>
+                    <SelectItem value="milik-sendiri">Milik Sendiri</SelectItem>
+                    <SelectItem value="milik-orang-tua">
                       Milik Orang Tua
                     </SelectItem>
-                    <SelectItem value="Kontrak">Kontrak</SelectItem>
+                    <SelectItem value="kontrak">Kontrak</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
