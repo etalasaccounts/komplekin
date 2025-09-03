@@ -6,12 +6,10 @@ import { Input } from "@/components/ui/input"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { MonthYearPicker } from "@/components/ui/month-year-picker"
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useIuran } from "@/hooks/useIuran"
-import { useUserPermission } from "@/hooks/useUserPermission"
 import { CreateIuranRequest, UpdateIuranRequest, Iuran } from "@/types/iuran"
 import { toast } from "sonner"
 import { Invoice } from "@/types/invoice"
-import { useAuth } from "@/hooks/useAuth"
+import { UserPermissions } from "@/types/user_permissions"
 
 type NewPaymentForm = {
     name: string[];
@@ -25,10 +23,14 @@ type NewPaymentForm = {
 type IuranWargaDrawerProps = {
     createSheetOpen: boolean;
     setCreateSheetOpen: (open: boolean) => void;
-    createInvoice: (invoice: Invoice) => Promise<Invoice | null>;
+    createInvoice: (invoice: Invoice) => Promise<Invoice | null>; 
     editMode?: boolean;
     editingIuran?: Iuran | null;
     onUpdate?: (id: string, data: UpdateIuranRequest) => Promise<Iuran | null>;
+    createIuran: (data: CreateIuranRequest) => Promise<Iuran | null>;
+    userPermissions: UserPermissions[];
+    clusterId: string | null;
+    iuranError: string | null;
 }
 
 export default function IuranWargaDrawer({ 
@@ -36,11 +38,12 @@ export default function IuranWargaDrawer({
     setCreateSheetOpen, 
     editMode = false,
     editingIuran = null,
-    onUpdate
+    onUpdate,
+    createIuran,
+    userPermissions,
+    clusterId,
+    iuranError
 }: IuranWargaDrawerProps) {
-    const { createIuran, error: iuranError } = useIuran();
-    const { clusterId } = useAuth();
-    const { userPermissions } = useUserPermission();
     const [isCreating, setIsCreating] = useState(false);
     const [newPaymentForm, setNewPaymentForm] = useState<NewPaymentForm>({
         name: [],
