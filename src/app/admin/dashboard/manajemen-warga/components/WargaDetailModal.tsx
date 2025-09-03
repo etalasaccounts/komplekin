@@ -49,6 +49,29 @@ const parseDateString = (dateString: string): Date | undefined => {
   return undefined;
 };
 
+// Helper function to convert ownership status from database format to UI format
+const convertOwnershipStatusFromDB = (dbValue: string): string => {
+  const mapping: { [key: string]: string } = {
+    'Sewa': 'sewa',
+    'Milik Sendiri': 'milik-sendiri',
+    'Milik Orang Tua': 'milik-orang-tua',
+    'sewa': 'sewa',
+    'milik-sendiri': 'milik-sendiri',
+    'milik-orang-tua': 'milik-orang-tua'
+  };
+  return mapping[dbValue] || 'milik-sendiri';
+};
+
+// Helper function to convert ownership status from UI format to display format
+const convertOwnershipStatusToDisplay = (uiValue: string): string => {
+  const mapping: { [key: string]: string } = {
+    'sewa': 'Sewa',
+    'milik-sendiri': 'Milik Sendiri',
+    'milik-orang-tua': 'Milik Orang Tua'
+  };
+  return mapping[uiValue] || 'Milik Sendiri';
+};
+
 export interface WargaData {
   id?: number; // Sequential number for display purposes
   originalId?: string; // Original UUID from database for operations
@@ -58,7 +81,7 @@ export interface WargaData {
   kontak: string;
   email: string;
   alamat: string;
-  tipeRumah: string;
+  nomorRumah: string;
   statusKepemilikan: string;
   kepalaKeluarga: string;
   kontakDarurat: string;
@@ -108,8 +131,8 @@ export default function WargaDetailModal({
     kontak: wargaData.kontak || '',
     email: wargaData.email || '',
     alamat: wargaData.alamat || '',
-    tipeRumah: wargaData.tipeRumah || '',
-    statusKepemilikan: wargaData.statusKepemilikan || 'Milik Sendiri',
+    nomorRumah: wargaData.nomorRumah || '',
+    statusKepemilikan: convertOwnershipStatusFromDB(wargaData.statusKepemilikan),
     kepalaKeluarga: wargaData.kepalaKeluarga || '',
     kontakDarurat: wargaData.kontakDarurat || '',
     pekerjaan: wargaData.pekerjaan || '',
@@ -134,8 +157,8 @@ export default function WargaDetailModal({
     kontak: formData.kontak || '',
     email: formData.email || '',
     alamat: formData.alamat || '',
-    tipeRumah: formData.tipeRumah || '',
-    statusKepemilikan: formData.statusKepemilikan || 'Milik Sendiri',
+    nomorRumah: formData.nomorRumah || '',
+    statusKepemilikan: formData.statusKepemilikan || 'milik-sendiri',
     kepalaKeluarga: formData.kepalaKeluarga || '',
     kontakDarurat: formData.kontakDarurat || '',
     pekerjaan: formData.pekerjaan || '',
@@ -317,14 +340,14 @@ export default function WargaDetailModal({
         email: safeFormData.email.trim(),
         no_telp: safeFormData.kontak.trim(),
         address: safeFormData.alamat.trim(),
-        house_type: safeFormData.tipeRumah.trim(),
+        house_number: safeFormData.nomorRumah.trim(),
         ownership_status: safeFormData.statusKepemilikan,
         head_of_family: safeFormData.kepalaKeluarga.trim(),
         emergency_telp: safeFormData.kontakDarurat.trim(),
         work: safeFormData.pekerjaan.trim(),
         moving_date: tanggalTinggal ? 
           `${tanggalTinggal.getFullYear()}-${(tanggalTinggal.getMonth() + 1).toString().padStart(2, '0')}-${tanggalTinggal.getDate().toString().padStart(2, '0')}` 
-          : formData.tanggalTinggal,
+          : (formData.tanggalTinggal && formData.tanggalTinggal.trim() !== '') ? formData.tanggalTinggal : undefined,
         // Add photo URLs if they were uploaded
         file_ktp: formData.fotoKTP,
         file_kk: formData.fotoKK,
@@ -712,12 +735,12 @@ export default function WargaDetailModal({
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
+                      <Label htmlFor="nomor-rumah">Nomor Rumah *</Label>
                       <Input 
-                        id="tipe-rumah" 
-                        value={safeFormData.tipeRumah} 
-                        onChange={(e) => setFormData({...formData, tipeRumah: e.target.value})}
-                        placeholder="Masukkan tipe rumah"
+                        id="nomor-rumah" 
+                        value={safeFormData.nomorRumah} 
+                        onChange={(e) => setFormData({...formData, nomorRumah: e.target.value})}
+                        placeholder="Masukkan nomor rumah"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -730,9 +753,9 @@ export default function WargaDetailModal({
                           <SelectValue placeholder="Pilih status kepemilikan" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Sewa">Sewa</SelectItem>
-                          <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
-                          <SelectItem value="Milik Orang Tua">Milik Orang Tua</SelectItem>
+                          <SelectItem value="sewa">Sewa</SelectItem>
+                          <SelectItem value="milik-sendiri">Milik Sendiri</SelectItem>
+                          <SelectItem value="milik-orang-tua">Milik Orang Tua</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -808,8 +831,8 @@ export default function WargaDetailModal({
                     <div><p className="text-sm text-gray-500 mb-1">Nomor HP Aktif</p><p className="font-semibold">{warga.kontak}</p></div>
                     <div><p className="text-sm text-gray-500 mb-1">Email</p><p className="font-semibold">{warga.email}</p></div>
                     <div hidden><p className="text-sm text-gray-500 mb-1">Alamat Rumah</p><p className="font-semibold">{warga.alamat}</p></div>
-                    <div><p className="text-sm text-gray-500 mb-1">Tipe Rumah</p><p className="font-semibold">{warga.tipeRumah}</p></div>
-                    <div><p className="text-sm text-gray-500 mb-1">Status Kepemilikan</p><p className="font-semibold">{warga.statusKepemilikan}</p></div>
+                    <div><p className="text-sm text-gray-500 mb-1">Nomor Rumah</p><p className="font-semibold">{warga.nomorRumah}</p></div>
+                    <div><p className="text-sm text-gray-500 mb-1">Status Kepemilikan</p><p className="font-semibold">{convertOwnershipStatusToDisplay(convertOwnershipStatusFromDB(warga.statusKepemilikan))}</p></div>
                   </div>
                   {/* Right Column */}
                   <div className="space-y-6">

@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   MoreHorizontal,
-  Phone,
   MapPin,
-  User,
   Calendar,
+  Mail,
+  House,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,9 +28,9 @@ interface WargaCardProps {
   status: string;
   nama: string;
   role: string;
-  kontak: string;
+  email: string;
   alamat: string;
-  tipeRumah: string;
+  nomorRumah: string;
   tanggalDaftar: string;
   photo?: string; // Foto profile dari database
   refetch?: () => void;
@@ -161,9 +161,9 @@ export default function WargaCard({
   status,
   nama,
   role,
-  kontak,
+  email,
   alamat,
-  tipeRumah,
+  nomorRumah,
   tanggalDaftar,
   photo,
   refetch,
@@ -195,16 +195,16 @@ export default function WargaCard({
 
       <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-xs font-normal text-[#09090B] border">
         <div className="flex items-center">
-          <Phone className="h-4 w-4 mr-2" />
-          <span>{kontak}</span>
+          <Mail className="h-4 w-4 mr-2" />
+          <span>{email}</span>
         </div>
         <div className="flex items-center" hidden>
           <MapPin className="h-4 w-4 mr-2" />
           <span>{alamat}</span>
         </div>
         <div className="flex items-center">
-          <User className="h-4 w-4 mr-2" />
-          <span>{tipeRumah}</span>
+          <House className="h-4 w-4 mr-2" />
+          <span>{nomorRumah}</span>
         </div>
       </div>
 

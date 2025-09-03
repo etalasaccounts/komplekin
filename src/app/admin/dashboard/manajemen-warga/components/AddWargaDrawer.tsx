@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { format } from "date-fns";
+
 import Drawer from "../../components/Drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+
+import { Plus, Send, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,14 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Plus, ArrowRight, ArrowLeft, Send, Loader2, CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+
 import { wargaMagicService, CreateWargaMagicData } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -40,8 +36,6 @@ interface AddWargaDrawerProps {
 }
 
 export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
-  const [step, setStep] = useState(1);
-  const [tanggalTinggal, setTanggalTinggal] = useState<Date | undefined>();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -66,20 +60,13 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
     });
   };
 
-  // Form data state (reorganized according to screenshot)
+  // Form data state (simplified for MVP)
   const [formData, setFormData] = useState<Partial<CreateWargaMagicData>>({
     email: '',
     fullname: '',
     role: 'user', // Default role
-    noTelp: '', // HP Aktif
-    // address: dihapus karena field dihapus
-    houseType: '',
     houseNumber: '',
-    ownershipStatus: 'unknown',
-    headOfFamily: '',
-    emergencyJob: '',
-    movingDate: '',
-    citizenStatus: 'Warga Baru'
+    ownershipStatus: 'milik-sendiri'
   });
 
   // Reset form and state when drawer opens/closes
@@ -87,24 +74,13 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
     setIsOpen(open);
     if (!open) {
       // Reset form when closed
-      setStep(1);
       setFormData({
         email: '',
         fullname: '',
         role: 'user',
-        noTelp: '',
-        // address: dihapus
-        houseType: '',
         houseNumber: '',
-        ownershipStatus: 'unknown',
-        headOfFamily: '',
-        emergencyJob: '',
-        movingDate: '',
-        citizenStatus: 'Warga Baru'
+        ownershipStatus: 'milik-sendiri'
       });
-      setTanggalTinggal(undefined);
-      // setFotoKTP(null); - dihapus karena state dihapus
-      // setFotoKK(null); - dihapus karena state dihapus
     }
   };
 
@@ -127,17 +103,8 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
       fullname: formData.fullname!,
       clusterId: clusterId,
       role: formData.role || 'user',
-      noTelp: formData.noTelp || '', // Kembalikan nomor HP
-      // address: tetap dihapus karena field dihapus
-      houseType: formData.houseType || '',
       houseNumber: formData.houseNumber || '',
-      ownershipStatus: formData.ownershipStatus || 'unknown',
-      headOfFamily: formData.headOfFamily || '', 
-      emergencyJob: formData.emergencyJob || '',
-      movingDate: tanggalTinggal ? 
-        `${tanggalTinggal.getFullYear()}-${(tanggalTinggal.getMonth() + 1).toString().padStart(2, '0')}-${tanggalTinggal.getDate().toString().padStart(2, '0')}` 
-        : undefined,
-      citizenStatus: formData.citizenStatus || 'Warga Baru'
+      ownershipStatus: formData.ownershipStatus || 'milik-sendiri'
     };
 
     const validation = wargaMagicService.validateWargaData(wargaData);
@@ -255,19 +222,7 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
         />
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="hp">Nomor HP Aktif *</Label>
-        <Input 
-          id="hp" 
-          placeholder="089534924330"
-          value={formData.noTelp}
-          onChange={(e) => setFormData({...formData, noTelp: e.target.value})}
-          disabled={isLoading}
-        />
-        <p className="text-xs text-gray-500">
-          Nomor yang digunakan untuk kontak dan notifikasi
-        </p>
-      </div>
+
 
       <div className="grid gap-2">
         <Label htmlFor="email">Email *</Label>
@@ -284,12 +239,12 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
 
 
       <div className="grid gap-2">
-        <Label htmlFor="tipe-rumah">Tipe Rumah *</Label>
+        <Label htmlFor="nomor-rumah">Nomor Rumah *</Label>
         <Input 
-          id="tipe-rumah" 
+          id="nomor-rumah" 
           placeholder="42 B"
-          value={formData.houseType}
-          onChange={(e) => setFormData({...formData, houseType: e.target.value})}
+          value={formData.houseNumber}
+          onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
           disabled={isLoading}
         />
       </div>
@@ -305,131 +260,34 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
             <SelectValue placeholder="Pilih status kepemilikan" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Sewa">Sewa</SelectItem>
-            <SelectItem value="Milik Sendiri">Milik Sendiri</SelectItem>
-            <SelectItem value="Milik Orang Tua">Milik Orang Tua</SelectItem>
+            <SelectItem value="sewa">Sewa</SelectItem>
+            <SelectItem value="milik-sendiri">Milik Sendiri</SelectItem>
+            <SelectItem value="milik-orang-tua">Milik Orang Tua</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+
     </div>
   );
 
-  // Step 2: Documents & Additional Details  
-  const Step2Form = (
-    <div className="grid gap-4 pt-4">
 
-
-
-
-      <div className="grid gap-2">
-        <Label htmlFor="nama-kepala-keluarga">Nama Kepala Keluarga</Label>
-        <Input 
-          id="nama-kepala-keluarga" 
-          placeholder="Mathew Alexander"
-          value={formData.headOfFamily}
-          onChange={(e) => setFormData({...formData, headOfFamily: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="pekerjaan">Pekerjaan</Label>
-        <Input 
-          id="pekerjaan" 
-          placeholder="CEO Figma"
-          value={formData.emergencyJob}
-          onChange={(e) => setFormData({...formData, emergencyJob: e.target.value})}
-          disabled={isLoading}
-        />
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="tanggal-tinggal">Tanggal Tinggal</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full pl-3 text-left font-normal",
-                !tanggalTinggal && "text-muted-foreground"
-              )}
-              disabled={isLoading}
-            >
-              {tanggalTinggal ? (
-                format(tanggalTinggal, "PPP")
-              ) : (
-                <span>Pilih tanggal tinggal</span>
-              )}
-              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={tanggalTinggal}
-              onSelect={setTanggalTinggal}
-              captionLayout="dropdown"
-              disabled={isLoading}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div className="grid gap-2 w-full">
-        <Label htmlFor="citizen-status">Status Warga</Label>
-        <Select 
-          value={formData.citizenStatus} 
-          onValueChange={(value: 'Pindah' | 'Warga Baru') => setFormData({...formData, citizenStatus: value})}
-          disabled={isLoading}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Pilih status warga" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Warga Baru">Warga Baru</SelectItem>
-            <SelectItem value="Pindah">Pindah</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-gray-500">
-          Semua status warga akan diarahkan ke halaman verifikasi yang sama
-        </p>
-      </div>
-    </div>
-  );
 
   const footerContent = (
-    <div className="flex justify-between">
-      {step === 2 && (
-        <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Sebelumnya
-        </Button>
-      )}
-      <div className="flex-grow"></div>
-      {step === 1 && (
-        <Button 
-          onClick={() => setStep(2)} 
-          disabled={isLoading || !formData.email || !formData.fullname}
-        >
-          Selanjutnya
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      )}
-      {step === 2 && (
-        <Button onClick={handleSubmit} disabled={isLoading || !clusterId}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Menambah Warga...
-            </>
-          ) : (
-            <>
-              Tambah Warga
-              <Send className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-      )}
+    <div className="flex justify-end">
+      <Button onClick={handleSubmit} disabled={isLoading || !clusterId}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Menambah Warga...
+          </>
+        ) : (
+          <>
+            Tambah Warga
+            <Send className="ml-2 h-4 w-4" />
+          </>
+        )}
+      </Button>
     </div>
   );
 
@@ -439,12 +297,11 @@ export default function AddWargaDrawer({ refetch }: AddWargaDrawerProps) {
         trigger={triggerButton}
         title="Form Pendaftaran Warga baru"
         description="Isi data warga baru untuk menambahkan mereka ke dalam sistem."
-        steps={`Step ${step}/2`}
         footer={footerContent}
         open={isOpen}
         onOpenChange={handleOpenChange}
       >
-        {step === 1 ? Step1Form : Step2Form}
+        {Step1Form}
       </Drawer>
     </>
   );
