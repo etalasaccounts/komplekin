@@ -36,7 +36,7 @@ export function LoginForm({
       toast.success("Login berhasil! Mengalihkan ke dashboard...");
       setTimeout(() => {
         router.push(result.redirectPath!);
-      }, 1000);
+      }, 300);
     } else {
       toast.error(result.error || "Login gagal. Periksa email dan password Anda.");
     }
