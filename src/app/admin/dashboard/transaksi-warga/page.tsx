@@ -13,6 +13,7 @@ import FilterComponent, {
 import { ClipboardList, FileText, PiggyBank, Search } from "lucide-react";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useIuran } from "@/hooks/useIuran";
+import { useUserPermission } from "@/hooks/useUserPermission";
 import VerifikasiPembayaranContainer from "./components/VerifikasiPembayaranContainer";
 import { InvoiceStatus, VerificationStatus } from "@/types/invoice";
 import { toast } from "sonner";
@@ -58,7 +59,9 @@ export default function TransaksiWargaPage() {
   const invoicesByCluster = invoices.filter((invoice) => invoice.cluster_id === clusterId);
   const paidInvoicesByCluster = paidInvoices.filter((invoice) => invoice.cluster_id === clusterId);
   
-  const { iuran: iuranList } = useIuran();
+  // Move all iuran-related hooks to page level
+  const { iuran: iuranList, loading: iuranLoading, updateIuran, createIuran, error: iuranError } = useIuran();
+  const { userPermissions } = useUserPermission();
 
   useEffect(() => {
     const resetFilters = {
@@ -291,6 +294,10 @@ export default function TransaksiWargaPage() {
               createSheetOpen={createSheetOpen}
               setCreateSheetOpen={setCreateSheetOpen}
               createInvoice={createInvoice}
+              createIuran={createIuran}
+              userPermissions={userPermissions}
+              clusterId={clusterId}
+              iuranError={iuranError}
             />
           )}
         </div>
@@ -304,7 +311,15 @@ export default function TransaksiWargaPage() {
         />
       )}
       {activeTab === "iuran" && (
-        <IuranContainer />
+        <IuranContainer 
+          iuranList={iuranList}
+          iuranLoading={iuranLoading}
+          updateIuran={updateIuran}
+          clusterId={clusterId}
+          createIuran={createIuran}
+          userPermissions={userPermissions}
+          iuranError={iuranError}
+        />
       )}
       {activeTab === "verifikasi" && (
         <VerifikasiPembayaranContainer

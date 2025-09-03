@@ -48,6 +48,7 @@ export const useInvoices = () => {
           });
           return updatedInvoice;
         } catch (error) {
+          console.error("Error updating invoice:", error);
           toast.error("Gagal mengupdate invoice", {
             description: error instanceof Error ? error.message : "Terjadi kesalahan saat mengupdate invoice.",
             duration: 3000,
