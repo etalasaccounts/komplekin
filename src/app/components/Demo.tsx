@@ -87,15 +87,15 @@ export default function Demo() {
 
             {/* Right Side - Mobile Mockup */}
             <div className="relative">
-              <div className="relative bg-gradient-to-br from-primary/20 to-primary/30 rounded-2xl p-8">
+              <div className="relative bg-gradient-to-br from-[#EE7C2B]/20 to-[#EE7C2B]/30 rounded-2xl p-8">
                 <img 
                   src="/images/landing-page/user-dashboard.png" 
                   alt="Komplek In Mobile App Demo" 
-                  className="w-full max-w-sm mx-auto h-auto rounded-xl shadow-2xl"
+                  className="w-auto max-w-sm mx-auto h-[680px] rounded-xl shadow-2xl"
                 />
                 
                 {/* Floating Elements */}
-                <div className="absolute top-4 right-4 bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+                <div className="absolute top-4 right-4 bg-[#EE7C2B]/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
                   Live Demo
                 </div>
                 
