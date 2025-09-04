@@ -19,8 +19,8 @@ const TrialSection = () => {
         {/* CTA Button */}
         <div className="flex justify-center">
           <Button 
-            variant="default" 
-            size="lg" 
+            variant="default"
+            size="lg"
             className="px-8 py-4 text-lg font-semibold hover:bg-[#D66A25] hover:border-[#D66A25] cursor-pointer"
             style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
           >
