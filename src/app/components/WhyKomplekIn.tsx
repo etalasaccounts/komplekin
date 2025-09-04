@@ -46,7 +46,7 @@ export default function WhyKomplekIn() {
             {/* Left Side - Content */}
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
-                Because Managing a Complex Shouldn't Be Complicated.
+                Because Managing a Complex Shouldn&apos;t Be Complicated.
               </h2>
               
               {/* Tabbed Problems & Solutions */}
@@ -116,7 +116,7 @@ export default function WhyKomplekIn() {
           {/* Closing Statement */}
           <div className="text-center">
             <p className="text-xl font-medium text-foreground mb-8 max-w-3xl mx-auto">
-              "Komplek In isn't just an app—it's the solution to make your complex organized, modern, and harmonious."
+              &quot;Komplek In isn&apos;t just an app—it&apos;s the solution to make your complex organized, modern, and harmonious.&quot;
             </p>
             
             <Button variant="outline" size="lg" className="font-semibold cursor-pointer">

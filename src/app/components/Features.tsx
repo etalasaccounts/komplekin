@@ -90,7 +90,7 @@ export default function Features() {
 
         <div className="text-center">
           <p className="text-xl font-medium text-foreground mb-8 max-w-2xl mx-auto">
-            "With Komplek In, residents feel comfortable, admins become more efficient, and the complex becomes more modern."
+            &quot;With Komplek In, residents feel comfortable, admins become more efficient, and the complex becomes more modern.&quot;
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

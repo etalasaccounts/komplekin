@@ -69,7 +69,7 @@ const Learn = () => {
         {/* Closing Statement */}
         <div className="text-center bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8">
           <p className="text-xl md:text-2xl font-bold text-foreground mb-6 max-w-4xl mx-auto">
-            "Digitalization is no longer optional—it's a necessity. Start with your complex, with Komplek In."
+            &quot;Digitalization is no longer optional—it&apos;s a necessity. Start with your complex, with Komplek In.&quot;
           </p>
           
           <Button 

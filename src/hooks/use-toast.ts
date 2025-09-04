@@ -1,3 +1,4 @@
+import React from "react"
 import { toast as sonnerToast } from "sonner"
 
 // Re-export Sonner's toast functions with consistent API
@@ -41,7 +42,7 @@ export const toast = {
     options: {
       loading: string
       success: string | ((data: T) => string)
-      error: string | ((error: any) => string)
+      error: string | ((error: unknown) => string)
     }
   ) => {
     return sonnerToast.promise(promise, options)
@@ -52,7 +53,7 @@ export const toast = {
   },
   
   custom: (jsx: React.ReactNode, options?: { duration?: number }) => {
-    return sonnerToast.custom(jsx as any, {
+    return sonnerToast.custom(jsx as unknown as (id: string | number) => React.ReactElement, {
       duration: options?.duration || 4000,
     })
   }

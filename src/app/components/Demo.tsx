@@ -63,7 +63,7 @@ export default function Demo() {
               {/* Persuasive Closing */}
               <div className="bg-card/80 backdrop-blur-sm rounded-lg p-6 mb-8 border border-primary/10">
                 <p className="text-lg font-medium text-foreground text-center">
-                  "Take a small step for a big change in your complex. Try it now and feel the difference."
+                  &quot;Take a small step for a big change in your complex. Try it now and feel the difference.&quot;
                 </p>
               </div>
 
