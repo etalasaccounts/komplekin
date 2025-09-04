@@ -92,7 +92,7 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
       const userPermission = await getUserPermissionByProfileId(profile.id);
       setUserPermission(userPermission);
     }
-  }, [profile?.id]);
+  }, [profile?.id, getUserPermissionByProfileId]);
 
   // Ambil user permission saat komponen mount atau profile berubah
   useEffect(() => {
