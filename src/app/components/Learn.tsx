@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 
 const Learn = () => {
@@ -77,6 +78,7 @@ const Learn = () => {
             size="lg" 
             className="font-semibold hover:bg-[#D66A25] hover:border-[#D66A25]"
             style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
+            onClick={() => window.location.href = "https://komplek.in/admin/auth"}
           >
             Start Your Digital Journey
           </Button>

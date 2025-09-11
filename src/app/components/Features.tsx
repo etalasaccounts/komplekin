@@ -1,7 +1,14 @@
+"use client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function Features() {
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   const features = [
     {
       title: "Resident Management",
@@ -99,10 +106,11 @@ export default function Features() {
               size="lg" 
               className="font-semibold hover:bg-[#D66A25] hover:border-[#D66A25] cursor-pointer"
               style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
+              onClick={() => window.location.href = "https://komplek.in/admin/auth"}
             >
               Try Free Demo
             </Button>
-            <Button variant="outline" size="lg" className="font-semibold cursor-pointer">
+            <Button variant="outline" size="lg" className="font-semibold cursor-pointer" onClick={() => scrollToSection("contact")}>
               Contact Us
             </Button>
           </div>

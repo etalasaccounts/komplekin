@@ -1,4 +1,4 @@
-
+"use client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,7 +119,7 @@ export default function WhyKomplekIn() {
               &quot;Komplek In isn&apos;t just an app—it&apos;s the solution to make your complex organized, modern, and harmonious.&quot;
             </p>
             
-            <Button variant="outline" size="lg" className="font-semibold cursor-pointer">
+            <Button variant="outline" size="lg" className="font-semibold cursor-pointer" onClick={() => window.location.href = "https://komplek.in/admin/auth"}>
               Ready to try Komplek In? Move on to the free demo.
             </Button>
           </div>

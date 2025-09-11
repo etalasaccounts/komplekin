@@ -2,7 +2,7 @@
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, MessageCircle, Instagram, Twitter, Facebook } from "lucide-react";
+import { Mail, MessageCircle, Instagram, Linkedin } from "lucide-react";
 
 export default function Footer() {
   const navigationLinks = [
@@ -33,14 +33,11 @@ export default function Footer() {
               <p>Jl. Sudirman No. 123 Jakarta Pusat 10270 Indonesia</p>
             </div>
             <div className="flex gap-3">
-              <a href="#" className="text-white/70 hover:text-orange-500 transition-colors">
+              <a href="https://www.instagram.com/etalas.id/" target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-orange-500 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="text-white/70 hover:text-orange-500 transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-white/70 hover:text-orange-500 transition-colors">
-                <Facebook className="w-5 h-5" />
+              <a href="https://www.linkedin.com/company/etalas-id/" target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-orange-500 transition-colors">
+                <Linkedin className="w-5 h-5" />
               </a>
             </div>
           </div>
@@ -81,20 +78,20 @@ export default function Footer() {
             {/* Contact Support */}
             <div className="flex flex-col gap-3">
               <a 
-                href="mailto:support@komplekin.com"
+                href="mailto:support@komplek.in"
                 className="flex items-center gap-2 text-white/70 hover:text-orange-500 transition-colors text-sm"
               >
                 <Mail className="w-4 h-4" />
-                <span>support@komplekin.com</span>
+                <span>support@komplek.in</span>
               </a>
               <a 
-                href="https://wa.me/6221234567891"
+                href="https://wa.me/62811297339"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-white/70 hover:text-orange-500 transition-colors text-sm"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>+62 21 234 567 891</span>
+                <span>+62 811 297 339</span>
               </a>
             </div>
           </div>

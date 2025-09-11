@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Users } from "lucide-react";
 
@@ -74,11 +75,12 @@ export default function Demo() {
                   size="lg" 
                   className="flex-1 font-semibold hover:bg-[#D66A25] hover:border-[#D66A25] cursor-pointer"
                   style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
+                  onClick={() => window.location.href = "https://komplek.in/admin/auth"}
                 >
                   <Users className="w-5 h-5 mr-2" />
                   Sign Up for Free Demo Now
                 </Button>
-                <Button variant="outline" size="lg" className="flex-1 font-semibold cursor-pointer">
+                <Button variant="outline" size="lg" className="flex-1 font-semibold cursor-pointer" onClick={() => window.location.href = "https://wa.me/62811297339"}>
                   <MessageCircle className="w-5 h-5 mr-2" />
                   Chat via WhatsApp to Start
                 </Button>
