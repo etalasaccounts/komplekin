@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageCircle, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 const Contact = () => {
@@ -15,12 +15,35 @@ const Contact = () => {
     complexName: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Demo request submitted!", {
-      description: "We'll contact you soon to schedule your demo.",
-    });
-    setFormData({ name: "", email: "", phone: "", complexName: "" });
+    
+    try {
+      const response = await fetch('/api/send-email/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        toast.success("Pesan berhasil dikirim!", {
+          description: "Tim support kami akan menghubungi Anda dalam 24 jam.",
+        });
+        setFormData({ name: "", email: "", phone: "", complexName: "" });
+      } else {
+        const errorData = await response.json();
+        toast.error("Gagal mengirim pesan", {
+          description: errorData.error || "Terjadi kesalahan, silakan coba lagi.",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast.error("Gagal mengirim pesan", {
+        description: "Terjadi kesalahan jaringan, silakan coba lagi.",
+      });
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,9 +53,7 @@ const Contact = () => {
     }));
   };
 
-  const handleWhatsAppClick = () => {
-    window.open("https://wa.me/your-whatsapp-number", "_blank");
-  };
+
 
   return (
     <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
@@ -95,19 +116,9 @@ const Contact = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button type="submit" className="flex-1" size="lg" style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}>
+                <Button type="submit" className="flex-1 cursor-pointer" size="lg" style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}>
                   <Send className="w-4 h-4 mr-2" />
-                  Request Demo
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleWhatsAppClick}
-                  className="flex-1"
-                  size="lg"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Chat via WhatsApp
+                  Contact Us
                 </Button>
               </div>
             </form>
