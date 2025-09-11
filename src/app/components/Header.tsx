@@ -50,7 +50,7 @@ export default function Header() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm" className="cursor-pointer">
+            <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => scrollToSection("contact")}>
               Contact Now
             </Button>
             <Button 
@@ -58,6 +58,7 @@ export default function Header() {
               size="sm"
               style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
               className="hover:bg-[#D66A25] hover:border-[#D66A25] cursor-pointer"
+              onClick={() => window.location.href = "https://komplek.in/admin/auth"}
             >
               Try it Free
             </Button>
@@ -93,12 +94,14 @@ export default function Header() {
                 <Button 
                   variant="outline"
                   className="w-full"
+                  onClick={() => scrollToSection("contact")}
                 >
                   Contact Now
                 </Button>
                 <Button 
                   className="w-full"
                   style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
+                  onClick={() => window.location.href = "https://komplek.in/admin/auth"}
                 >
                   Try it Free
                 </Button>

@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 
 const TrialSection = () => {
@@ -23,6 +24,7 @@ const TrialSection = () => {
             size="lg"
             className="px-8 py-4 text-lg font-semibold hover:bg-[#D66A25] hover:border-[#D66A25] cursor-pointer"
             style={{ backgroundColor: '#EE7C2B', borderColor: '#EE7C2B' }}
+            onClick={() => window.location.href = "https://komplek.in/admin/auth"}
           >
             Try Now
           </Button>
