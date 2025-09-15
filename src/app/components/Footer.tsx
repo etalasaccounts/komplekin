@@ -29,10 +29,10 @@ export default function Footer() {
           {/* Logo and Address */}
           <div className="flex-shrink-0 md:flex-[0.35]">
             <img src="/images/landing-page/logo-and-name-white.svg" alt="Komplek-In Logo" className="text-primary-foreground" />
-            <div className="text-white/70 text-sm mb-4">
+            {/* <div className="text-white/70 text-sm mb-4">
               <p>Jl. Sudirman No. 123 Jakarta Pusat 10270 Indonesia</p>
-            </div>
-            <div className="flex gap-3">
+            </div> */}
+            <div className="flex gap-3 mt-4">
               <a href="https://www.instagram.com/etalas.id/" target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-orange-500 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
@@ -78,11 +78,11 @@ export default function Footer() {
             {/* Contact Support */}
             <div className="flex flex-col gap-3">
               <a 
-                href="mailto:support@komplek.in"
+                href="mailto: hello@etalas.com"
                 className="flex items-center gap-2 text-white/70 hover:text-orange-500 transition-colors text-sm"
               >
                 <Mail className="w-4 h-4" />
-                <span>support@komplek.in</span>
+                <span>hello@etalas.com</span>
               </a>
               <a 
                 href="https://wa.me/62811297339"
@@ -103,6 +103,23 @@ export default function Footer() {
         <div className="text-center">
           <div className="text-white/70 text-sm">
             © 2024 Komplek In. Semua hak dilindungi undang-undang.
+          </div>
+        </div>
+      </div>
+      
+      {/* Floating Powered by Badge */}
+      <div className="fixed bottom-3 right-3 z-50">
+        <div className="bg-black/80 backdrop-blur-sm px-2 py-1.5 rounded-xs shadow-lg border border-white/10">
+          <div className="text-white/70 text-xs">
+            Powered by{" "}
+            <a 
+              href="https://etalas.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-orange-500 hover:text-orange-400 transition-colors font-medium"
+            >
+              Etalas.com
+            </a>
           </div>
         </div>
       </div>
