@@ -204,7 +204,7 @@ export default function WargaCard({
         </div>
         <div className="flex items-center">
           <House className="h-4 w-4 mr-2" />
-          <span>{nomorRumah}</span>
+          <span>{nomorRumah ? nomorRumah : '-'}</span>
         </div>
       </div>
 
