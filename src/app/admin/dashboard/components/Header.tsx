@@ -97,7 +97,7 @@ const Header = () => {
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" style={{ visibility: "hidden"}}>
               <Bell className="size-6" />
             </Button>
             <DropdownMenu>
