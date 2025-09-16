@@ -33,22 +33,26 @@ const Header = () => {
   const navigationItems = [
     {
       name: "Manajemen Warga",
-      path: "/admin/dashboard/manajemen-warga",
+      path: "/admin/dashboard/manajemen-warga?tab=daftar-warga",
       icon: <User className="h-5 w-5" />,
     },
     {
       name: "Transaksi Warga",
-      path: "/admin/dashboard/transaksi-warga",
+      path: "/admin/dashboard/transaksi-warga?tab=iuran",
       icon: <WalletCards className="h-5 w-5" />,
     },
     {
       name: "Keuangan",
-      path: "/admin/dashboard/keuangan",
+      path: "/admin/dashboard/keuangan?tab=pemasukan",
       icon: <DollarSign className="h-5 w-5" />,
     },
   ];
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    // Extract the pathname without query parameters for comparison
+    const pathWithoutQuery = path.split('?')[0];
+    return pathname === pathWithoutQuery;
+  };
 
   return (
     <header className="bg-card">

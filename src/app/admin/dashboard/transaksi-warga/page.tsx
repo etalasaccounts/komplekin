@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,8 @@ import { toast } from "sonner";
 import IuranContainer from "./components/IuranContainer";
 import IuranWargaDrawer from "./components/IuranWargaDrawer";
 import { useAuth } from "@/hooks/useAuth";
+import { useClusterBankAccountsAdmin } from "@/hooks/useClusterBankAccountsAdmin";
+import RekeningRTCallout from "@/components/RekeningRTCallout";
 
 const paymentStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
@@ -61,6 +64,8 @@ const isDateInRange = (dateString: string, fromDate: Date | null | undefined, to
 };
 
 export default function TransaksiWargaPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("iuran");
   const [searchTerm, setSearchTerm] = useState("");
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -79,7 +84,9 @@ export default function TransaksiWargaPage() {
   });
 
   const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
+  const { bankAccounts } = useClusterBankAccountsAdmin();
   const { clusterId } = useAuth();
+  const bankAccountsByCluster = bankAccounts.filter((account) => account.cluster_id === clusterId);
 
   const invoicesByCluster = invoices.filter((invoice) => invoice.cluster_id === clusterId);
   const paidInvoicesByCluster = paidInvoices.filter((invoice) => invoice.cluster_id === clusterId);
@@ -87,6 +94,14 @@ export default function TransaksiWargaPage() {
   // Move all iuran-related hooks to page level
   const { iuran: iuranList, loading: iuranLoading, updateIuran, createIuran, error: iuranError } = useIuran();
   const { userPermissions } = useUserPermission();
+
+  // Initialize activeTab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['iuran', 'status', 'verifikasi'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const resetFilters = {
@@ -98,6 +113,13 @@ export default function TransaksiWargaPage() {
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
   }, [activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('tab', tab);
+    router.push(`/admin/dashboard/transaksi-warga?${currentParams.toString()}`);
+  };
 
   const iuranOptions: IuranOption[] = useMemo(() => {
     return iuranList.map((iuran) => ({
@@ -326,6 +348,7 @@ export default function TransaksiWargaPage() {
 
   return (
     <div className="space-y-6">
+      <RekeningRTCallout show={bankAccountsByCluster.length === 0} />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">Transaksi Warga</h1>
         <p className="text-sm text-muted-foreground">
@@ -338,7 +361,7 @@ export default function TransaksiWargaPage() {
         <div className="flex space-x-1 p-1 w-fit">
           <Button 
           variant="ghost" 
-          onClick={() => setActiveTab("iuran")} 
+          onClick={() => handleTabChange("iuran")} 
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors rounded-none",
             activeTab === "iuran"
@@ -350,7 +373,7 @@ export default function TransaksiWargaPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("status")}
+            onClick={() => handleTabChange("status")}
             className={cn(
               "px-4 py-2 text-sm font-medium transition-colors rounded-none",
               activeTab === "status"
@@ -363,7 +386,7 @@ export default function TransaksiWargaPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("verifikasi")}
+            onClick={() => handleTabChange("verifikasi")}
             className={cn(
               "px-4 py-2 text-sm font-medium transition-colors rounded-none",
               activeTab === "verifikasi"
