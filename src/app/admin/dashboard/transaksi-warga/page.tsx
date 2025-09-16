@@ -35,6 +35,31 @@ const verificationStatusOptions: StatusOption[] = [
   { value: "pending", label: "Pending" },
 ];
 
+// Helper functions to extract year and month without timezone conversion
+const getYearMonth = (dateString: string) => {
+  // Extract YYYY-MM from date string without creating Date object
+  const yearMonth = dateString.substring(0, 7); // Gets "YYYY-MM"
+  return yearMonth;
+};
+
+const isDateInRange = (dateString: string, fromDate: Date | null | undefined, toDate: Date | null | undefined) => {
+  if (!fromDate && !toDate) return true;
+  
+  const yearMonth = getYearMonth(dateString);
+  
+  if (fromDate) {
+    const fromYearMonth = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}`;
+    if (yearMonth < fromYearMonth) return false;
+  }
+  
+  if (toDate) {
+    const toYearMonth = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}`;
+    if (yearMonth > toYearMonth) return false;
+  }
+  
+  return true;
+};
+
 export default function TransaksiWargaPage() {
   const [activeTab, setActiveTab] = useState("iuran");
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,13 +130,36 @@ export default function TransaksiWargaPage() {
     });
     
     return invoicesByCluster.filter((invoice) => {
-      if (appliedFilters.dateFrom && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate < appliedFilters.dateFrom) return false;
-      }
-      if (appliedFilters.dateTo && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate > appliedFilters.dateTo) return false;
+      // Date filtering - use master_iuran's start_date and end_date (month/year only)
+      if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+        if (invoice.master_iuran) {
+          // Check if either start_date or end_date falls within the filter range
+          const startDateInRange = isDateInRange(invoice.master_iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+          const endDateInRange = isDateInRange(invoice.master_iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+          
+          // If neither start nor end date is in range, filter out this invoice
+          if (!startDateInRange && !endDateInRange) {
+            // Also check if the iuran period spans across the filter range
+            const iuranStartYearMonth = getYearMonth(invoice.master_iuran.start_date);
+            const iuranEndYearMonth = getYearMonth(invoice.master_iuran.end_date);
+            
+            let filterStartYearMonth = '';
+            let filterEndYearMonth = '';
+            
+            if (appliedFilters.dateFrom) {
+              filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+            }
+            if (appliedFilters.dateTo) {
+              filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+            }
+            
+            // Check if iuran period spans across the filter range
+            const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+              (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+            
+            if (!spansRange) return false;
+          }
+        }
       }
 
       if (appliedFilters.status && appliedFilters.status !== "all") {
@@ -140,14 +188,37 @@ export default function TransaksiWargaPage() {
 
   const filteredPaidInvoices = useMemo(() => {
     return paidInvoicesByCluster.filter((invoice) => {
-      if (appliedFilters.dateFrom && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate < appliedFilters.dateFrom) return false;
-      }
-      if (appliedFilters.dateTo && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate > appliedFilters.dateTo) return false;
-      }
+      // Date filtering - use master_iuran's start_date and end_date (month/year only)
+       if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+         if (invoice.master_iuran) {
+           // Check if either start_date or end_date falls within the filter range
+           const startDateInRange = isDateInRange(invoice.master_iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+           const endDateInRange = isDateInRange(invoice.master_iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+           
+           // If neither start nor end date is in range, filter out this invoice
+           if (!startDateInRange && !endDateInRange) {
+             // Also check if the iuran period spans across the filter range
+             const iuranStartYearMonth = getYearMonth(invoice.master_iuran.start_date);
+             const iuranEndYearMonth = getYearMonth(invoice.master_iuran.end_date);
+             
+             let filterStartYearMonth = '';
+             let filterEndYearMonth = '';
+             
+             if (appliedFilters.dateFrom) {
+               filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+             }
+             if (appliedFilters.dateTo) {
+               filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+             }
+             
+             // Check if iuran period spans across the filter range
+             const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+               (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+             
+             if (!spansRange) return false;
+           }
+         }
+       }
 
       if (appliedFilters.status && appliedFilters.status !== "all") {
         if (appliedFilters.status === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
@@ -173,6 +244,42 @@ export default function TransaksiWargaPage() {
       return true;
     });
   }, [paidInvoicesByCluster, appliedFilters]);
+
+  const filteredIuran = useMemo(() => {
+    return iuranList.filter((iuran) => {
+      // Date filtering - use iuran's start_date and end_date (month/year only)
+      if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+        // Check if either start_date or end_date falls within the filter range
+        const startDateInRange = isDateInRange(iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+        const endDateInRange = isDateInRange(iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+        
+        // If neither start nor end date is in range, filter out this iuran
+        if (!startDateInRange && !endDateInRange) {
+          // Also check if the iuran period spans across the filter range
+          const iuranStartYearMonth = getYearMonth(iuran.start_date);
+          const iuranEndYearMonth = getYearMonth(iuran.end_date);
+          
+          let filterStartYearMonth = '';
+          let filterEndYearMonth = '';
+          
+          if (appliedFilters.dateFrom) {
+            filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+          }
+          if (appliedFilters.dateTo) {
+            filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+          }
+          
+          // Check if iuran period spans across the filter range
+          const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+            (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+          
+          if (!spansRange) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [iuranList, appliedFilters]);
 
   const handleApplyFilters = (newFilters: FilterState) => {
     setAppliedFilters(newFilters);
@@ -312,7 +419,7 @@ export default function TransaksiWargaPage() {
       )}
       {activeTab === "iuran" && (
         <IuranContainer 
-          iuranList={iuranList}
+          iuranList={filteredIuran}
           iuranLoading={iuranLoading}
           updateIuran={updateIuran}
           clusterId={clusterId}

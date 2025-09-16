@@ -27,6 +27,7 @@ interface MonthYearPickerProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  minDate?: Date
 }
 
 const months = [
@@ -50,6 +51,7 @@ export function MonthYearPicker({
   placeholder = "Pilih bulan & tahun",
   disabled = false,
   className,
+  minDate,
 }: MonthYearPickerProps) {
   const [open, setOpen] = React.useState(false)
   const [selectedMonth, setSelectedMonth] = React.useState<string>("")
@@ -58,6 +60,31 @@ export function MonthYearPicker({
   // Generate years (current year - 10 to current year + 10)
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i)
+
+  // Filter available months based on minDate and selected year
+  const getAvailableMonths = () => {
+    if (!minDate || !selectedYear) return months
+    
+    const minYear = minDate.getFullYear()
+    const minMonth = minDate.getMonth()
+    const currentSelectedYear = parseInt(selectedYear)
+    
+    if (currentSelectedYear > minYear) {
+      return months
+    } else if (currentSelectedYear === minYear) {
+      return months.filter(month => parseInt(month.value) >= minMonth)
+    } else {
+      return []
+    }
+  }
+
+  // Filter available years based on minDate
+  const getAvailableYears = () => {
+    if (!minDate) return years
+    
+    const minYear = minDate.getFullYear()
+    return years.filter(year => year >= minYear)
+  }
 
   React.useEffect(() => {
     if (value) {
@@ -73,6 +100,10 @@ export function MonthYearPicker({
     setSelectedMonth(month)
     if (selectedYear) {
       const newDate = new Date(parseInt(selectedYear), parseInt(month), 1)
+      // Validate against minDate
+      if (minDate && newDate < minDate) {
+        return // Don't update if the date is before minDate
+      }
       onChange(newDate)
     }
   }
@@ -81,8 +112,20 @@ export function MonthYearPicker({
     setSelectedYear(year)
     if (selectedMonth) {
       const newDate = new Date(parseInt(year), parseInt(selectedMonth), 1)
+      // Validate against minDate
+      if (minDate && newDate < minDate) {
+        // If the selected month is invalid for this year, clear the month
+        setSelectedMonth("")
+        return
+      }
       onChange(newDate)
     }
+  }
+
+  const handleClear = () => {
+    setSelectedMonth("")
+    setSelectedYear("")
+    onChange(undefined)
   }
 
 
@@ -118,7 +161,7 @@ export function MonthYearPicker({
                     <SelectValue placeholder="Pilih bulan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {months.map((month) => (
+                    {getAvailableMonths().map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
                       </SelectItem>
@@ -133,7 +176,7 @@ export function MonthYearPicker({
                     <SelectValue placeholder="Pilih tahun" />
                   </SelectTrigger>
                   <SelectContent>
-                    {years.map((year) => (
+                    {getAvailableYears().map((year) => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
                       </SelectItem>
