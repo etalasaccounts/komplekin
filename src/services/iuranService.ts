@@ -143,16 +143,220 @@ export const iuranService = {
   },
 
   async updateIuran(id: string, iuranData: UpdateIuranRequest): Promise<Iuran> {
-    const { data, error } = await supabase
-      .from('master_iuran')
-      .update(iuranData)
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      // Get current iuran data to compare participants
+      const currentIuran = await this.getIuranById(id);
+      if (!currentIuran) {
+        throw new Error('Iuran not found');
+      }
 
-    if (error) throw error;
+      // Update the iuran
+      const { data, error } = await supabase
+        .from('master_iuran')
+        .update(iuranData)
+        .eq('id', id)
+        .select()
+        .single();
 
-    return data;
+      if (error) throw error;
+
+      // Handle participant changes if participants array is provided
+      if (iuranData.participants) {
+        await this.handleParticipantChanges(
+          id,
+          currentIuran.participants,
+          iuranData.participants,
+          currentIuran,
+          iuranData
+        );
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error updating iuran:', error);
+      throw error;
+    }
+  },
+
+  async handleParticipantChanges(
+    iuranId: string,
+    oldParticipants: string[],
+    newParticipants: string[],
+    currentIuran: Iuran,
+    updateData: UpdateIuranRequest
+  ): Promise<void> {
+    try {
+      // Find added and removed participants
+      const addedParticipants = newParticipants.filter(p => !oldParticipants.includes(p));
+      const removedParticipants = oldParticipants.filter(p => !newParticipants.includes(p));
+
+      console.log('Added participants:', addedParticipants);
+      console.log('Removed participants:', removedParticipants);
+
+      // Handle removed participants - delete their invoices
+      if (removedParticipants.length > 0) {
+        await this.deleteInvoicesForParticipants(iuranId, removedParticipants);
+      }
+
+      // Handle added participants - generate past invoices
+      if (addedParticipants.length > 0) {
+        await this.generatePastInvoicesForNewParticipants(
+          iuranId,
+          addedParticipants,
+          currentIuran,
+          updateData
+        );
+      }
+    } catch (error) {
+      console.error('Error handling participant changes:', error);
+      throw error;
+    }
+  },
+
+  async deleteInvoicesForParticipants(iuranId: string, participantIds: string[]): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('iuran', iuranId)
+        .in('user_id', participantIds);
+
+      if (error) throw error;
+
+      console.log(`Deleted invoices for ${participantIds.length} removed participants`);
+    } catch (error) {
+      console.error('Error deleting invoices for removed participants:', error);
+      throw error;
+    }
+  },
+
+  async generatePastInvoicesForNewParticipants(
+    iuranId: string,
+    newParticipantIds: string[],
+    currentIuran: Iuran,
+    updateData: UpdateIuranRequest
+  ): Promise<void> {
+    try {
+      const startDate = new Date(updateData.start_date || currentIuran.start_date);
+      const endDate = new Date(updateData.end_date || currentIuran.end_date);
+      const dueDay = updateData.due_date || currentIuran.due_date;
+      const amount = updateData.amount || currentIuran.amount;
+      const currentDate = new Date();
+
+      const invoicesToCreate = [];
+
+      // Generate invoices for each month from start_date to current month (or end_date if earlier)
+      let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const lastMonth = new Date(Math.min(endDate.getTime(), currentDate.getTime()));
+
+      while (currentMonth <= lastMonth) {
+        const dueDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dueDay);
+        
+        // Create invoice for each new participant for this month
+        for (const participantId of newParticipantIds) {
+          invoicesToCreate.push({
+            user_id: participantId,
+            cluster_id: currentIuran.cluster_id,
+            bill_amount: amount,
+            due_date: `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`,
+            invoice_status: InvoiceStatus.UNPAID,
+            verification_status: VerificationStatus.NOT_YET_CHECKED,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            iuran: iuranId
+          });
+        }
+
+        // Move to next month
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
+
+      if (invoicesToCreate.length > 0) {
+        // Insert all past invoices
+        const { error: invoiceError } = await supabase
+          .from('invoices')
+          .insert(invoicesToCreate);
+
+        if (invoiceError) throw invoiceError;
+
+        console.log(`Generated ${invoicesToCreate.length} past invoices for ${newParticipantIds.length} new participants`);
+
+        // Send immediate email reminders for overdue invoices
+        const currentDay = currentDate.getDate();
+        if (currentDay > 2) {
+          // Check if any of the generated invoices are overdue and send reminders
+          const overdueInvoices = invoicesToCreate.filter(invoice => {
+            const invoiceDueDate = new Date(invoice.due_date);
+            return invoiceDueDate < currentDate;
+          });
+
+          if (overdueInvoices.length > 0) {
+            await this.sendRemindersForOverdueInvoices(newParticipantIds, overdueInvoices, currentIuran.name);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error generating past invoices for new participants:', error);
+      throw error;
+    }
+  },
+
+  async sendRemindersForOverdueInvoices(
+    participantIds: string[],
+    overdueInvoices: any[],
+    iuranName: string
+  ): Promise<void> {
+    try {
+      // Get participant details for email sending
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, fullname, email')
+        .in('id', participantIds);
+        
+      if (profileError) {
+        console.error('Error fetching participant profiles:', profileError);
+        return;
+      }
+      
+      // Send email to each participant with overdue invoices
+      for (const profile of profiles || []) {
+        if (profile.email) {
+          const participantOverdueInvoices = overdueInvoices.filter(inv => inv.user_id === profile.id);
+          
+          if (participantOverdueInvoices.length > 0) {
+            try {
+              const response = await fetch('/api/send-email/invoice-reminder', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userName: profile.fullname || 'Warga',
+                  invoiceNumber: `INV-${iuranName}-${profile.id}`,
+                  amount: participantOverdueInvoices[0].bill_amount.toLocaleString('id-ID'),
+                  dueDate: new Date(participantOverdueInvoices[0].due_date).toLocaleDateString('id-ID', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }),
+                  email: profile.email
+                })
+              });
+              
+              if (!response.ok) {
+                console.error(`Failed to send email to ${profile.email}:`, await response.text());
+              } else {
+                console.log(`Email reminder sent successfully to ${profile.email} for ${participantOverdueInvoices.length} overdue invoices`);
+              }
+            } catch (emailError) {
+              console.error(`Error sending email to ${profile.email}:`, emailError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in sendRemindersForOverdueInvoices:', error);
+    }
   },
 
   async deleteIuran(id: string): Promise<void> {
