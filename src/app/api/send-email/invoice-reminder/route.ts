@@ -84,7 +84,7 @@ const InvoiceReminderEmailTemplate = ({
 
 export async function POST(request: Request) {
   try {
-    const { userName, invoiceNumber, amount, dueDate, email } = await request.json();
+    const { userName, amount, dueDate, email } = await request.json();
 
     // Debug logging
     console.log('Attempting to send invoice reminder email to:', email);
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     // Validate required fields
-    if (!userName || !invoiceNumber || !amount || !dueDate) {
+    if (!userName || !amount || !dueDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 

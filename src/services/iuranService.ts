@@ -63,9 +63,82 @@ export const iuranService = {
         .insert(invoices);
 
       if (invoiceError) throw invoiceError;
+
+      // Check if we need to send immediate email reminders
+      await this.checkAndSendImmediateReminders(dueDate, iuranData.participants, iuranData.amount, data.id);
     } catch (error) {
       console.error('Error generating invoices:', error);
       throw error;
+    }
+  },
+
+  async checkAndSendImmediateReminders(dueDate: Date, participants: string[], amount: number, iuranName: string): Promise<void> {
+    try {
+      const currentDate = new Date();
+      const currentDay = currentDate.getDate();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      
+      const dueDateMonth = dueDate.getMonth();
+      const dueDateYear = dueDate.getFullYear();
+      
+      // Check if we're in the same month and year as the due date
+      // and if current date is past the 2nd (reminder date)
+      const shouldSendReminder = (
+        currentMonth === dueDateMonth && 
+        currentYear === dueDateYear && 
+        currentDay > 2
+      );
+      
+      if (shouldSendReminder) {
+        console.log('Sending immediate email reminders for overdue invoices');
+        
+        // Get participant details for email sending
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, fullname, email')
+          .in('id', participants);
+          
+        if (profileError) {
+          console.error('Error fetching participant profiles:', profileError);
+          return;
+        }
+        
+        // Send email to each participant
+        for (const profile of profiles || []) {
+          if (profile.email) {
+            try {
+              const response = await fetch('/api/send-email/invoice-reminder', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                   userName: profile.fullname || 'Warga',
+                   amount: amount.toLocaleString('id-ID'),
+                   dueDate: dueDate.toLocaleDateString('id-ID', {
+                     year: 'numeric',
+                     month: 'long',
+                     day: 'numeric'
+                   }),
+                   email: profile.email
+                 })
+              });
+              
+              if (!response.ok) {
+                console.error(`Failed to send email to ${profile.email}:`, await response.text());
+              } else {
+                console.log(`Email reminder sent successfully to ${profile.email}`);
+              }
+            } catch (emailError) {
+              console.error(`Error sending email to ${profile.email}:`, emailError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAndSendImmediateReminders:', error);
+      // Don't throw error here to avoid breaking the main iuran creation process
     }
   },
 
