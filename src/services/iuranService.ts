@@ -49,7 +49,7 @@ export const iuranService = {
         user_id: participant,
         cluster_id: iuranData.cluster_id,
         bill_amount: iuranData.amount,
-        due_date: dueDate.toISOString().split('T')[0],
+        due_date: `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`,
         invoice_status: InvoiceStatus.UNPAID,
         verification_status: VerificationStatus.NOT_YET_CHECKED,
         created_at: new Date().toISOString(),
@@ -110,4 +110,4 @@ export const iuranService = {
 
     return data || [];
   }
-}; 
+};
