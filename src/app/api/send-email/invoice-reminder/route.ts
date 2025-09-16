@@ -5,14 +5,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface InvoiceReminderEmailTemplateProps {
   userName: string;
-  invoiceNumber: string;
   amount: string;
   dueDate: string;
 }
 
 const InvoiceReminderEmailTemplate = ({ 
-  userName, 
-  invoiceNumber, 
+  userName,
   amount, 
   dueDate 
 }: InvoiceReminderEmailTemplateProps) => {
@@ -45,7 +43,6 @@ const InvoiceReminderEmailTemplate = ({
           
           <div class="invoice-box">
             <h3 style="margin: 0 0 15px 0; color: #1f2937;">Detail Tagihan</h3>
-            <p style="margin: 5px 0;"><strong>Nomor Invoice:</strong> #${invoiceNumber}</p>
             <p style="margin: 5px 0;"><strong>Jumlah Tagihan:</strong> <span class="amount">Rp ${amount}</span></p>
             <p style="margin: 5px 0;"><strong>Jatuh Tempo:</strong> ${dueDate}</p>
           </div>
@@ -117,7 +114,7 @@ export async function POST(request: Request) {
       from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
       to: [email],
       subject: `Pengingat Tagihan - KomplekIn`,
-      html: InvoiceReminderEmailTemplate({ userName, invoiceNumber, amount, dueDate }),
+      html: InvoiceReminderEmailTemplate({ userName, amount, dueDate }),
     });
 
     if (error) {
