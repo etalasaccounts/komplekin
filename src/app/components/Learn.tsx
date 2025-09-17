@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const Learn = () => {
   const articles = [
@@ -42,10 +43,12 @@ const Learn = () => {
             >
               {/* Image */}
               <div className="overflow-hidden rounded-2xl mb-6">
-                <img 
+                <Image 
                   src={article.backgroundImage} 
                   alt={article.title}
                   className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
+                  width={420}
+                  height={200}
                 />
               </div>
               
@@ -68,7 +71,7 @@ const Learn = () => {
         </div>
 
         {/* Closing Statement */}
-        <div className="text-center bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8">
+        <div className="text-center bg-gradient-to-r from-[#EE7C2B]/5 to-[#EE7C2B]/10 rounded-2xl p-8">
           <p className="text-xl md:text-2xl font-bold text-foreground mb-6 max-w-4xl mx-auto">
             &quot;Digitalization is no longer optional—it&apos;s a necessity. Start with your complex, with Komplek In.&quot;
           </p>

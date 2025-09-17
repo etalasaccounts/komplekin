@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { Iuran, CreateIuranRequest, UpdateIuranRequest } from '@/types/iuran';
-import { InvoiceStatus, VerificationStatus } from '@/types/invoice';
+import { InvoiceStatus, VerificationStatus, Invoice } from '@/types/invoice';
 
 const supabase = createClient();
 
@@ -65,14 +65,14 @@ export const iuranService = {
       if (invoiceError) throw invoiceError;
 
       // Check if we need to send immediate email reminders
-      await this.checkAndSendImmediateReminders(dueDate, iuranData.participants, iuranData.amount, data.id);
+      await this.checkAndSendImmediateReminders(dueDate, iuranData.participants, iuranData.amount);
     } catch (error) {
       console.error('Error generating invoices:', error);
       throw error;
     }
   },
 
-  async checkAndSendImmediateReminders(dueDate: Date, participants: string[], amount: number, iuranName: string): Promise<void> {
+  async checkAndSendImmediateReminders(dueDate: Date, participants: string[], amount: number): Promise<void> {
     try {
       const currentDate = new Date();
       const currentDay = currentDate.getDate();
@@ -246,7 +246,7 @@ export const iuranService = {
       const invoicesToCreate = [];
 
       // Generate invoices for each month from start_date to current month (or end_date if earlier)
-      let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
       const lastMonth = new Date(Math.min(endDate.getTime(), currentDate.getTime()));
 
       while (currentMonth <= lastMonth) {
@@ -291,7 +291,7 @@ export const iuranService = {
           });
 
           if (overdueInvoices.length > 0) {
-            await this.sendRemindersForOverdueInvoices(newParticipantIds, overdueInvoices, currentIuran.name);
+            await this.sendRemindersForOverdueInvoices(newParticipantIds, overdueInvoices);
           }
         }
       }
@@ -303,9 +303,8 @@ export const iuranService = {
 
   async sendRemindersForOverdueInvoices(
     participantIds: string[],
-    overdueInvoices: any[],
-    iuranName: string
-  ): Promise<void> {
+    overdueInvoices: Invoice[],
+  ): Promise<void> { 
     try {
       // Get participant details for email sending
       const { data: profiles, error: profileError } = await supabase
@@ -332,8 +331,7 @@ export const iuranService = {
                 },
                 body: JSON.stringify({
                   userName: profile.fullname || 'Warga',
-                  invoiceNumber: `INV-${iuranName}-${profile.id}`,
-                  amount: participantOverdueInvoices[0].bill_amount.toLocaleString('id-ID'),
+                  amount: participantOverdueInvoices[0]?.bill_amount?.toLocaleString('id-ID') || '0',
                   dueDate: new Date(participantOverdueInvoices[0].due_date).toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'long',

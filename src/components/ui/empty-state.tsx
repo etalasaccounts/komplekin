@@ -1,4 +1,4 @@
-import { FileX, Search } from "lucide-react";
+import { FileX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {

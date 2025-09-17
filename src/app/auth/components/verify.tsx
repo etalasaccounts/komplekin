@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,85 @@ export function AuthVerify() {
   const preFilledEmail = searchParams.get('email');
   const isVerified = searchParams.get('verified');
   const encryptedTempPwd = searchParams.get('temp_pwd');
+
+  // Function to handle automatic login with decrypted password
+  const performAutoLogin = useCallback(async (userEmail: string, tempPassword: string) => {
+    try {
+      console.log('Performing automatic login for:', userEmail);
+      
+      const supabase = createClient();
+      
+      // Sign in with the temporary password
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: tempPassword,
+      });
+
+      console.log('Auto sign in result:', { signInData, signInError });
+
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError);
+        
+        let errorMessage = "Automatic login failed. Please enter your temporary password manually.";
+        
+        if (signInError.message.includes('Invalid login credentials')) {
+          errorMessage = "Invalid temporary password. The encrypted password may be corrupted.";
+        }
+        
+        toast.error("Auto Login Failed", {
+          description: errorMessage,
+          duration: 5000,
+        });
+        
+        setAutoLoginInProgress(false);
+        return;
+      }
+
+      if (signInData.user && signInData.session) {
+        console.log('Auto login successful for user:', signInData.user.id);
+        
+        // Update profile verification status
+        try {
+          // Update user_permissions
+          const { data: permData, error: permError } = await supabase
+            .from('user_permissions')
+            .update({ is_email_verified: true })
+            .eq('user_id', signInData.user.id)
+            .select();
+
+          if (permError) {
+            console.error('Auto login user_permissions update error:', permError);
+          } else {
+            console.log('Auto login user_permissions update successful:', permData);
+          }
+        } catch (updateError) {
+          console.error('Auto login profile update exception:', updateError);
+        }
+        
+        toast.success("Login Successful!", {
+          description: "Redirecting to password setup...",
+          duration: 3000,
+        });
+
+        // Redirect to reset password page
+        const userRole = signInData.user.user_metadata?.role || 'user';
+        const resetUrl = userRole === 'admin' ? '/admin/auth/reset-password?force_reset=true' : '/user/auth/reset-password?force_reset=true';
+        router.push(resetUrl);
+      } else {
+        throw new Error("Auto login succeeded but no session created");
+      }
+    } catch (error: unknown) {
+      console.error('Auto login error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Automatic login failed";
+      
+      toast.error("Auto Login Failed", {
+        description: errorMessage + " Please enter your temporary password manually.",
+        duration: 5000,
+      });
+      
+      setAutoLoginInProgress(false);
+    }
+  }, [router, setAutoLoginInProgress]);
 
   useEffect(() => {
     const messageParam = searchParams.get("message");
@@ -217,86 +296,7 @@ export function AuthVerify() {
 
     // Call the function
     verifyEmailToken();
-  }, [token, router, searchParams, encryptedTempPwd]);
-
-  // Function to handle automatic login with decrypted password
-  const performAutoLogin = async (userEmail: string, tempPassword: string) => {
-    try {
-      console.log('Performing automatic login for:', userEmail);
-      
-      const supabase = createClient();
-      
-      // Sign in with the temporary password
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: tempPassword,
-      });
-
-      console.log('Auto sign in result:', { signInData, signInError });
-
-      if (signInError) {
-        console.error('Auto sign-in error:', signInError);
-        
-        let errorMessage = "Automatic login failed. Please enter your temporary password manually.";
-        
-        if (signInError.message.includes('Invalid login credentials')) {
-          errorMessage = "Invalid temporary password. The encrypted password may be corrupted.";
-        }
-        
-        toast.error("Auto Login Failed", {
-          description: errorMessage,
-          duration: 5000,
-        });
-        
-        setAutoLoginInProgress(false);
-        return;
-      }
-
-      if (signInData.user && signInData.session) {
-        console.log('Auto login successful for user:', signInData.user.id);
-        
-        // Update profile verification status
-        try {
-          // Update user_permissions
-          const { data: permData, error: permError } = await supabase
-            .from('user_permissions')
-            .update({ is_email_verified: true })
-            .eq('user_id', signInData.user.id)
-            .select();
-
-          if (permError) {
-            console.error('Auto login user_permissions update error:', permError);
-          } else {
-            console.log('Auto login user_permissions update successful:', permData);
-          }
-        } catch (updateError) {
-          console.error('Auto login profile update exception:', updateError);
-        }
-        
-        toast.success("Login Successful!", {
-          description: "Redirecting to password setup...",
-          duration: 3000,
-        });
-
-        // Redirect to reset password page
-        const userRole = signInData.user.user_metadata?.role || 'user';
-        const resetUrl = userRole === 'admin' ? '/admin/auth/reset-password?force_reset=true' : '/user/auth/reset-password?force_reset=true';
-        router.push(resetUrl);
-      } else {
-        throw new Error("Auto login succeeded but no session created");
-      }
-    } catch (error: unknown) {
-      console.error('Auto login error:', error);
-      const errorMessage = error instanceof Error ? error.message : "Automatic login failed";
-      
-      toast.error("Auto Login Failed", {
-        description: errorMessage + " Please enter your temporary password manually.",
-        duration: 5000,
-      });
-      
-      setAutoLoginInProgress(false);
-    }
-  };
+  }, [token, router, searchParams, encryptedTempPwd, performAutoLogin]);
 
   useEffect(() => {
     if (preFilledEmail) {

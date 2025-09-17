@@ -122,14 +122,6 @@ export function MonthYearPicker({
     }
   }
 
-  const handleClear = () => {
-    setSelectedMonth("")
-    setSelectedYear("")
-    onChange(undefined)
-  }
-
-
-
   return (
     <div className={cn("space-y-2", className)}>
       <Popover open={open} onOpenChange={setOpen}>

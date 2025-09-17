@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWargaActions } from "@/hooks/useWarga";
-import { wargaMagicService } from "@/services/wargaMagic";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 

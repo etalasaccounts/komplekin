@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -32,7 +33,13 @@ export default function Header() {
             className="flex items-center cursor-pointer"
             onClick={() => scrollToSection("hero")}
           >
-            <img src="/images/landing-page/logo-and-name-black.svg" alt="Komplek-In Logo" className="text-primary-foreground" />
+            <Image 
+              src="/images/landing-page/logo-and-name-black.svg" 
+              alt="Komplek-In Logo" 
+              className="text-primary-foreground" 
+              width={130}
+              height={50}
+            />
           </div>
 
           {/* Desktop Navigation */}

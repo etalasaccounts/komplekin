@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, MessageCircle, Instagram, Linkedin } from "lucide-react";
+import Image from "next/image";
 
 export default function Footer() {
   const navigationLinks = [
@@ -28,7 +29,13 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between gap-12">
           {/* Logo and Address */}
           <div className="flex-shrink-0 md:flex-[0.35]">
-            <img src="/images/landing-page/logo-and-name-white.svg" alt="Komplek-In Logo" className="text-primary-foreground" />
+            <Image 
+              src="/images/landing-page/logo-and-name-white.svg" 
+              alt="Komplek-In Logo" 
+              className="text-primary-foreground" 
+              width={100}
+              height={50}
+            />
             {/* <div className="text-white/70 text-sm mb-4">
               <p>Jl. Sudirman No. 123 Jakarta Pusat 10270 Indonesia</p>
             </div> */}
