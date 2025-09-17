@@ -19,6 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWargaActions } from "@/hooks/useWarga";
+import { wargaMagicService } from "@/services/wargaMagic";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 interface WargaCardProps {
@@ -54,11 +56,12 @@ const getStatusVariant = (status: string, role: string) => {
   }
 };
 
-const ActionMenu = ({ status, originalId, profileId, id, role, refetch }: { status: string; originalId?: string; profileId?: string; id?: number; role: string; refetch?: () => void }) => {
+const ActionMenu = ({ status, originalId, profileId, id, role, refetch, nama, email }: { status: string; originalId?: string; profileId?: string; id?: number; role: string; refetch?: () => void; nama: string; email: string }) => {
   const currentPath = "/admin/dashboard/manajemen-warga";
   const statusLowerCase = status.toLowerCase();
   const roleLowerCase = role.toLowerCase();
   const { updateRole, deleteWarga, updateCitizenStatus } = useWargaActions();
+  const { clusterName } = useAuth();
 
   const handleMakeAdmin = async () => {
     if (!originalId) {
@@ -107,6 +110,49 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch }: { stat
     }
   };
 
+  const handleResendInvitation = async () => {
+    if (!originalId || !email) {
+      toast.error('Data warga tidak lengkap');
+      return;
+    }
+
+    try {
+      // Generate new temporary password and send invitation email
+      const emailResponse = await fetch('/api/send-email/resend-invitation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userName: nama,
+          email: email,
+          temporaryPassword: Math.random().toString(36).slice(-8), // Generate random temp password
+          clusterName: clusterName || 'Komplek Anda',
+          role: role || 'Warga'
+        }),
+      });
+
+      const emailResult = await emailResponse.json();
+
+      if (emailResult.success) {
+        toast.success(`Undangan berhasil dikirim ulang ke ${nama}!`, {
+          style: {
+            background: '#22c55e',
+            color: 'white',
+            border: 'none'
+          },
+          duration: 5000,
+        });
+      } else {
+        console.error('Email failed:', emailResult);
+        toast.error('Gagal mengirim undangan. Silakan coba lagi.');
+      }
+    } catch (emailError) {
+      console.error('Email service error:', emailError);
+      toast.error('Terjadi kesalahan saat mengirim undangan.');
+    }
+  };
+
   // Determine if user is already admin
   const isAdmin = roleLowerCase.includes('admin');
 
@@ -126,6 +172,11 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch }: { stat
           <Link href={`${currentPath}?modal=view&id=${id}&edit=true`} className="cursor-pointer">
             Edit Data Warga
           </Link>
+        </DropdownMenuItem>
+        
+        {/* Resend Invitation - Always available */}
+        <DropdownMenuItem className="cursor-pointer" onClick={handleResendInvitation}>
+          Kirim Ulang Undangan
         </DropdownMenuItem>
         
         {/* Jadikan Admin - Only if not already admin */}
@@ -175,7 +226,7 @@ export default function WargaCard({
         <Badge className={`${getStatusVariant(status, role)}`}>
           {role.toLowerCase().includes('admin') ? 'Admin' : status}
         </Badge>
-        <ActionMenu status={status} originalId={originalId} profileId={profileId} id={id} role={role} refetch={refetch} />
+        <ActionMenu status={status} originalId={originalId} profileId={profileId} id={id} role={role} refetch={refetch} nama={nama} email={email} />
       </div>
 
       <div className="flex flex-col items-center text-center space-y-2">
@@ -223,5 +274,4 @@ export default function WargaCard({
         </Link>
       </div>
     </div>
-  );
-} 
+  );} 
