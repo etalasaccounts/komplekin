@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     // Send notification to support team
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: ['support@komplek.in'],
+      to: ['hello@etalas.com'],
       subject: `New Contact Form Submission from ${name} - ${complexName}`,
       html: ContactNotificationTemplate({ name, email, phone, complexName }),
     });

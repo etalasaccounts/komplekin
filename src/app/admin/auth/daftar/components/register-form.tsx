@@ -268,7 +268,15 @@ export function RegisterForm({
 
       await supabase.auth.signOut();
       // Success! 
-      toast.success("Pendaftaran admin berhasil! Silakan cek email Anda dan klik link konfirmasi untuk langsung ke dashboard admin.");
+      toast.success("Pendaftaran admin berhasil! Silakan cek email Anda dan klik link konfirmasi untuk langsung ke dashboard admin.", {
+        duration: Infinity, // Make toast persistent
+        action: {
+          label: "Go to Mail",
+          onClick: () => {
+            window.open("https://mail.google.com", "_blank");
+          }
+        }
+      });
       
       // Redirect ke login page
       setTimeout(() => {

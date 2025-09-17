@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const TrialSection = () => {
   return (
@@ -8,7 +9,7 @@ const TrialSection = () => {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="w-16 h-16 bg-[#EE7C2B] rounded-xl flex items-center justify-center">
-            <img src="/images/landing-page/logo-outline-white.svg" alt="Komplek-In Logo" className="w-8 h-8 text-primary-foreground" />
+            <Image src="/images/landing-page/logo-outline-white.svg" alt="Komplek-In Logo" className="w-8 h-8 text-primary-foreground" width={40} height={40} />
           </div>
         </div>
 

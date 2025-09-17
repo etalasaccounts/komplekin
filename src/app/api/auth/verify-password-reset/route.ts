@@ -88,15 +88,20 @@ export async function POST(request: NextRequest) {
         }, { status: 500 });
       }
 
+      const {data: userPermissionData} = await supabase
+            .from('user_permissions')
+            .select()
+            .eq('user_id', user.id)    
+            .single()
+
       // Update email verification status to true after password reset
       console.log('Updating email verification status for user:', user.id);
       const { data: profileData, error: profileError } = await supabaseAdmin
         .from('profiles')
         .update({ 
-          is_email_verified: true,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('id', userPermissionData.profile_id)
         .select();
 
       if (profileError) {

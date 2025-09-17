@@ -13,12 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import PaginationComponent from "./PaginationComponent";
-import { Plus } from "lucide-react";
+import { Plus, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PreviewImage } from "@/components/modal/previewImage";
 import ManualPaymentSheet from "./ManualPaymentSheet";
 import RejectConfirmationDialog from "./RejectConfirmationDialog";
 import { Invoice, InvoiceStatus, VerificationStatus } from "@/types/invoice";
+import { TableEmptyState } from "@/components/ui/empty-state";
 
 
 
@@ -335,63 +336,72 @@ export default function VerifikasiPembayaranContainer({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentData.map((item) => (
-              <TableRow key={item.id} className="hover:bg-gray-50 text-black">
-                <TableCell className="p-4">
-                  <Checkbox
-                    checked={selectedItems.includes(item.id!)}
-                    onCheckedChange={(checked) =>
-                      handleSelectItem(item.id!, checked as boolean)
+            {currentData.length === 0 ? (
+              <TableEmptyState
+                icon={<CheckCircle className="h-12 w-12" />}
+                title="Belum ada pembayaran untuk diverifikasi"
+                description="Belum ada pembayaran yang perlu diverifikasi. Data akan muncul setelah warga melakukan pembayaran."
+                colSpan={11}
+              />
+            ) : (
+              currentData.map((item) => (
+                <TableRow key={item.id} className="hover:bg-gray-50 text-black">
+                  <TableCell className="p-4">
+                    <Checkbox
+                      checked={selectedItems.includes(item.id!)}
+                      onCheckedChange={(checked) =>
+                        handleSelectItem(item.id!, checked as boolean)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="">{item.user_permission?.profile?.fullname || "Nama tidak tersedia"}</TableCell>
+                  <TableCell className="">{item.user_permission?.profile?.no_telp || "Kontak tidak tersedia"}</TableCell>
+                  <TableCell className="">
+                    <span className="text-xs font-semibold border border-border rounded-full px-2 py-1">
+                      {item.payment_purpose || '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="">Juli 2025</TableCell>
+                  <TableCell className="">{item.payment_date || "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="">Rp{item.bill_amount?.toLocaleString() || "0"}</span>
+                      {Number(item.amount_paid) < Number(item.bill_amount) && (
+                        <span className="text-sm text-red-500">-Rp{(Number(item.bill_amount) - Number(item.amount_paid)).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="">
+                    {item.payment_method ?
+                    <span className="text-xs font-semibold bg-secondary rounded-full px-2 py-1">
+                      {item.payment_method.charAt(0).toUpperCase() + item.payment_method.slice(1)}
+                    </span>
+                    : <span className="text-xs font-semibold">
+                      -
+                    </span>
                     }
-                  />
-                </TableCell>
-                <TableCell className="">{item.user_permission?.profile?.fullname || "Nama tidak tersedia"}</TableCell>
-                <TableCell className="">{item.user_permission?.profile?.no_telp || "Kontak tidak tersedia"}</TableCell>
-                <TableCell className="">
-                  <span className="text-xs font-semibold border border-border rounded-full px-2 py-1">
-                    {item.payment_purpose || '-'}
-                  </span>
-                </TableCell>
-                <TableCell className="">Juli 2025</TableCell>
-                <TableCell className="">{item.payment_date || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="">Rp{item.bill_amount?.toLocaleString() || "0"}</span>
-                    {Number(item.amount_paid) < Number(item.bill_amount) && (
-                      <span className="text-sm text-red-500">-Rp{(Number(item.bill_amount) - Number(item.amount_paid)).toLocaleString()}</span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="">
-                  {item.payment_method ?
-                  <span className="text-xs font-semibold bg-secondary rounded-full px-2 py-1">
-                    {item.payment_method.charAt(0).toUpperCase() + item.payment_method.slice(1)}
-                  </span>
-                  : <span className="text-xs font-semibold">
-                    -
-                  </span>
-                  }
-                </TableCell>
-                <TableCell>{getStatusBadge(item.verification_status as string)}</TableCell>
-                <TableCell>
-                  {item.invoice_status === InvoiceStatus.PAID 
-                  ? 
-                  <Button
-                      variant="link"
-                      className="h-auto p-0 text-foreground underline font-normal"
-                      size="sm"
-                      onClick={() => handleProofPaymentClick(item)}
-                    >
-                    Lihat Bukti Bayar
-                  </Button>
-                  : <span className="text-xs font-semibold">
-                    -
-                  </span>
-                  }
-                  
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(item.verification_status as string)}</TableCell>
+                  <TableCell>
+                    {item.invoice_status === InvoiceStatus.PAID 
+                    ? 
+                    <Button
+                        variant="link"
+                        className="h-auto p-0 text-foreground underline font-normal"
+                        size="sm"
+                        onClick={() => handleProofPaymentClick(item)}
+                      >
+                      Lihat Bukti Bayar
+                    </Button>
+                    : <span className="text-xs font-semibold">
+                      -
+                    </span>
+                    }
+                    
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

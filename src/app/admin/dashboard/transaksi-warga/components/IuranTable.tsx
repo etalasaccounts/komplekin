@@ -17,7 +17,7 @@ interface IuranTableProps {
 export default function IuranTable({ iuran, loading, onEdit }: IuranTableProps) {
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd MMM yyyy', { locale: id })
+      return format(new Date(dateString), 'MMM yyyy', { locale: id })
     } catch {
       return dateString
     }

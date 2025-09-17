@@ -95,12 +95,12 @@ export function MultiSelect({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "w-full justify-between bg-white",
+              "w-full justify-between bg-white min-h-[2.5rem] h-auto py-2",
               className
             )}
             disabled={disabled}
           >
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 flex-1 min-w-0">
               {selected.length === 0 && (
                 <span className="text-muted-foreground">{placeholder}</span>
               )}
@@ -108,15 +108,17 @@ export function MultiSelect({
                 <Badge
                   variant="secondary"
                   key={item}
-                  className="mr-1 mb-1 cursor-pointer hover:bg-secondary/80"
+                  className="mr-1 mb-1 cursor-pointer hover:bg-secondary/80 text-xs max-w-[200px] truncate"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleUnselect(item)
                   }}
                 >
-                  {options.find((option) => option.value === item)?.label || item}
+                  <span className="truncate">
+                    {options.find((option) => option.value === item)?.label || item}
+                  </span>
                   <span
-                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer flex-shrink-0"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleUnselect(item)
@@ -140,10 +142,10 @@ export function MultiSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-h-[300px] p-0">
           <Command>
             <CommandInput placeholder="Cari..." />
-            <CommandList>
+            <CommandList className="max-h-[200px] overflow-y-auto">
               <CommandEmpty>Tidak ada hasil ditemukan.</CommandEmpty>
               <CommandGroup>
                 {options.map((option) => (
@@ -169,4 +171,4 @@ export function MultiSelect({
       </Popover>
     </div>
   )
-} 
+}

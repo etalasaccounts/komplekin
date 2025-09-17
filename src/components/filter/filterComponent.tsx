@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Filter } from "lucide-react";
-import { SingleDatePicker } from "../input/singleDatePicker";
+import { MonthYearPicker } from "../ui/month-year-picker";
 
 export type FilterState = {
   dateFrom: Date | undefined;
@@ -128,7 +128,7 @@ export default function FilterComponent({
               {/* Date Range */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Rentang Tanggal</Label>
+                  <Label className="text-sm font-medium">Rentang Bulan</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -142,24 +142,24 @@ export default function FilterComponent({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label className="text-sm">Dari</Label>
-                    <SingleDatePicker
+                    <MonthYearPicker
                       value={tempFilters.dateFrom}
                       onChange={(date) =>
                         setTempFilters({ ...tempFilters, dateFrom: date })
                       }
-                      placeholder="20/06/2025"
-                      buttonClassName="w-full"
+                      placeholder="Pilih bulan & tahun"
+                      className="w-full"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm">Sampai</Label>
-                    <SingleDatePicker
+                    <MonthYearPicker
                       value={tempFilters.dateTo}
                       onChange={(date) =>
                         setTempFilters({ ...tempFilters, dateTo: date })
                       }
-                      placeholder="20/06/2025"
-                      buttonClassName="w-full"
+                      placeholder="Pilih bulan & tahun"
+                      className="w-full"
                     />
                   </div>
                 </div>

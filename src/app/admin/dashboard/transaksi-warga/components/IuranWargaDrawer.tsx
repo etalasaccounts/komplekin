@@ -117,8 +117,8 @@ export default function IuranWargaDrawer({
                 name: newPaymentForm.nama_iuran,
                 participants: participantIds,
                 due_date: parseInt(newPaymentForm.dueDate) || 0,
-                start_date: newPaymentForm.startDate!.toISOString().split('T')[0],
-                end_date: newPaymentForm.endDate!.toISOString().split('T')[0],
+                start_date: `${newPaymentForm.startDate!.getFullYear()}-${String(newPaymentForm.startDate!.getMonth() + 1).padStart(2, '0')}-${String(newPaymentForm.startDate!.getDate()).padStart(2, '0')}`,
+                end_date: `${newPaymentForm.endDate!.getFullYear()}-${String(newPaymentForm.endDate!.getMonth() + 1).padStart(2, '0')}-${String(newPaymentForm.endDate!.getDate()).padStart(2, '0')}`,
                 amount: parseInt(newPaymentForm.amount),
                 cluster_id: clusterId!
             };
@@ -178,8 +178,8 @@ export default function IuranWargaDrawer({
             const updateData: UpdateIuranRequest = {
                 participants: participantIds,
                 due_date: parseInt(newPaymentForm.dueDate) || 0,
-                start_date: newPaymentForm.startDate!.toISOString().split('T')[0],
-                end_date: newPaymentForm.endDate!.toISOString().split('T')[0],
+                start_date: `${newPaymentForm.startDate!.getFullYear()}-${String(newPaymentForm.startDate!.getMonth() + 1).padStart(2, '0')}-${String(newPaymentForm.startDate!.getDate()).padStart(2, '0')}`,
+                end_date: `${newPaymentForm.endDate!.getFullYear()}-${String(newPaymentForm.endDate!.getMonth() + 1).padStart(2, '0')}-${String(newPaymentForm.endDate!.getDate()).padStart(2, '0')}`,
                 amount: parseInt(newPaymentForm.amount)
             };
 
@@ -210,10 +210,19 @@ export default function IuranWargaDrawer({
         field: keyof NewPaymentForm,
         value: string | string[] | Date | undefined
       ) => {
-        setNewPaymentForm((prev) => ({
-          ...prev,
-          [field]: value,
-        }));
+        setNewPaymentForm((prev) => {
+          const updated = {
+            ...prev,
+            [field]: value,
+          };
+          
+          // If startDate is being updated and it's after the current endDate, clear endDate
+          if (field === 'startDate' && value instanceof Date && prev.endDate && value > prev.endDate) {
+            updated.endDate = undefined;
+          }
+          
+          return updated;
+        });
       };
     
     
@@ -303,6 +312,7 @@ export default function IuranWargaDrawer({
                       onChange={(date) => updateNewPaymentForm("startDate", date)}
                       placeholder="Pilih bulan & tahun mulai"
                       disabled={editMode}
+                      minDate={new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
                     />
                   </div>
 
@@ -315,6 +325,7 @@ export default function IuranWargaDrawer({
                       onChange={(date) => updateNewPaymentForm("endDate", date)}
                       placeholder="Pilih bulan & tahun akhir"
                       disabled={editMode}
+                      minDate={newPaymentForm.startDate}
                     />
                   </div>
 

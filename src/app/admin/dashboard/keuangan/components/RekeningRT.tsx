@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Edit, Loader2, Search, Plus } from "lucide-react";
+import { Edit, Loader2, Search, Plus, CreditCard } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -18,6 +18,7 @@ import { ClusterBankAccount } from "@/types/cluster_bank_accounts";
 import { useClusterBankAccountsAdmin } from "@/hooks/useClusterBankAccountsAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import PaginationComponent from "@/app/admin/dashboard/transaksi-warga/components/PaginationComponent";
+import { TableEmptyState } from "@/components/ui/empty-state";
 
 export default function RekeningRT() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -128,30 +129,39 @@ export default function RekeningRT() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedAccounts.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <input type="checkbox" className="rounded" />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {item.account_name}
-                  </TableCell>
-                  <TableCell>{item.bank_name}</TableCell>
-                  <TableCell>{item.account_number}</TableCell>
-                  <TableCell>{item.account_usage}</TableCell>
-                  <TableCell className="max-w-[20px]">
-                    <div className="flex items-center space-x-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditRekening(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {paginatedAccounts.length === 0 ? (
+                <TableEmptyState
+                  icon={<CreditCard className="h-12 w-12" />}
+                  title="Belum ada rekening RT"
+                  description="Tambahkan rekening bank untuk mengelola keuangan RT dengan lebih baik."
+                  colSpan={6}
+                />
+              ) : (
+                paginatedAccounts.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <input type="checkbox" className="rounded" />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {item.account_name}
+                    </TableCell>
+                    <TableCell>{item.bank_name}</TableCell>
+                    <TableCell>{item.account_number}</TableCell>
+                    <TableCell>{item.account_usage}</TableCell>
+                    <TableCell className="max-w-[20px]">
+                      <div className="flex items-center space-x-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditRekening(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
             </>

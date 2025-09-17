@@ -9,13 +9,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Bell, Eye } from "lucide-react";
+import { Download, Bell, Eye, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import DetailTransaksiWargaModal from "./DetailTransaksiWargaModal";
 import StatusPembayaranSkeleton from "./StatusPembayaranSkeleton";
 import PaginationComponent from "./PaginationComponent";
 import { Invoice, InvoiceStatus } from "@/types/invoice";
+import { TableEmptyState } from "@/components/ui/empty-state";
 import React from "react";
 
 type StatusPembayaranProps = {
@@ -180,69 +181,78 @@ export default function StatusPembayaran({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentInvoices.map((invoice) => (
-              <TableRow key={invoice.id}>
-                <TableCell className="p-4">
-                  <Checkbox
-                    checked={selectedItems.includes(invoice.id!)}
-                    onCheckedChange={(checked) =>
-                      handleSelectItem(invoice.id!, checked as boolean)
-                    }
-                  />
-                </TableCell>
-                  <TableCell className="font-medium">
-                    {invoice.user_permission?.profile?.fullname}
+            {currentInvoices.length === 0 ? (
+              <TableEmptyState
+                icon={<Receipt className="h-12 w-12" />}
+                title="Belum ada data invoice"
+                description="Belum ada invoice yang tersedia untuk bulan ini. Data akan muncul setelah invoice dibuat."
+                colSpan={9}
+              />
+            ) : (
+              currentInvoices.map((invoice) => (
+                <TableRow key={invoice.id}>
+                  <TableCell className="p-4">
+                    <Checkbox
+                      checked={selectedItems.includes(invoice.id!)}
+                      onCheckedChange={(checked) =>
+                        handleSelectItem(invoice.id!, checked as boolean)
+                      }
+                    />
                   </TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.email || '-'}</TableCell>
-                  <TableCell>{invoice.user_permission?.profile?.house_number || '-'}</TableCell>
-                <TableCell>{invoice.amount_paid || '-'}</TableCell>
-                <TableCell>{invoice.due_date}</TableCell>
-                <TableCell>{invoice.payment_date || '-'}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant="destructive"
-                    className={
-                      invoice.invoice_status === InvoiceStatus.PAID
-                        ? "bg-[#178C4E] text-white rounded-full font-semibold text-xs"
-                        : "bg-[#D02533] text-white rounded-full font-semibold text-xs"
-                    }
-                  >
-                    {invoice.invoice_status === InvoiceStatus.PAID
-                      ? "Sudah Bayar"
-                      : "Belum Bayar"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center">
-                    {invoice.invoice_status === InvoiceStatus.PAID && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownload(invoice.receipt!)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {invoice.invoice_status === InvoiceStatus.UNPAID && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleReminder(invoice)}
-                      >
-                        <Bell className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDetail(invoice)}
+                    <TableCell className="font-medium">
+                      {invoice.user_permission?.profile?.fullname}
+                    </TableCell>
+                    <TableCell>{invoice.user_permission?.profile?.email || '-'}</TableCell>
+                    <TableCell>{invoice.user_permission?.profile?.house_number || '-'}</TableCell>
+                  <TableCell>{invoice.amount_paid || '-'}</TableCell>
+                  <TableCell>{invoice.due_date}</TableCell>
+                  <TableCell>{invoice.payment_date || '-'}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="destructive"
+                      className={
+                        invoice.invoice_status === InvoiceStatus.PAID
+                          ? "bg-[#178C4E] text-white rounded-full font-semibold text-xs"
+                          : "bg-[#D02533] text-white rounded-full font-semibold text-xs"
+                      }
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                      {invoice.invoice_status === InvoiceStatus.PAID
+                        ? "Sudah Bayar"
+                        : "Belum Bayar"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      {invoice.invoice_status === InvoiceStatus.PAID && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownload(invoice.receipt!)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {invoice.invoice_status === InvoiceStatus.UNPAID && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReminder(invoice)}
+                        >
+                          <Bell className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetail(invoice)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
