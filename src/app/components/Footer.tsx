@@ -84,7 +84,7 @@ export default function Footer() {
             
             {/* Contact Support */}
             <div className="flex flex-col gap-3">
-              <a 
+              <a
                 href="mailto: hello@etalas.com"
                 className="flex items-center gap-2 text-white/70 hover:text-orange-500 transition-colors text-sm"
               >

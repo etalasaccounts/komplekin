@@ -97,8 +97,8 @@ export default function Demo() {
                   className="w-auto max-w-sm mx-auto h-[680px] rounded-xl shadow-2xl"
                   width={200}
                   height={680}
+
                 />
-                
                 {/* Floating Elements */}
                 <div className="absolute top-4 right-4 bg-[#EE7C2B]/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
                   Live Demo
