@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
@@ -13,8 +14,26 @@ import Pengeluaran from "./components/Pengeluaran";
 import RekeningRT from "./components/RekeningRT";
 import { useAuth } from "@/hooks/useAuth";
 export default function KeuanganPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("pemasukan");
   const { profile } = useAuth();
+
+  // Initialize tab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['pemasukan', 'pengeluaran', 'rekening-rt'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('tab', tab);
+    router.push(`/admin/dashboard/keuangan?${currentParams.toString()}`);
+  };
 
   return (
       <div className="space-y-6">
@@ -33,7 +52,7 @@ export default function KeuanganPage() {
           <div className="flex space-x-1 p-1 w-fit">
             <Button
               variant="ghost"
-              onClick={() => setActiveTab("pemasukan")}
+              onClick={() => handleTabChange("pemasukan")}
               className={cn(
                 "py-2 text-sm font-medium transition-colors rounded-none",
                 activeTab === "pemasukan"
@@ -46,7 +65,7 @@ export default function KeuanganPage() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => setActiveTab("pengeluaran")}
+              onClick={() => handleTabChange("pengeluaran")}
               className={cn(
                 "py-2 text-sm font-medium transition-colors rounded-none",
                 activeTab === "pengeluaran"
@@ -59,7 +78,7 @@ export default function KeuanganPage() {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => setActiveTab("rekening-rt")}
+              onClick={() => handleTabChange("rekening-rt")}
               className={cn(
                 "py-2 text-sm font-medium transition-colors rounded-none",
                 activeTab === "rekening-rt"

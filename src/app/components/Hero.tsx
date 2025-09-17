@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export default function Hero() {
   return (
@@ -36,10 +37,12 @@ export default function Hero() {
           {/* Dashboard Image */}
           <div className="relative max-w-7xl mx-auto">
             <div className="relative bg-white rounded-2xl shadow-2xl p-2">
-              <img 
+              <Image 
                 src="/images/landing-page/admin-dashboard.png" 
                 alt="Komplek In Dashboard - Complex Management Interface"
                 className="w-full h-auto rounded-xl object-cover"
+                width={1000}
+                height={500}
               />
             </div>
           </div>

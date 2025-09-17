@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +19,92 @@ export function AuthVerify() {
   const [email, setEmail] = useState("");
   const [userFullName, setUserFullName] = useState("");
   const [verificationComplete, setVerificationComplete] = useState(false);
+  const [autoLoginInProgress, setAutoLoginInProgress] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
   const preFilledEmail = searchParams.get('email');
   const isVerified = searchParams.get('verified');
+  const encryptedTempPwd = searchParams.get('temp_pwd');
+
+  // Function to handle automatic login with decrypted password
+  const performAutoLogin = useCallback(async (userEmail: string, tempPassword: string) => {
+    try {
+      console.log('Performing automatic login for:', userEmail);
+      
+      const supabase = createClient();
+      
+      // Sign in with the temporary password
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: tempPassword,
+      });
+
+      console.log('Auto sign in result:', { signInData, signInError });
+
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError);
+        
+        let errorMessage = "Automatic login failed. Please enter your temporary password manually.";
+        
+        if (signInError.message.includes('Invalid login credentials')) {
+          errorMessage = "Invalid temporary password. The encrypted password may be corrupted.";
+        }
+        
+        toast.error("Auto Login Failed", {
+          description: errorMessage,
+          duration: 5000,
+        });
+        
+        setAutoLoginInProgress(false);
+        return;
+      }
+
+      if (signInData.user && signInData.session) {
+        console.log('Auto login successful for user:', signInData.user.id);
+        
+        // Update profile verification status
+        try {
+          // Update user_permissions
+          const { data: permData, error: permError } = await supabase
+            .from('user_permissions')
+            .update({ is_email_verified: true })
+            .eq('user_id', signInData.user.id)
+            .select();
+
+          if (permError) {
+            console.error('Auto login user_permissions update error:', permError);
+          } else {
+            console.log('Auto login user_permissions update successful:', permData);
+          }
+        } catch (updateError) {
+          console.error('Auto login profile update exception:', updateError);
+        }
+        
+        toast.success("Login Successful!", {
+          description: "Redirecting to password setup...",
+          duration: 3000,
+        });
+
+        // Redirect to reset password page
+        const userRole = signInData.user.user_metadata?.role || 'user';
+        const resetUrl = userRole === 'admin' ? '/admin/auth/reset-password?force_reset=true' : '/user/auth/reset-password?force_reset=true';
+        router.push(resetUrl);
+      } else {
+        throw new Error("Auto login succeeded but no session created");
+      }
+    } catch (error: unknown) {
+      console.error('Auto login error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Automatic login failed";
+      
+      toast.error("Auto Login Failed", {
+        description: errorMessage + " Please enter your temporary password manually.",
+        duration: 5000,
+      });
+      
+      setAutoLoginInProgress(false);
+    }
+  }, [router, setAutoLoginInProgress]);
 
   useEffect(() => {
     const messageParam = searchParams.get("message");
@@ -91,13 +172,18 @@ export function AuthVerify() {
           // UPDATE PROFILE is_email_verified to TRUE
           console.log('Updating profile is_email_verified to true for user:', data.user.id);
           try {
+            const {data: userPermissionData} = await supabase
+            .from('user_permissions')
+            .select()
+            .eq('user_id', data.user.id)    
+            .single()
+
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .update({ 
-                is_email_verified: true,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', data.user.id)
+              .eq('id', userPermissionData.profile_id)
               .select();
 
             if (profileError) {
@@ -144,13 +230,67 @@ export function AuthVerify() {
           setVerificationComplete(true);
           setVerifying(false);
           
-          toast.success("Email verified successfully!", {
-            description: "Now please enter your temporary password to complete the login process.",
-            duration: 5000,
-          });
-          
-          // Sign out after profile update
-          await supabase.auth.signOut();
+          // Check if we have encrypted temp password for automatic login
+          if (encryptedTempPwd) {
+            try {
+              // Call server-side API to decrypt password
+              const response = await fetch('/api/decrypt-temp-password', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ encryptedPassword: encryptedTempPwd }),
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to decrypt password');
+              }
+
+              const { password: decryptedPassword } = await response.json();
+              setPassword(decryptedPassword);
+              
+              toast.success("Email verified successfully!", {
+                description: "Automatically logging you in with temporary password...",
+                duration: 3000,
+              });
+              
+              // Sign out first, then automatically attempt login
+              await supabase.auth.signOut();
+              
+              // Set auto login in progress and trigger automatic login
+              setAutoLoginInProgress(true);
+              
+              // Small delay to ensure sign out is complete
+                setTimeout(async () => {
+                  if (data.user?.email) {
+                    await performAutoLogin(data.user.email, decryptedPassword);
+                  }
+                }, 500);
+              
+            } catch (decryptError) {
+              console.error('Failed to decrypt temporary password:', decryptError);
+              toast.error("Decryption Failed", {
+                description: "Unable to decrypt temporary password. Please enter it manually.",
+                duration: 5000,
+              });
+              
+              toast.success("Email verified successfully!", {
+                description: "Now please enter your temporary password to complete the login process.",
+                duration: 5000,
+              });
+              
+              // Sign out after profile update
+              await supabase.auth.signOut();
+            }
+          } else {
+            toast.success("Email verified successfully!", {
+              description: "Now please enter your temporary password to complete the login process.",
+              duration: 5000,
+            });
+            
+            // Sign out after profile update
+            await supabase.auth.signOut();
+          }
         } else {
           throw new Error("Email verification succeeded but no user data received");
         }
@@ -168,7 +308,7 @@ export function AuthVerify() {
 
     // Call the function
     verifyEmailToken();
-  }, [token, router, searchParams]);
+  }, [token, router, searchParams, encryptedTempPwd, performAutoLogin]);
 
   useEffect(() => {
     if (preFilledEmail) {
@@ -236,13 +376,18 @@ export function AuthVerify() {
         // DOUBLE CHECK: Update profile again after successful login (just to be sure)
         console.log('Double-checking profile is_email_verified status for user:', signInData.user.id);
         try {
+          const {data: userPermissionData} = await supabase
+            .from('user_permissions')
+            .select()
+            .eq('user_id', signInData.user.id)    
+            .single()
+
           const { data: finalProfileData, error: finalUpdateError } = await supabase
             .from('profiles')
             .update({ 
-              is_email_verified: true,
               updated_at: new Date().toISOString()
             })
-            .eq('id', signInData.user.id)
+            .eq('id', userPermissionData.profile_id)
             .select();
 
           if (finalUpdateError) {
@@ -326,8 +471,8 @@ export function AuthVerify() {
     );
   }
 
-  // Loading/Verifying state
-  if (verifying) {
+  // Loading/Verifying state or Auto Login in Progress
+  if (verifying || autoLoginInProgress) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -335,12 +480,22 @@ export function AuthVerify() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
             </div>
-            <CardTitle className="text-xl">Verifying Email...</CardTitle>
+            <CardTitle className="text-xl">
+              {autoLoginInProgress ? "Logging You In..." : "Verifying Email..."}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">{message}</p>
+            <p className="text-muted-foreground">
+              {autoLoginInProgress 
+                ? "Automatically processing your temporary password and logging you in securely..."
+                : message
+              }
+            </p>
             <p className="text-sm text-muted-foreground">
-              Please wait while we verify your invitation link.
+              {autoLoginInProgress
+                ? "You'll be redirected to set up your new password shortly."
+                : "Please wait while we verify your invitation link."
+              }
             </p>
           </CardContent>
         </Card>
@@ -410,9 +565,16 @@ export function AuthVerify() {
               <p className="text-sm text-green-700 font-medium">
                 ✅ Your email has been verified!
               </p>
-              <p className="text-sm text-green-600">
-                Please enter your <strong>temporary password</strong> from the invitation email to complete setup.
-              </p>
+              {encryptedTempPwd ? (
+                <p className="text-sm text-green-600">
+                  Your temporary password was processed automatically for enhanced security.
+                  If automatic login failed, please enter it manually below.
+                </p>
+              ) : (
+                <p className="text-sm text-green-600">
+                  Please enter your <strong>temporary password</strong> from the invitation email to complete setup.
+                </p>
+              )}
             </div>
           </div>
 
@@ -435,10 +597,16 @@ export function AuthVerify() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter temporary password from email"
-                required
-                autoFocus
+                placeholder={encryptedTempPwd ? "Auto-filled (or enter manually if needed)" : "Enter temporary password from email"}
+                required={!encryptedTempPwd}
+                autoFocus={!encryptedTempPwd}
+                className={encryptedTempPwd && password ? "bg-green-50 border-green-200" : ""}
               />
+              {encryptedTempPwd && password && (
+                <p className="text-xs text-green-600">
+                  ✓ Temporary password loaded automatically from secure link
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={loading}>

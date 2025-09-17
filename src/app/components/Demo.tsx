@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Users } from "lucide-react";
+import Image from "next/image";
 
 export default function Demo() {
   const benefits = [
@@ -90,12 +91,14 @@ export default function Demo() {
             {/* Right Side - Mobile Mockup */}
             <div className="relative">
               <div className="relative bg-gradient-to-br from-[#EE7C2B]/20 to-[#EE7C2B]/30 rounded-2xl p-8">
-                <img 
+                <Image 
                   src="/images/landing-page/user-dashboard.png" 
                   alt="Komplek In Mobile App Demo" 
                   className="w-auto max-w-sm mx-auto h-[680px] rounded-xl shadow-2xl"
+                  width={200}
+                  height={680}
+
                 />
-                
                 {/* Floating Elements */}
                 <div className="absolute top-4 right-4 bg-[#EE7C2B]/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
                   Live Demo

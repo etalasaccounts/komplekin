@@ -86,7 +86,7 @@ export function HeaderUser() {
             </div>
             {/* User Actions */}
             <div className="flex items-center space-x-1">
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" style={{ visibility: "hidden"}}>
                 <Bell className="size-5" />
               </Button>
               <DropdownMenu>

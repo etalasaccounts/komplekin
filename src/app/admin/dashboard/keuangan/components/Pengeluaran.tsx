@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Edit, X, Search, Plus, Loader2 } from "lucide-react";
+import { Eye, Edit, X, Search, Plus, Loader2, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -35,6 +35,7 @@ import { useUserPermission } from "@/hooks/useUserPermission";
 import { UserPermissions } from "@/types/user_permissions";
 import Image from "next/image";
 import { ExpenseForm } from "./CreateExpenseDrawer";
+import { TableEmptyState } from "@/components/ui/empty-state";
 
 
 interface PengeluaranProps {
@@ -308,57 +309,66 @@ export default function Pengeluaran({ profile }: PengeluaranProps)  {
               </TableRow>
             </TableHeader>
             <TableBody>
-                  {currentLedgers.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <input type="checkbox" className="rounded" />
-                  </TableCell>
-                      <TableCell className="font-medium">
-                        {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
-                      </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="text-xs font-semibold rounded-full"
-                    >
-                          {item.coa?.name || '-'}
-                    </Badge>
-                  </TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell className="font-medium">{item.amount}</TableCell>
-                      <TableCell>{item.user_permission?.profile.fullname || '-'}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto text-black underline"
-                      onClick={() => {
-                        setSelectedLedger(item)
-                        setTransferReceiptModalOpen(true)
-                      }}
-                    >
-                          Lihat Bukti Transfer
-                    </Button>
-                  </TableCell>
-                  <TableCell className="max-w-[50px]">
-                    <div className="flex items-center space-x-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetail(item)}
+              {currentLedgers.length === 0 ? (
+                <TableEmptyState
+                  icon={<TrendingDown className="h-12 w-12" />}
+                  title="Belum ada data pengeluaran"
+                  description="Data pengeluaran akan muncul di sini setelah ada transaksi keluar."
+                  colSpan={8}
+                />
+              ) : (
+                currentLedgers.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <input type="checkbox" className="rounded" />
+                    </TableCell>
+                        <TableCell className="font-medium">
+                          {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
+                        </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="text-xs font-semibold rounded-full"
                       >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                            {item.coa?.name || '-'}
+                      </Badge>
+                    </TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell className="font-medium">{item.amount}</TableCell>
+                        <TableCell>{item.user_permission?.profile.fullname || '-'}</TableCell>
+                    <TableCell>
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditExpense(item)}
+                        variant="link"
+                        className="p-0 h-auto text-black underline"
+                        onClick={() => {
+                          setSelectedLedger(item)
+                          setTransferReceiptModalOpen(true)
+                        }}
                       >
-                        <Edit className="h-4 w-4" />
+                            Lihat Bukti Transfer
                       </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="max-w-[50px]">
+                      <div className="flex items-center space-x-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetail(item)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditExpense(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 

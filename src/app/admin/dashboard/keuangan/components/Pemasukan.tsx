@@ -3,7 +3,7 @@ import { CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Search, Loader2 } from "lucide-react";
+import { Eye, Search, Loader2, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -23,6 +23,7 @@ import { useLedger } from "@/hooks/useLedger";
 import DetailLedgerModal from "./DetailLedgerModal";
 import PaginationComponent from "../../transaksi-warga/components/PaginationComponent";
 import { useAuth } from "@/hooks/useAuth";
+import { TableEmptyState } from "@/components/ui/empty-state";
 
 export default function Pemasukan() {
   const { clusterId } = useAuth();
@@ -182,54 +183,63 @@ export default function Pemasukan() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentLedgers.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <input type="checkbox" className="rounded" />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
-                  </TableCell>
-                  <TableCell>{item.invoice.user_permission?.profile.fullname}</TableCell>
-                  <TableCell>{item.coa.name}</TableCell>
-                  <TableCell className="font-medium">{item.amount}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-semibold rounded-full"
-                    >
-                      {item.invoice.payment_method}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto text-black underline"
-                      onClick={() => {
-                        setTransferReceiptModalOpen(true);
-                        setSelectedLedger(item);
-                      }}
-                    >
-                      Lihat Bukti Transfer
-                    </Button>
-                  </TableCell>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell className="max-w-[30px]">
-                    <div className="flex items-center space-x-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetail(item)}
+              {currentLedgers.length === 0 ? (
+                <TableEmptyState
+                  icon={<TrendingUp className="h-12 w-12" />}
+                  title="Belum ada data pemasukan"
+                  description="Data pemasukan akan muncul di sini setelah ada transaksi yang masuk."
+                  colSpan={8}
+                />
+              ) : (
+                currentLedgers.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <input type="checkbox" className="rounded" />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-'}
+                    </TableCell>
+                    <TableCell>{item.invoice.user_permission?.profile.fullname}</TableCell>
+                    <TableCell>{item.coa.name}</TableCell>
+                    <TableCell className="font-medium">{item.amount}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-semibold rounded-full"
                       >
-                        <Eye className="h-4 w-4" />
+                        {item.invoice.payment_method}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-black underline"
+                        onClick={() => {
+                          setTransferReceiptModalOpen(true);
+                          setSelectedLedger(item);
+                        }}
+                      >
+                        Lihat Bukti Transfer
                       </Button>
-                      {/* <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button> */}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell className="max-w-[30px]">
+                      <div className="flex items-center space-x-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetail(item)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {/* <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button> */}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         )}

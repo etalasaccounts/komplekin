@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
+import { encryptTempPassword } from '@/lib/crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -250,21 +251,17 @@ const TemporaryPasswordEmailTemplate = ({
               <h3>Cara Memulai</h3>
               
               <div class="step">
-                <div class="step-number">1. Verifikasi Email</div>
-                <p>Klik tombol di bawah untuk memverifikasi email Anda dan masuk ke sistem:</p>
+                <div class="step-number">1. Verifikasi Email & Masuk</div>
+                <p>Klik tombol di bawah untuk memverifikasi email Anda dan masuk ke sistem secara otomatis:</p>
                 <div class="button-container">
                   <a href="${magicLink}" class="button" style="text-decoration: none; color: white;">Verifikasi & Masuk KomplekIn</a>
                 </div>
+                <p class="text-sm text-gray-600 mt-2">Password sementara akan diproses secara otomatis untuk keamanan yang lebih baik.</p>
               </div>
 
               <div class="step">
-                <div class="step-number">2. Input Password Sementara</div>
-                <p>Pada halaman verifikasi, masukkan password sementara yang tertera di atas.</p>
-              </div>
-
-              <div class="step">
-                <div class="step-number">3. Buat Password Baru</div>
-                <p>Setelah verifikasi berhasil, Anda akan diminta membuat password baru yang aman.</p>
+                <div class="step-number">2. Buat Password Baru</div>
+                <p>Setelah verifikasi berhasil, Anda akan diminta membuat password baru yang aman untuk akun Anda.</p>
               </div>
             </div>
 
@@ -354,6 +351,9 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
+    // Encrypt temporary password for URL transmission
+    const encryptedTempPassword = encryptTempPassword(temporaryPassword);
+    
     // Parse the URL to extract token
     let magicLink = '';
     try {
@@ -373,9 +373,13 @@ export async function POST(request: Request) {
       }
       
       if (token) {
-        magicLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?token=${token}`;
+        // Include encrypted temporary password in the magic link
+        magicLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify?token=${token}&temp_pwd=${encodeURIComponent(encryptedTempPassword)}`;
       } else {
-        magicLink = actionLink;
+        // Fallback: add encrypted password to existing action link
+        const fallbackUrl = new URL(actionLink);
+        fallbackUrl.searchParams.set('temp_pwd', encryptedTempPassword);
+        magicLink = fallbackUrl.toString();
       }
     } catch (parseError) {
       console.error('Error parsing action link:', parseError);

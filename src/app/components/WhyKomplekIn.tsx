@@ -2,6 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
 
 export default function WhyKomplekIn() {
   // Fixed X reference error by removing icon imports
@@ -86,10 +87,12 @@ export default function WhyKomplekIn() {
 
             {/* Right Side - Dashboard Image */}
             <div className="relative">
-              <img 
+              <Image 
                 src="/images/landing-page/admin-dashboard.png" 
                 alt="Komplek In Dashboard Interface" 
                 className="w-full h-auto rounded-lg shadow-lg"
+                width={1000}
+                height={500}
               />
             </div>
           </div>

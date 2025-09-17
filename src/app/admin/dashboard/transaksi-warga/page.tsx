@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,8 @@ import { toast } from "sonner";
 import IuranContainer from "./components/IuranContainer";
 import IuranWargaDrawer from "./components/IuranWargaDrawer";
 import { useAuth } from "@/hooks/useAuth";
+import { useClusterBankAccountsAdmin } from "@/hooks/useClusterBankAccountsAdmin";
+import RekeningRTCallout from "@/components/RekeningRTCallout";
 
 const paymentStatusOptions: StatusOption[] = [
   { value: "all", label: "Semua Status" },
@@ -35,7 +38,34 @@ const verificationStatusOptions: StatusOption[] = [
   { value: "pending", label: "Pending" },
 ];
 
+// Helper functions to extract year and month without timezone conversion
+const getYearMonth = (dateString: string) => {
+  // Extract YYYY-MM from date string without creating Date object
+  const yearMonth = dateString.substring(0, 7); // Gets "YYYY-MM"
+  return yearMonth;
+};
+
+const isDateInRange = (dateString: string, fromDate: Date | null | undefined, toDate: Date | null | undefined) => {
+  if (!fromDate && !toDate) return true;
+  
+  const yearMonth = getYearMonth(dateString);
+  
+  if (fromDate) {
+    const fromYearMonth = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}`;
+    if (yearMonth < fromYearMonth) return false;
+  }
+  
+  if (toDate) {
+    const toYearMonth = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}`;
+    if (yearMonth > toYearMonth) return false;
+  }
+  
+  return true;
+};
+
 export default function TransaksiWargaPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("iuran");
   const [searchTerm, setSearchTerm] = useState("");
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -54,7 +84,9 @@ export default function TransaksiWargaPage() {
   });
 
   const { invoices, paidInvoices, invoiceByUserId, loading, createInvoice, handleDownload, updateInvoice, getInvoicesByUserId, createManualPayment } = useInvoices();
+  const { bankAccounts } = useClusterBankAccountsAdmin();
   const { clusterId } = useAuth();
+  const bankAccountsByCluster = bankAccounts.filter((account) => account.cluster_id === clusterId);
 
   const invoicesByCluster = invoices.filter((invoice) => invoice.cluster_id === clusterId);
   const paidInvoicesByCluster = paidInvoices.filter((invoice) => invoice.cluster_id === clusterId);
@@ -62,6 +94,14 @@ export default function TransaksiWargaPage() {
   // Move all iuran-related hooks to page level
   const { iuran: iuranList, loading: iuranLoading, updateIuran, createIuran, error: iuranError } = useIuran();
   const { userPermissions } = useUserPermission();
+
+  // Initialize activeTab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['iuran', 'status', 'verifikasi'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const resetFilters = {
@@ -73,6 +113,13 @@ export default function TransaksiWargaPage() {
     setFilters(resetFilters);
     setAppliedFilters(resetFilters);
   }, [activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set('tab', tab);
+    router.push(`/admin/dashboard/transaksi-warga?${currentParams.toString()}`);
+  };
 
   const iuranOptions: IuranOption[] = useMemo(() => {
     return iuranList.map((iuran) => ({
@@ -105,13 +152,36 @@ export default function TransaksiWargaPage() {
     });
     
     return invoicesByCluster.filter((invoice) => {
-      if (appliedFilters.dateFrom && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate < appliedFilters.dateFrom) return false;
-      }
-      if (appliedFilters.dateTo && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate > appliedFilters.dateTo) return false;
+      // Date filtering - use master_iuran's start_date and end_date (month/year only)
+      if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+        if (invoice.master_iuran) {
+          // Check if either start_date or end_date falls within the filter range
+          const startDateInRange = isDateInRange(invoice.master_iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+          const endDateInRange = isDateInRange(invoice.master_iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+          
+          // If neither start nor end date is in range, filter out this invoice
+          if (!startDateInRange && !endDateInRange) {
+            // Also check if the iuran period spans across the filter range
+            const iuranStartYearMonth = getYearMonth(invoice.master_iuran.start_date);
+            const iuranEndYearMonth = getYearMonth(invoice.master_iuran.end_date);
+            
+            let filterStartYearMonth = '';
+            let filterEndYearMonth = '';
+            
+            if (appliedFilters.dateFrom) {
+              filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+            }
+            if (appliedFilters.dateTo) {
+              filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+            }
+            
+            // Check if iuran period spans across the filter range
+            const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+              (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+            
+            if (!spansRange) return false;
+          }
+        }
       }
 
       if (appliedFilters.status && appliedFilters.status !== "all") {
@@ -140,14 +210,37 @@ export default function TransaksiWargaPage() {
 
   const filteredPaidInvoices = useMemo(() => {
     return paidInvoicesByCluster.filter((invoice) => {
-      if (appliedFilters.dateFrom && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate < appliedFilters.dateFrom) return false;
-      }
-      if (appliedFilters.dateTo && invoice.payment_date) {
-        const paymentDate = new Date(invoice.payment_date);
-        if (paymentDate > appliedFilters.dateTo) return false;
-      }
+      // Date filtering - use master_iuran's start_date and end_date (month/year only)
+       if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+         if (invoice.master_iuran) {
+           // Check if either start_date or end_date falls within the filter range
+           const startDateInRange = isDateInRange(invoice.master_iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+           const endDateInRange = isDateInRange(invoice.master_iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+           
+           // If neither start nor end date is in range, filter out this invoice
+           if (!startDateInRange && !endDateInRange) {
+             // Also check if the iuran period spans across the filter range
+             const iuranStartYearMonth = getYearMonth(invoice.master_iuran.start_date);
+             const iuranEndYearMonth = getYearMonth(invoice.master_iuran.end_date);
+             
+             let filterStartYearMonth = '';
+             let filterEndYearMonth = '';
+             
+             if (appliedFilters.dateFrom) {
+               filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+             }
+             if (appliedFilters.dateTo) {
+               filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+             }
+             
+             // Check if iuran period spans across the filter range
+             const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+               (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+             
+             if (!spansRange) return false;
+           }
+         }
+       }
 
       if (appliedFilters.status && appliedFilters.status !== "all") {
         if (appliedFilters.status === "verified" && invoice.verification_status !== VerificationStatus.VERIFIED) {
@@ -173,6 +266,42 @@ export default function TransaksiWargaPage() {
       return true;
     });
   }, [paidInvoicesByCluster, appliedFilters]);
+
+  const filteredIuran = useMemo(() => {
+    return iuranList.filter((iuran) => {
+      // Date filtering - use iuran's start_date and end_date (month/year only)
+      if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+        // Check if either start_date or end_date falls within the filter range
+        const startDateInRange = isDateInRange(iuran.start_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+        const endDateInRange = isDateInRange(iuran.end_date, appliedFilters.dateFrom, appliedFilters.dateTo);
+        
+        // If neither start nor end date is in range, filter out this iuran
+        if (!startDateInRange && !endDateInRange) {
+          // Also check if the iuran period spans across the filter range
+          const iuranStartYearMonth = getYearMonth(iuran.start_date);
+          const iuranEndYearMonth = getYearMonth(iuran.end_date);
+          
+          let filterStartYearMonth = '';
+          let filterEndYearMonth = '';
+          
+          if (appliedFilters.dateFrom) {
+            filterStartYearMonth = `${appliedFilters.dateFrom.getFullYear()}-${String(appliedFilters.dateFrom.getMonth() + 1).padStart(2, '0')}`;
+          }
+          if (appliedFilters.dateTo) {
+            filterEndYearMonth = `${appliedFilters.dateTo.getFullYear()}-${String(appliedFilters.dateTo.getMonth() + 1).padStart(2, '0')}`;
+          }
+          
+          // Check if iuran period spans across the filter range
+          const spansRange = (filterStartYearMonth && filterEndYearMonth) ? 
+            (iuranStartYearMonth <= filterStartYearMonth && iuranEndYearMonth >= filterEndYearMonth) : false;
+          
+          if (!spansRange) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [iuranList, appliedFilters]);
 
   const handleApplyFilters = (newFilters: FilterState) => {
     setAppliedFilters(newFilters);
@@ -219,6 +348,7 @@ export default function TransaksiWargaPage() {
 
   return (
     <div className="space-y-6">
+      <RekeningRTCallout show={bankAccountsByCluster.length === 0} />
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">Transaksi Warga</h1>
         <p className="text-sm text-muted-foreground">
@@ -231,7 +361,7 @@ export default function TransaksiWargaPage() {
         <div className="flex space-x-1 p-1 w-fit">
           <Button 
           variant="ghost" 
-          onClick={() => setActiveTab("iuran")} 
+          onClick={() => handleTabChange("iuran")} 
           className={cn(
             "px-4 py-2 text-sm font-medium transition-colors rounded-none",
             activeTab === "iuran"
@@ -243,7 +373,7 @@ export default function TransaksiWargaPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("status")}
+            onClick={() => handleTabChange("status")}
             className={cn(
               "px-4 py-2 text-sm font-medium transition-colors rounded-none",
               activeTab === "status"
@@ -256,7 +386,7 @@ export default function TransaksiWargaPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => setActiveTab("verifikasi")}
+            onClick={() => handleTabChange("verifikasi")}
             className={cn(
               "px-4 py-2 text-sm font-medium transition-colors rounded-none",
               activeTab === "verifikasi"
@@ -312,7 +442,7 @@ export default function TransaksiWargaPage() {
       )}
       {activeTab === "iuran" && (
         <IuranContainer 
-          iuranList={iuranList}
+          iuranList={filteredIuran}
           iuranLoading={iuranLoading}
           updateIuran={updateIuran}
           clusterId={clusterId}
