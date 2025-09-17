@@ -135,7 +135,36 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch, nama, em
     }
 
     try {
-      // Generate new temporary password and send invitation email
+      // First, try to fetch existing temporary password
+      let temporaryPassword = '';
+      
+      try {
+        const tempPasswordResponse = await fetch('/api/admin/get-temp-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: email }),
+        });
+
+        const tempPasswordResult = await tempPasswordResponse.json();
+
+        if (tempPasswordResult.success && tempPasswordResult.temporaryPassword) {
+          temporaryPassword = tempPasswordResult.temporaryPassword;
+          console.log('Using existing temporary password for resend invitation');
+        } else {
+          // Fallback: generate new temporary password if not found
+          temporaryPassword = generateTemporaryPassword();
+          console.log('Temporary password not found, generating new one for resend invitation');
+        }
+      } catch (tempPasswordError) {
+        console.error('Error fetching temporary password:', tempPasswordError);
+        // Fallback: generate new temporary password
+        temporaryPassword = generateTemporaryPassword();
+        console.log('Error fetching temp password, generating new one for resend invitation');
+      }
+
+      // Send invitation email with the temporary password
       const emailResponse = await fetch('/api/send-email/resend-invitation', {
         method: 'POST',
         headers: {
@@ -144,7 +173,7 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch, nama, em
         body: JSON.stringify({
           userName: nama,
           email: email,
-          temporaryPassword: generateTemporaryPassword(), // Generate random temp password
+          temporaryPassword: temporaryPassword,
           clusterName: clusterName || 'Komplek Anda',
           role: role || 'Warga'
         }),
@@ -292,4 +321,4 @@ export default function WargaCard({
         </Link>
       </div>
     </div>
-  );} 
+  );}

@@ -10,7 +10,6 @@ import Link from "next/link";
 import { CheckCircle, AlertCircle } from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { toast } from "sonner";
-import { decryptTempPassword } from '@/lib/crypto';
 
 export function AuthVerify() {
   const [message, setMessage] = useState("Verifying your email...");
@@ -234,7 +233,20 @@ export function AuthVerify() {
           // Check if we have encrypted temp password for automatic login
           if (encryptedTempPwd) {
             try {
-              const decryptedPassword = decryptTempPassword(encryptedTempPwd);
+              // Call server-side API to decrypt password
+              const response = await fetch('/api/decrypt-temp-password', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ encryptedPassword: encryptedTempPwd }),
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to decrypt password');
+              }
+
+              const { password: decryptedPassword } = await response.json();
               setPassword(decryptedPassword);
               
               toast.success("Email verified successfully!", {
