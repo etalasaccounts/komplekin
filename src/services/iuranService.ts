@@ -92,12 +92,25 @@ export const iuranService = {
       
       if (shouldSendReminder) {
         console.log('Sending immediate email reminders for overdue invoices');
+
+        const {data: userPermissionData, error: userPermissionError} = await supabase
+          .from('user_permissions')
+          .select('*')
+
+        const profileIds = userPermissionData?.filter(userPermission => participants.includes(userPermission.id)).map(userPermission => userPermission.profile_id) || [];
+        
+        if (userPermissionError) {
+          console.error('Error fetching user permissions:', userPermissionError);
+          return;
+        }
         
         // Get participant details for email sending
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('id, fullname, email')
-          .in('id', participants);
+          .in('id', profileIds);
+
+          console.log('Profiles:', profiles);
           
         if (profileError) {
           console.error('Error fetching participant profiles:', profileError);
@@ -306,11 +319,21 @@ export const iuranService = {
     overdueInvoices: Invoice[],
   ): Promise<void> { 
     try {
+      const {data: userPermissionData, error: userPermissionError} = await supabase
+          .from('user_permissions')
+          .select('*')
+
+        const profileIds = userPermissionData?.filter(userPermission => participantIds.includes(userPermission.id)).map(userPermission => userPermission.profile_id) || [];
+        
+        if (userPermissionError) {
+          console.error('Error fetching user permissions:', userPermissionError);
+          return;
+        }
       // Get participant details for email sending
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, fullname, email')
-        .in('id', participantIds);
+        .in('id', profileIds);
         
       if (profileError) {
         console.error('Error fetching participant profiles:', profileError);
@@ -320,9 +343,8 @@ export const iuranService = {
       // Send email to each participant with overdue invoices
       for (const profile of profiles || []) {
         if (profile.email) {
-          const participantOverdueInvoices = overdueInvoices.filter(inv => inv.user_id === profile.id);
           
-          if (participantOverdueInvoices.length > 0) {
+          if (overdueInvoices.length > 0) {
             try {
               const response = await fetch('/api/send-email/invoice-reminder', {
                 method: 'POST',
@@ -331,8 +353,8 @@ export const iuranService = {
                 },
                 body: JSON.stringify({
                   userName: profile.fullname || 'Warga',
-                  amount: participantOverdueInvoices[0]?.bill_amount?.toLocaleString('id-ID') || '0',
-                  dueDate: new Date(participantOverdueInvoices[0].due_date).toLocaleDateString('id-ID', {
+                  amount: overdueInvoices[0]?.bill_amount?.toLocaleString('id-ID') || '0',
+                  dueDate: new Date(overdueInvoices[0].due_date).toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
@@ -344,7 +366,7 @@ export const iuranService = {
               if (!response.ok) {
                 console.error(`Failed to send email to ${profile.email}:`, await response.text());
               } else {
-                console.log(`Email reminder sent successfully to ${profile.email} for ${participantOverdueInvoices.length} overdue invoices`);
+                console.log(`Email reminder sent successfully to ${profile.email} for ${overdueInvoices.length} overdue invoices`);
               }
             } catch (emailError) {
               console.error(`Error sending email to ${profile.email}:`, emailError);

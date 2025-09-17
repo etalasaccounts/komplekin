@@ -29,7 +29,6 @@ const InvoiceReminderEmailTemplate = ({
           .invoice-box { background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
           .warning-box { background: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
           .info-box { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
-          .amount { font-size: 24px; font-weight: bold; color: #d97706; }
         </style>
       </head>
       <body>
@@ -43,7 +42,7 @@ const InvoiceReminderEmailTemplate = ({
           
           <div class="invoice-box">
             <h3 style="margin: 0 0 15px 0; color: #1f2937;">Detail Tagihan</h3>
-            <p style="margin: 5px 0;"><strong>Jumlah Tagihan:</strong> <span class="amount">Rp ${amount}</span></p>
+            <p style="margin: 5px 0;"><strong>Jumlah Tagihan:</strong>Rp ${amount}</p>
             <p style="margin: 5px 0;"><strong>Jatuh Tempo:</strong> ${dueDate}</p>
           </div>
 
@@ -65,7 +64,7 @@ const InvoiceReminderEmailTemplate = ({
 
           <div style="text-align: center; margin: 30px 0;">
             <p style="margin-bottom: 15px;">Untuk melakukan pembayaran atau melihat detail tagihan:</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}/dashboard/tagihan" class="button">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}/user/dashboard/iuran-bulanan" class="button" style="text-decoration: none; color: white;">
               Lihat Detail Tagihan
             </a>
           </div>
