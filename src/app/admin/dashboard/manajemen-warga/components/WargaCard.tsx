@@ -109,6 +109,25 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch, nama, em
     }
   };
 
+  const generateTemporaryPassword = (length: number = 8): string => {
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const numbers = '0123456789'
+  const symbols = '!@#$%^&*'
+  
+  // Ensure at least one number and one symbol
+  let result = ''
+  result += numbers.charAt(Math.floor(Math.random() * numbers.length))
+  result += symbols.charAt(Math.floor(Math.random() * symbols.length))
+  
+  // Fill the rest with random characters
+  for (let i = 2; i < length; i++) {
+    result += charset.charAt(Math.floor(Math.random() * charset.length))
+  }
+  
+  // Shuffle the result
+  return result.split('').sort(() => Math.random() - 0.5).join('')
+}
+
   const handleResendInvitation = async () => {
     if (!originalId || !email) {
       toast.error('Data warga tidak lengkap');
@@ -125,7 +144,7 @@ const ActionMenu = ({ status, originalId, profileId, id, role, refetch, nama, em
         body: JSON.stringify({
           userName: nama,
           email: email,
-          temporaryPassword: Math.random().toString(36).slice(-8), // Generate random temp password
+          temporaryPassword: generateTemporaryPassword(), // Generate random temp password
           clusterName: clusterName || 'Komplek Anda',
           role: role || 'Warga'
         }),
